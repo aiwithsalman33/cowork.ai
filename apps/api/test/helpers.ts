@@ -38,6 +38,7 @@ export async function signup(overrides: Partial<{ email: string; name: string; p
   const res = await app.inject({
     method: 'POST',
     url: '/api/auth/signup',
+    remoteAddress: `10.${counter % 250}.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250)}`,
     payload: { name: overrides.name ?? 'Test User', email, password: overrides.password ?? 'password123' },
   });
   if (res.statusCode !== 201) throw new Error(`signup failed ${res.statusCode}: ${res.body}`);

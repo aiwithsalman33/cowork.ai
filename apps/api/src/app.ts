@@ -9,6 +9,7 @@ import { HttpError } from './lib/errors.js';
 import { prisma } from './db/client.js';
 import { authRoutes } from './routes/auth.js';
 import { registerRoutes } from './routes/index.js';
+import { wireHandlers } from './background.js';
 
 export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({
@@ -70,6 +71,7 @@ export async function buildApp(): Promise<FastifyInstance> {
 
   await app.register(authRoutes, { prefix: '/api/auth' });
   await registerRoutes(app);
+  wireHandlers();
 
   return app;
 }

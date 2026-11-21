@@ -1,0 +1,46 @@
+{
+  "name": "@partner/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch --env-file-if-exists=../../.env src/index.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/index.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:deploy": "prisma migrate deploy",
+    "seed": "tsx --env-file-if-exists=../../.env src/db/seed.ts"
+  },
+  "dependencies": {
+    "@composio/core": "^0.31.0",
+    "@fastify/cookie": "^11.1.5",
+    "@fastify/cors": "^11.4.3",
+    "@fastify/helmet": "^13.2.0",
+    "@fastify/rate-limit": "^11.3.0",
+    "@node-rs/argon2": "^2.0.2",
+    "@partner/shared": "workspace:*",
+    "@prisma/client": "6.19.3",
+    "baileys": "7.0.0-rc14",
+    "fastify": "^5.12.8",
+    "jose": "^6.1.0",
+    "pg-boss": "^12.38.2",
+    "pino": "^10.1.0",
+    "prisma": "6.19.3",
+    "qrcode": "^1.5.4",
+    "razorpay": "^2.9.8",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@types/node": "^24.9.0",
+    "@types/qrcode": "^1.5.5",
+    "pino-pretty": "^13.1.2",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.0"
+  }
+}

@@ -1,0 +1,446 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum Plan {
+  TRIAL
+  STARTER
+  GROWTH
+}
+
+enum ChannelType {
+  TELEGRAM
+  WHATSAPP_QR
+  WHATSAPP_CLOUD
+}
+
+enum ChannelStatus {
+  DISCONNECTED
+  CONNECTING
+  QR
+  CONNECTED
+  ERROR
+}
+
+enum Direction {
+  IN
+  OUT
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+  OWNER
+  SYSTEM
+}
+
+enum MessageStatus {
+  RECEIVED
+  PROCESSING
+  REPLIED
+  SKIPPED
+  FAILED
+  SENT
+}
+
+enum AppointmentStatus {
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  NO_SHOW
+}
+
+enum IntegrationStatus {
+  PENDING
+  CONNECTED
+  DISCONNECTED
+  ERROR
+}
+
+enum Frequency {
+  ONCE
+  DAILY
+  WEEKLY
+}
+
+enum LogLevel {
+  INFO
+  WARN
+  ERROR
+}
+
+model User {
+  id                     String     @id @default(cuid())
+  email                  String     @unique
+  passwordHash           String
+  name                   String
+  role                   Role       @default(USER)
+  status                 UserStatus @default(ACTIVE)
+  plan                   Plan       @default(TRIAL)
+  trialEndsAt            DateTime?
+  bossNumbers            String[]   @default([])
+  razorpayCustomerId     String?
+  razorpaySubscriptionId String?    @unique
+  subscriptionStatus     String?
+  pendingPlan            Plan?
+  currentPeriodEnd       DateTime?
+  lastLoginAt            DateTime?
+  createdAt              DateTime   @default(now())
+  updatedAt              DateTime   @updatedAt
+
+  refreshTokens       RefreshToken[]
+  agent               Agent?
+  apiKeys             ApiKey[]
+  userSkills          UserSkill[]
+  authoredSkills      Skill[]              @relation("SkillAuthor")
+  channels            Channel[]
+  contacts            Contact[]
+  conversations       Conversation[]
+  messages            Message[]
+  appointments        Appointment[]
+  leads               Lead[]
+  integrations        Integration[]
+  integrationRequests IntegrationRequest[]
+  schedules           Schedule[]
+  eventLogs           EventLog[]
+  billingEvents       BillingEvent[]
+  auditLogsAsActor    AuditLog[]           @relation("AuditActor")
+
+  @@index([createdAt])
+}
+
+model RefreshToken {
+  id             String    @id @default(cuid())
+  userId         String
+  family         String
+  tokenHash      String    @unique
+  expiresAt      DateTime
+  revokedAt      DateTime?
+  impersonatorId String?
+  userAgent      String?
+  ip             String?
+  createdAt      DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([family])
+}
+
+model Agent {
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  name             String   @default("Assistant")
+  businessName     String   @default("")
+  tone             String   @default("friendly")
+  language         String   @default("Auto-detect")
+  greeting         String   @default("")
+  instructions     String   @default("")
+  emojis           Boolean  @default(true)
+  replyLength      String   @default("short")
+  isActive         Boolean  @default(true)
+  customized       Boolean  @default(false)
+  businessDetails  String   @default("")
+  productsServices String   @default("")
+  commonQuestions  String   @default("")
+  provider         String?
+  model            String?
+  updatedAt        DateTime @updatedAt
+  createdAt        DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ApiKey {
+  id           String   @id @default(cuid())
+  userId       String
+  provider     String
+  model        String
+  encryptedKey String
+  last4        String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider])
+}
+
+model Skill {
+  id             String   @id @default(cuid())
+  slug           String   @unique
+  name           String
+  description    String
+  category       String
+  icon           String   @default("sparkles")
+  promptFragment String
+  tools          String[] @default([])
+  isPublic       Boolean  @default(false)
+  isBuiltin      Boolean  @default(false)
+  authorId       String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  author     User?       @relation("SkillAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  userSkills UserSkill[]
+
+  @@index([authorId])
+}
+
+model UserSkill {
+  id        String   @id @default(cuid())
+  userId    String
+  skillId   String
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skill Skill @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, skillId])
+}
+
+model Channel {
+  id              String        @id @default(cuid())
+  userId          String
+  type            ChannelType
+  name            String
+  status          ChannelStatus @default(DISCONNECTED)
+  encryptedConfig String?
+  webhookSecret   String
+  externalId      String?
+  lastError       String?
+  connectedAt     DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conversations Conversation[]
+  schedules     Schedule[]
+
+  @@index([userId])
+  @@index([type, status])
+}
+
+model Contact {
+  id           String   @id @default(cuid())
+  userId       String
+  channelType  ChannelType
+  externalId   String
+  name         String?
+  phone        String?
+  profile      Json     @default("{}")
+  summary      String   @default("")
+  messageCount Int      @default(0)
+  firstSeenAt  DateTime @default(now())
+  lastSeenAt   DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conversations Conversation[]
+  appointments  Appointment[]
+  leads         Lead[]
+
+  @@unique([userId, channelType, externalId])
+  @@index([userId, firstSeenAt])
+}
+
+model Conversation {
+  id              String    @id @default(cuid())
+  userId          String
+  channelId       String
+  contactId       String
+  summary         String    @default("")
+  summarizedUntil DateTime?
+  lastMessageAt   DateTime  @default(now())
+  lastMessage     String?
+  messageCount    Int       @default(0)
+  createdAt       DateTime  @default(now())
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channel  Channel   @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  contact  Contact   @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  messages Message[]
+
+  @@unique([channelId, contactId])
+  @@index([userId, lastMessageAt])
+}
+
+model Message {
+  id             String        @id @default(cuid())
+  userId         String
+  conversationId String
+  direction      Direction
+  role           MessageRole
+  content        String
+  dedupeKey      String?       @unique
+  externalId     String?
+  status         MessageStatus @default(RECEIVED)
+  tokensIn       Int           @default(0)
+  tokensOut      Int           @default(0)
+  toolCalls      Json?
+  error          String?
+  replyToId      String?
+  processedAt    DateTime?
+  createdAt      DateTime      @default(now())
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@index([userId, createdAt])
+}
+
+model Appointment {
+  id            String            @id @default(cuid())
+  userId        String
+  contactId     String?
+  customerName  String
+  customerPhone String?
+  customerEmail String?
+  title         String
+  notes         String?
+  startsAt      DateTime
+  endsAt        DateTime
+  status        AppointmentStatus @default(CONFIRMED)
+  googleEventId String?
+  createdAt     DateTime          @default(now())
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contact Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+
+  @@index([userId, startsAt])
+}
+
+model Lead {
+  id         String   @id @default(cuid())
+  userId     String
+  contactId  String?
+  name       String
+  phone      String?
+  email      String?
+  interest   String?
+  notes      String?
+  syncedToSheet Boolean @default(false)
+  createdAt  DateTime @default(now())
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contact Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+}
+
+model Integration {
+  id                 String            @id @default(cuid())
+  userId             String
+  toolkit            String
+  connectedAccountId String?
+  status             IntegrationStatus @default(PENDING)
+  settings           Json              @default("{}")
+  connectedAt        DateTime?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, toolkit])
+}
+
+model IntegrationRequest {
+  id        String   @id @default(cuid())
+  userId    String
+  toolName  String
+  useCase   String
+  status    String   @default("OPEN")
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+}
+
+model Schedule {
+  id        String    @id @default(cuid())
+  userId    String
+  channelId String
+  name      String
+  recipient String
+  message   String
+  frequency Frequency
+  nextRunAt DateTime
+  lastRunAt DateTime?
+  lastError String?
+  enabled   Boolean   @default(true)
+  createdAt DateTime  @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@index([enabled, nextRunAt])
+}
+
+model EventLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  level     LogLevel @default(INFO)
+  type      String
+  message   String
+  meta      Json?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([level, createdAt])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  action     String
+  targetType String?
+  targetId   String?
+  meta       Json?
+  ip         String?
+  createdAt  DateTime @default(now())
+
+  actor User? @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+}
+
+model FeatureFlag {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  description String   @default("")
+  enabled     Boolean  @default(false)
+  plans       String[] @default([])
+  updatedAt   DateTime @updatedAt
+}
+
+model BillingEvent {
+  id        String   @id @default(cuid())
+  eventId   String   @unique
+  userId    String?
+  type      String
+  payload   Json
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+}

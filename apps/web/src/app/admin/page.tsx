@@ -1,7 +1,19 @@
 'use client';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Activity, AlertTriangle, Bot, CheckCircle2, Coins, IndianRupee, MessageCircle, UserPlus, Users, XCircle, type LucideIcon } from 'lucide-react';
+import {
+  Activity,
+  AlertTriangle,
+  Bot,
+  CheckCircle2,
+  Coins,
+  IndianRupee,
+  MessageCircle,
+  UserPlus,
+  Users,
+  XCircle,
+  type LucideIcon,
+} from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { PageHeader, Skeleton } from '@/components/ui/misc';
@@ -10,13 +22,31 @@ import { get } from '@/lib/api';
 import { formatInr, formatNumber } from '@/lib/utils';
 
 type Overview = {
-  kpis: { users: number; newThisWeek: number; mrr: number; activeAgents: number; messages7d: number; errorRate: number; tokens30d: number };
+  kpis: {
+    users: number;
+    newThisWeek: number;
+    mrr: number;
+    activeAgents: number;
+    messages7d: number;
+    errorRate: number;
+    tokens30d: number;
+  };
   plans: { plan: string; count: number }[];
   series: { day: string; inbound: number; outbound: number; tokens: number; signups: number }[];
   composioEnabled: boolean;
 };
 
-function Kpi({ label, value, icon: Icon, hint }: { label: string; value: string; icon: LucideIcon; hint?: string }) {
+function Kpi({
+  label,
+  value,
+  icon: Icon,
+  hint,
+}: {
+  label: string;
+  value: string;
+  icon: LucideIcon;
+  hint?: string;
+}) {
   return (
     <Card className="p-4">
       <div className="flex items-center justify-between text-xs font-medium text-muted-foreground">
@@ -33,14 +63,20 @@ function ComposioCheck() {
   const [run, setRun] = useState(false);
   const { data, isFetching, error } = useQuery({
     queryKey: ['composio-verify'],
-    queryFn: () => get<{ results: { ok: boolean; slug: string; properties?: string[]; error?: string }[] }>('/admin/composio/verify'),
+    queryFn: () =>
+      get<{ results: { ok: boolean; slug: string; properties?: string[]; error?: string }[] }>(
+        '/admin/composio/verify',
+      ),
     enabled: run,
   });
   return (
     <Card>
       <CardHeader>
         <CardTitle>Verify Composio tools</CardTitle>
-        <CardDescription>Fetches the live input schema of every tool the agent uses, so renamed slugs or arguments show up here.</CardDescription>
+        <CardDescription>
+          Fetches the live input schema of every tool the agent uses, so renamed slugs or arguments show up
+          here.
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         <Button variant="outline" size="sm" onClick={() => setRun(true)} loading={isFetching}>
@@ -49,10 +85,16 @@ function ComposioCheck() {
         {error && <p className="text-sm text-destructive">{(error as Error).message}</p>}
         {data?.results.map((r) => (
           <div key={r.slug} className="flex items-start gap-2 text-sm">
-            {r.ok ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-success" /> : <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />}
+            {r.ok ? (
+              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-success" />
+            ) : (
+              <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+            )}
             <div>
               <code className="text-xs">{r.slug}</code>
-              <p className="text-xs text-muted-foreground">{r.ok ? `params: ${r.properties?.join(', ')}` : r.error}</p>
+              <p className="text-xs text-muted-foreground">
+                {r.ok ? `params: ${r.properties?.join(', ')}` : r.error}
+              </p>
             </div>
           </div>
         ))}
@@ -62,7 +104,11 @@ function ComposioCheck() {
 }
 
 export default function AdminOverview() {
-  const { data, isLoading } = useQuery({ queryKey: ['admin-overview'], queryFn: () => get<Overview>('/admin/overview'), refetchInterval: 60_000 });
+  const { data, isLoading } = useQuery({
+    queryKey: ['admin-overview'],
+    queryFn: () => get<Overview>('/admin/overview'),
+    refetchInterval: 60_000,
+  });
   if (isLoading || !data) {
     return (
       <div className="space-y-6">
@@ -84,12 +130,27 @@ export default function AdminOverview() {
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Kpi label="Users" value={formatNumber(k.users)} icon={Users} hint={`+${k.newThisWeek} this week`} />
         <Kpi label="MRR" value={formatInr(k.mrr)} icon={IndianRupee} hint="active paid plans" />
-        <Kpi label="Active agents" value={formatNumber(k.activeAgents)} icon={Bot} hint="connected + plan active" />
+        <Kpi
+          label="Active agents"
+          value={formatNumber(k.activeAgents)}
+          icon={Bot}
+          hint="connected + plan active"
+        />
         <Kpi label="Customer messages (7d)" value={formatNumber(k.messages7d)} icon={MessageCircle} />
-        <Kpi label="Error rate (7d)" value={`${k.errorRate}%`} icon={AlertTriangle} hint="failed replies / messages" />
+        <Kpi
+          label="Error rate (7d)"
+          value={`${k.errorRate}%`}
+          icon={AlertTriangle}
+          hint="failed replies / messages"
+        />
         <Kpi label="Tokens (30d)" value={formatNumber(k.tokens30d)} icon={Coins} />
         <Kpi label="New signups (7d)" value={formatNumber(k.newThisWeek)} icon={UserPlus} />
-        <Kpi label="Integrations" value={data.composioEnabled ? 'On' : 'Off'} icon={Activity} hint="Composio" />
+        <Kpi
+          label="Integrations"
+          value={data.composioEnabled ? 'On' : 'Off'}
+          icon={Activity}
+          hint="Composio"
+        />
       </div>
 
       <Card>
@@ -130,7 +191,10 @@ export default function AdminOverview() {
                   <span className="font-medium tabular-nums">{p.count}</span>
                 </div>
                 <div className="h-2 overflow-hidden rounded-full bg-muted">
-                  <div className="h-full rounded-full bg-[var(--chart-1)]" style={{ width: `${(p.count / totalPlans) * 100}%` }} />
+                  <div
+                    className="h-full rounded-full bg-[var(--chart-1)]"
+                    style={{ width: `${(p.count / totalPlans) * 100}%` }}
+                  />
                 </div>
               </div>
             ))}

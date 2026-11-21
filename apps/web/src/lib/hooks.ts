@@ -16,7 +16,11 @@ export function useMe() {
 /** Mutation with toast feedback and cache invalidation. */
 export function useAction<TVars, TRes = unknown>(
   fn: (vars: TVars) => Promise<TRes>,
-  opts: { success?: string | ((r: TRes) => string); invalidate?: QueryKey[]; onSuccess?: (r: TRes) => void } = {},
+  opts: {
+    success?: string | ((r: TRes) => string);
+    invalidate?: QueryKey[];
+    onSuccess?: (r: TRes) => void;
+  } = {},
 ) {
   const qc = useQueryClient();
   return useMutation({
@@ -28,7 +32,9 @@ export function useAction<TVars, TRes = unknown>(
     },
     onError: (err) => {
       if (err instanceof ApiError && err.code === 'PLAN_LIMIT') {
-        toast.error(err.message, { action: { label: 'Upgrade', onClick: () => (window.location.href = '/billing') } });
+        toast.error(err.message, {
+          action: { label: 'Upgrade', onClick: () => (window.location.href = '/billing') },
+        });
       } else {
         toast.error(err instanceof Error ? err.message : 'Something went wrong');
       }

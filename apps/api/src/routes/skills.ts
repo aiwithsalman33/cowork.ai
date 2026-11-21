@@ -75,7 +75,9 @@ export async function skillRoutes(app: FastifyInstance) {
     const { id } = parse(z.object({ id: z.string().min(1) }), req.params);
     const { enabled } = parse(skillToggleSchema, req.body);
     const u = user(req);
-    const skill = await prisma.skill.findFirst({ where: { id, OR: [{ isPublic: true }, { authorId: u.id }] } });
+    const skill = await prisma.skill.findFirst({
+      where: { id, OR: [{ isPublic: true }, { authorId: u.id }] },
+    });
     if (!skill) throw notFound('Skill not found');
     const current = await req.db.userSkill.findFirst({ where: { skillId: id } });
     if (enabled && !current?.enabled) await assertCanEnableSkill(u);
@@ -85,47 +87,53 @@ export async function skillRoutes(app: FastifyInstance) {
   });
 
   /** AI Skill Creator: turns a plain-language description into a draft skill (not saved). */
-  app.post('/skills/generate', { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } }, async (req) => {
-    const { description } = parse(skillGenerateSchema, req.body);
-    const model = await resolveModel(user(req).id);
-    if (!model) throw badRequest('Add an AI key in Agent Config → API Keys to use the Skill Creator.');
-    let raw: string | null;
-    try {
-      const res = await complete({
-        ...model,
-        messages: [
-          { role: 'system', content: SKILL_GENERATOR_PROMPT },
-          { role: 'user', content: description },
-        ],
-        temperature: 0.4,
-        maxTokens: 800,
-        json: true,
+  app.post(
+    '/skills/generate',
+    { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } },
+    async (req) => {
+      const { description } = parse(skillGenerateSchema, req.body);
+      const model = await resolveModel(user(req).id);
+      if (!model) throw badRequest('Add an AI key in Agent Config → API Keys to use the Skill Creator.');
+      let raw: string | null;
+      try {
+        const res = await complete({
+          ...model,
+          messages: [
+            { role: 'system', content: SKILL_GENERATOR_PROMPT },
+            { role: 'user', content: description },
+          ],
+          temperature: 0.4,
+          maxTokens: 800,
+          json: true,
+        });
+        raw = res.content;
+      } catch (err) {
+        throw badRequest(err instanceof LLMError ? err.message : 'Skill generation failed');
+      }
+      const match = raw?.match(/\{[\s\S]*\}/);
+      if (!match) throw badRequest('The AI did not return a valid skill. Try describing it differently.');
+      let obj: Record<string, unknown>;
+      try {
+        obj = JSON.parse(match[0]);
+      } catch {
+        throw badRequest('The AI returned malformed JSON. Try again.');
+      }
+      const draft = skillUpsertSchema.safeParse({
+        slug: `${slugify(String(obj.name ?? 'skill'))}-${randomToken(3)
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, 'x')}`,
+        name: obj.name,
+        description: obj.description,
+        category: SKILL_CATEGORIES.includes(obj.category as SkillCategory) ? obj.category : 'Custom',
+        icon: typeof obj.icon === 'string' ? obj.icon : 'sparkles',
+        promptFragment: obj.promptFragment,
+        tools: Array.isArray(obj.tools) ? obj.tools.filter((t) => TOOL_NAMES.includes(t as ToolName)) : [],
+        isPublic: false,
       });
-      raw = res.content;
-    } catch (err) {
-      throw badRequest(err instanceof LLMError ? err.message : 'Skill generation failed');
-    }
-    const match = raw?.match(/\{[\s\S]*\}/);
-    if (!match) throw badRequest('The AI did not return a valid skill. Try describing it differently.');
-    let obj: Record<string, unknown>;
-    try {
-      obj = JSON.parse(match[0]);
-    } catch {
-      throw badRequest('The AI returned malformed JSON. Try again.');
-    }
-    const draft = skillUpsertSchema.safeParse({
-      slug: `${slugify(String(obj.name ?? 'skill'))}-${randomToken(3).toLowerCase().replace(/[^a-z0-9]/g, 'x')}`,
-      name: obj.name,
-      description: obj.description,
-      category: SKILL_CATEGORIES.includes(obj.category as SkillCategory) ? obj.category : 'Custom',
-      icon: typeof obj.icon === 'string' ? obj.icon : 'sparkles',
-      promptFragment: obj.promptFragment,
-      tools: Array.isArray(obj.tools) ? obj.tools.filter((t) => TOOL_NAMES.includes(t as ToolName)) : [],
-      isPublic: false,
-    });
-    if (!draft.success) throw badRequest('The generated skill was incomplete. Try adding more detail.');
-    return { draft: draft.data };
-  });
+      if (!draft.success) throw badRequest('The generated skill was incomplete. Try adding more detail.');
+      return { draft: draft.data };
+    },
+  );
 
   /** Save a custom skill (always private to the tenant) and enable it. */
   app.post('/skills', async (req) => {
@@ -138,7 +146,11 @@ export async function skillRoutes(app: FastifyInstance) {
     const skill = await prisma.skill.create({
       data: {
         ...input,
-        slug: slugTaken ? `${input.slug}-${randomToken(3).toLowerCase().replace(/[^a-z0-9]/g, 'x')}` : input.slug,
+        slug: slugTaken
+          ? `${input.slug}-${randomToken(3)
+              .toLowerCase()
+              .replace(/[^a-z0-9]/g, 'x')}`
+          : input.slug,
         isPublic: false,
         isBuiltin: false,
         authorId: u.id,

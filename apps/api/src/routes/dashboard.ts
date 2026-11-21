@@ -57,7 +57,8 @@ export async function dashboardRoutes(app: FastifyInstance) {
     const planActive = isPlanActive(u);
     const connected = channels.some((c) => c.status === 'CONNECTED');
     const minutesSaved = botReplies * IMPACT.minutesSavedPerReply;
-    const userMsgsReplied = userMessages === 0 ? 0 : Math.min(100, Math.round((botReplies / userMessages) * 100));
+    const userMsgsReplied =
+      userMessages === 0 ? 0 : Math.min(100, Math.round((botReplies / userMessages) * 100));
 
     return {
       impact: {
@@ -65,7 +66,12 @@ export async function dashboardRoutes(app: FastifyInstance) {
         minutesSaved,
         moneySavedInr: Math.round((minutesSaved / 60) * IMPACT.hourlyCostInr),
         tokensUsed: (tokens._sum.tokensIn ?? 0) + (tokens._sum.tokensOut ?? 0),
-        availability: planActive && agent?.isActive && connected ? '24/7' : planActive && agent?.isActive ? 'Not connected' : 'Paused',
+        availability:
+          planActive && agent?.isActive && connected
+            ? '24/7'
+            : planActive && agent?.isActive
+              ? 'Not connected'
+              : 'Paused',
       },
       stats: {
         messagesToday,

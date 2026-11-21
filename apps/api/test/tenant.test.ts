@@ -19,17 +19,19 @@ describe('tenantDb isolation', () => {
       data: { userId: b, channelType: 'TELEGRAM', externalId: '42', name: 'Secret customer of B' },
     });
     bContactId = contact.id;
-    await prisma.contact.create({ data: { userId: a, channelType: 'TELEGRAM', externalId: '7', name: 'A customer' } });
+    await prisma.contact.create({
+      data: { userId: a, channelType: 'TELEGRAM', externalId: '7', name: 'A customer' },
+    });
   });
 
-  it('findMany only returns the tenant\'s own rows', async () => {
+  it("findMany only returns the tenant's own rows", async () => {
     const rows = await tenantDb(a).contact.findMany();
     expect(rows.length).toBeGreaterThan(0);
     expect(rows.every((r) => r.userId === a)).toBe(true);
     expect(rows.find((r) => r.id === bContactId)).toBeUndefined();
   });
 
-  it('findUnique / findFirst by another tenant\'s id returns null', async () => {
+  it("findUnique / findFirst by another tenant's id returns null", async () => {
     expect(await tenantDb(a).contact.findUnique({ where: { id: bContactId } })).toBeNull();
     expect(await tenantDb(a).channel.findFirst({ where: { id: bChannelId } })).toBeNull();
   });
@@ -39,13 +41,16 @@ describe('tenantDb isolation', () => {
     expect(rows.every((r) => r.userId === a)).toBe(true);
   });
 
-  it('cannot update or delete another tenant\'s row', async () => {
+  it("cannot update or delete another tenant's row", async () => {
     await expect(
       tenantDb(a).contact.update({ where: { id: bContactId }, data: { name: 'hacked' } }),
     ).rejects.toThrow();
     const res = await tenantDb(a).contact.deleteMany({ where: { id: bContactId } });
     expect(res.count).toBe(0);
-    const res2 = await tenantDb(a).channel.updateMany({ where: { id: bChannelId }, data: { name: 'hacked' } });
+    const res2 = await tenantDb(a).channel.updateMany({
+      where: { id: bChannelId },
+      data: { name: 'hacked' },
+    });
     expect(res2.count).toBe(0);
     const still = await prisma.contact.findUniqueOrThrow({ where: { id: bContactId } });
     expect(still.name).toBe('Secret customer of B');

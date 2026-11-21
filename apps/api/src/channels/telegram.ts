@@ -74,7 +74,8 @@ export function normalizeUpdate(u: TelegramUpdate): NormalizedInbound | null {
   if (!m || m.chat.type !== 'private' || m.from?.is_bot) return null;
   const name = [m.from?.first_name, m.from?.last_name].filter(Boolean).join(' ') || m.from?.username || null;
   // A contact shared by the user themself gives us their phone (used for Boss Mode).
-  const ownContact = m.contact && (!m.contact.user_id || m.contact.user_id === m.from?.id) ? m.contact.phone_number : null;
+  const ownContact =
+    m.contact && (!m.contact.user_id || m.contact.user_id === m.from?.id) ? m.contact.phone_number : null;
   const text = m.text ?? m.caption ?? (ownContact ? '[shared contact]' : null);
   if (!text) return null;
   return {

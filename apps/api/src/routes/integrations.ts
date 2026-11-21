@@ -1,7 +1,13 @@
 import type { FastifyInstance } from 'fastify';
 import type { Prisma } from '@prisma/client';
 import { z } from 'zod';
-import { TOOLKITS, integrationRequestSchema, integrationSettingsSchema, type IntegrationDTO, type Toolkit } from '@partner/shared';
+import {
+  TOOLKITS,
+  integrationRequestSchema,
+  integrationSettingsSchema,
+  type IntegrationDTO,
+  type Toolkit,
+} from '@partner/shared';
 import { env } from '../config.js';
 import { authenticate, user } from '../plugins/auth.js';
 import { parse } from '../lib/validate.js';
@@ -24,7 +30,10 @@ export async function integrationRoutes(app: FastifyInstance) {
   app.addHook('preHandler', authenticate);
 
   /** Moves PENDING rows to CONNECTED once Composio reports the account ACTIVE. */
-  async function sync(userId: string, row: { id: string; toolkit: string; status: string; connectedAccountId: string | null }) {
+  async function sync(
+    userId: string,
+    row: { id: string; toolkit: string; status: string; connectedAccountId: string | null },
+  ) {
     if (row.status !== 'PENDING' || !composioEnabled()) return row.status;
     let accountId = row.connectedAccountId;
     let status = accountId ? await getConnectionStatus(accountId) : null;
@@ -65,30 +74,43 @@ export async function integrationRoutes(app: FastifyInstance) {
         settings: (row?.settings ?? {}) as IntegrationDTO['settings'],
       });
     }
-    return { integrations: out, enabled: composioEnabled() && (await isFlagEnabled('composio_integrations', u.id)) };
+    return {
+      integrations: out,
+      enabled: composioEnabled() && (await isFlagEnabled('composio_integrations', u.id)),
+    };
   });
 
-  app.post('/integrations/:toolkit/connect', { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, async (req) => {
-    const { toolkit } = parse(toolkitParam, req.params);
-    const u = user(req);
-    if (!isToolkitConfigured(toolkit)) throw badRequest('This integration is not configured on the server yet.');
-    const callbackUrl = `${env.WEB_ORIGIN}/integrations?toolkit=${toolkit}`;
-    let conn: Awaited<ReturnType<typeof startConnection>>;
-    try {
-      conn = await startConnection(u.id, toolkit, callbackUrl);
-    } catch (err) {
-      req.log.error({ err: (err as Error).message }, 'composio connect failed');
-      throw badRequest('Could not start the connection with Composio. Try again in a minute.');
-    }
-    if (!conn.redirectUrl) throw badRequest('Composio did not return a redirect URL');
-    const existing = await req.db.integration.findFirst({ where: { toolkit } });
-    if (existing) {
-      await req.db.integration.update({ where: { id: existing.id }, data: { status: 'PENDING', connectedAccountId: conn.connectedAccountId } });
-    } else {
-      await req.db.integration.create({ data: { toolkit, status: 'PENDING', connectedAccountId: conn.connectedAccountId } as never });
-    }
-    return { redirectUrl: conn.redirectUrl };
-  });
+  app.post(
+    '/integrations/:toolkit/connect',
+    { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } },
+    async (req) => {
+      const { toolkit } = parse(toolkitParam, req.params);
+      const u = user(req);
+      if (!isToolkitConfigured(toolkit))
+        throw badRequest('This integration is not configured on the server yet.');
+      const callbackUrl = `${env.WEB_ORIGIN}/integrations?toolkit=${toolkit}`;
+      let conn: Awaited<ReturnType<typeof startConnection>>;
+      try {
+        conn = await startConnection(u.id, toolkit, callbackUrl);
+      } catch (err) {
+        req.log.error({ err: (err as Error).message }, 'composio connect failed');
+        throw badRequest('Could not start the connection with Composio. Try again in a minute.');
+      }
+      if (!conn.redirectUrl) throw badRequest('Composio did not return a redirect URL');
+      const existing = await req.db.integration.findFirst({ where: { toolkit } });
+      if (existing) {
+        await req.db.integration.update({
+          where: { id: existing.id },
+          data: { status: 'PENDING', connectedAccountId: conn.connectedAccountId },
+        });
+      } else {
+        await req.db.integration.create({
+          data: { toolkit, status: 'PENDING', connectedAccountId: conn.connectedAccountId } as never,
+        });
+      }
+      return { redirectUrl: conn.redirectUrl };
+    },
+  );
 
   app.post('/integrations/:toolkit/sync', async (req) => {
     const { toolkit } = parse(toolkitParam, req.params);
@@ -106,7 +128,13 @@ export async function integrationRoutes(app: FastifyInstance) {
     const sheetId = settings.sheetId?.match(/\/d\/([a-zA-Z0-9-_]+)/)?.[1] ?? settings.sheetId;
     await req.db.integration.update({
       where: { id: row.id },
-      data: { settings: { ...(row.settings as object), ...settings, ...(sheetId ? { sheetId } : {}) } as Prisma.InputJsonValue },
+      data: {
+        settings: {
+          ...(row.settings as object),
+          ...settings,
+          ...(sheetId ? { sheetId } : {}),
+        } as Prisma.InputJsonValue,
+      },
     });
     return { ok: true };
   });
@@ -116,16 +144,22 @@ export async function integrationRoutes(app: FastifyInstance) {
     const row = await req.db.integration.findFirst({ where: { toolkit } });
     if (!row) return { ok: true };
     if (row.connectedAccountId && composioEnabled()) {
-      await disconnect(row.connectedAccountId).catch((err) => req.log.warn({ err: (err as Error).message }, 'composio delete failed'));
+      await disconnect(row.connectedAccountId).catch((err) =>
+        req.log.warn({ err: (err as Error).message }, 'composio delete failed'),
+      );
     }
     await req.db.integration.delete({ where: { id: row.id } });
     await logEvent(user(req).id, 'INFO', 'integration.disconnected', `${toolkit} disconnected`);
     return { ok: true };
   });
 
-  app.post('/integration-requests', { config: { rateLimit: { max: 5, timeWindow: '1 minute' } } }, async (req, reply) => {
-    const input = parse(integrationRequestSchema, req.body);
-    await req.db.integrationRequest.create({ data: input as never });
-    return reply.code(201).send({ ok: true });
-  });
+  app.post(
+    '/integration-requests',
+    { config: { rateLimit: { max: 5, timeWindow: '1 minute' } } },
+    async (req, reply) => {
+      const input = parse(integrationRequestSchema, req.body);
+      await req.db.integrationRequest.create({ data: input as never });
+      return reply.code(201).send({ ok: true });
+    },
+  );
 }

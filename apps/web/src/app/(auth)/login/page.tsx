@@ -21,10 +21,15 @@ function LoginForm() {
     const fd = new FormData(e.currentTarget);
     setLoading(true);
     try {
-      const res = await post<{ user: MeDTO }>('/auth/login', { email: fd.get('email'), password: fd.get('password') });
+      const res = await post<{ user: MeDTO }>('/auth/login', {
+        email: fd.get('email'),
+        password: fd.get('password'),
+      });
       qc.setQueryData(['me'], res.user);
       const next = params.get('next');
-      router.replace(next && next.startsWith('/') ? next : res.user.role === 'ADMIN' ? '/admin' : '/dashboard');
+      router.replace(
+        next && next.startsWith('/') ? next : res.user.role === 'ADMIN' ? '/admin' : '/dashboard',
+      );
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Login failed');
       setLoading(false);
@@ -34,7 +39,14 @@ function LoginForm() {
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <Field label="Email" htmlFor="email">
-        <Input id="email" name="email" type="email" autoComplete="email" required placeholder="you@business.com" />
+        <Input
+          id="email"
+          name="email"
+          type="email"
+          autoComplete="email"
+          required
+          placeholder="you@business.com"
+        />
       </Field>
       <Field label="Password" htmlFor="password">
         <Input id="password" name="password" type="password" autoComplete="current-password" required />

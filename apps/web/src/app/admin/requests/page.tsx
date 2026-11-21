@@ -8,17 +8,32 @@ import { get, patch } from '@/lib/api';
 import { useAction } from '@/lib/hooks';
 import { formatDateTime } from '@/lib/utils';
 
-type Req = { id: string; toolName: string; useCase: string; status: string; createdAt: string; user: { email: string; name: string } };
+type Req = {
+  id: string;
+  toolName: string;
+  useCase: string;
+  status: string;
+  createdAt: string;
+  user: { email: string; name: string };
+};
 
 export default function AdminRequests() {
-  const { data, isLoading } = useQuery({ queryKey: ['admin-requests'], queryFn: () => get<{ items: Req[] }>('/admin/integration-requests') });
-  const update = useAction(({ id, status }: { id: string; status: string }) => patch(`/admin/integration-requests/${id}`, { status }), {
-    success: 'Updated',
-    invalidate: [['admin-requests']],
+  const { data, isLoading } = useQuery({
+    queryKey: ['admin-requests'],
+    queryFn: () => get<{ items: Req[] }>('/admin/integration-requests'),
   });
+  const update = useAction(
+    ({ id, status }: { id: string; status: string }) =>
+      patch(`/admin/integration-requests/${id}`, { status }),
+    {
+      success: 'Updated',
+      invalidate: [['admin-requests']],
+    },
+  );
 
   const counts = new Map<string, number>();
-  for (const r of data?.items ?? []) counts.set(r.toolName.toLowerCase(), (counts.get(r.toolName.toLowerCase()) ?? 0) + 1);
+  for (const r of data?.items ?? [])
+    counts.set(r.toolName.toLowerCase(), (counts.get(r.toolName.toLowerCase()) ?? 0) + 1);
   const top = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
 
   return (

@@ -24,7 +24,12 @@ function setCookies(reply: FastifyReply, access: string, refresh: string) {
     path: '/api/auth',
     maxAge: REFRESH_TTL_SECONDS,
   });
-  reply.setCookie(COOKIE_CSRF, randomToken(24), { ...base, httpOnly: false, path: '/', maxAge: REFRESH_TTL_SECONDS });
+  reply.setCookie(COOKIE_CSRF, randomToken(24), {
+    ...base,
+    httpOnly: false,
+    path: '/',
+    maxAge: REFRESH_TTL_SECONDS,
+  });
 }
 
 export function clearSessionCookies(reply: FastifyReply) {
@@ -72,10 +77,16 @@ export async function issueSession(
  */
 export async function rotateSession(req: FastifyRequest, reply: FastifyReply, presented: string | undefined) {
   if (!presented) throw unauthorized('No refresh token');
-  const row = await prisma.refreshToken.findUnique({ where: { tokenHash: sha256(presented) }, include: { user: true } });
+  const row = await prisma.refreshToken.findUnique({
+    where: { tokenHash: sha256(presented) },
+    include: { user: true },
+  });
   if (!row) throw unauthorized('Invalid refresh token');
   if (row.revokedAt) {
-    await prisma.refreshToken.updateMany({ where: { family: row.family, revokedAt: null }, data: { revokedAt: new Date() } });
+    await prisma.refreshToken.updateMany({
+      where: { family: row.family, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
     clearSessionCookies(reply);
     throw unauthorized('Refresh token reuse detected — please sign in again');
   }
@@ -89,7 +100,10 @@ export async function rotateSession(req: FastifyRequest, reply: FastifyReply, pr
     data: { revokedAt: new Date() },
   });
   if (claimed.count === 0) throw unauthorized('Refresh token already used');
-  const tokens = await issueSession(req, reply, row.user, { family: row.family, impersonatorId: row.impersonatorId });
+  const tokens = await issueSession(req, reply, row.user, {
+    family: row.family,
+    impersonatorId: row.impersonatorId,
+  });
   return { user: row.user, impersonatorId: row.impersonatorId, ...tokens };
 }
 

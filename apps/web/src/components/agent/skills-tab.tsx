@@ -15,7 +15,10 @@ import { useAction } from '@/lib/hooks';
 import { cn } from '@/lib/utils';
 
 export function useSkills() {
-  return useQuery({ queryKey: ['skills'], queryFn: () => get<{ skills: SkillDTO[] }>('/skills').then((r) => r.skills) });
+  return useQuery({
+    queryKey: ['skills'],
+    queryFn: () => get<{ skills: SkillDTO[] }>('/skills').then((r) => r.skills),
+  });
 }
 
 const TOOL_LABEL: Record<string, string> = {
@@ -26,13 +29,34 @@ const TOOL_LABEL: Record<string, string> = {
   read_doc: 'Reads Docs',
 };
 
-export function SkillCard({ skill, onToggle, pending }: { skill: SkillDTO; onToggle: (v: boolean) => void; pending?: boolean }) {
-  const remove = useAction(() => del(`/skills/${skill.id}`), { success: 'Skill deleted', invalidate: [['skills']] });
+export function SkillCard({
+  skill,
+  onToggle,
+  pending,
+}: {
+  skill: SkillDTO;
+  onToggle: (v: boolean) => void;
+  pending?: boolean;
+}) {
+  const remove = useAction(() => del(`/skills/${skill.id}`), {
+    success: 'Skill deleted',
+    invalidate: [['skills']],
+  });
   return (
-    <Card className={cn('flex flex-col gap-3 p-4 transition-colors', skill.enabled && 'border-primary/40 bg-primary-soft/20')}>
+    <Card
+      className={cn(
+        'flex flex-col gap-3 p-4 transition-colors',
+        skill.enabled && 'border-primary/40 bg-primary-soft/20',
+      )}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
-          <span className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-lg', skill.enabled ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground')}>
+          <span
+            className={cn(
+              'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg',
+              skill.enabled ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground',
+            )}
+          >
             <SkillIcon name={skill.icon} />
           </span>
           <div>
@@ -43,7 +67,12 @@ export function SkillCard({ skill, onToggle, pending }: { skill: SkillDTO; onTog
             <div className="text-xs text-muted-foreground">{skill.category}</div>
           </div>
         </div>
-        <Switch checked={skill.enabled} disabled={pending} onCheckedChange={onToggle} aria-label={`Toggle ${skill.name}`} />
+        <Switch
+          checked={skill.enabled}
+          disabled={pending}
+          onCheckedChange={onToggle}
+          aria-label={`Toggle ${skill.name}`}
+        />
       </div>
       <p className="text-sm text-muted-foreground">{skill.description}</p>
       {(skill.tools.length > 0 || skill.isCustom) && (
@@ -54,7 +83,13 @@ export function SkillCard({ skill, onToggle, pending }: { skill: SkillDTO; onTog
             </Badge>
           ))}
           {skill.isCustom && (
-            <Button variant="ghost" size="sm" className="ml-auto h-7 text-destructive" loading={remove.isPending} onClick={() => remove.mutate(undefined)}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="ml-auto h-7 text-destructive"
+              loading={remove.isPending}
+              onClick={() => remove.mutate(undefined)}
+            >
               <Trash2 /> Delete
             </Button>
           )}
@@ -71,10 +106,13 @@ export function SkillsTab() {
   const [category, setCategory] = useState<string>('All');
   const [onlyEnabled, setOnlyEnabled] = useState(false);
 
-  const toggle = useAction(({ id, enabled }: { id: string; enabled: boolean }) => put(`/skills/${id}`, { enabled }), {
-    invalidate: [['dashboard']],
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['skills'] }),
-  });
+  const toggle = useAction(
+    ({ id, enabled }: { id: string; enabled: boolean }) => put(`/skills/${id}`, { enabled }),
+    {
+      invalidate: [['dashboard']],
+      onSuccess: () => qc.invalidateQueries({ queryKey: ['skills'] }),
+    },
+  );
 
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
@@ -89,7 +127,9 @@ export function SkillsTab() {
   const grouped = useMemo(() => {
     const m = new Map<string, SkillDTO[]>();
     for (const s of filtered) m.set(s.category, [...(m.get(s.category) ?? []), s]);
-    return [...m.entries()].sort((a, b) => SKILL_CATEGORIES.indexOf(a[0] as never) - SKILL_CATEGORIES.indexOf(b[0] as never));
+    return [...m.entries()].sort(
+      (a, b) => SKILL_CATEGORIES.indexOf(a[0] as never) - SKILL_CATEGORIES.indexOf(b[0] as never),
+    );
   }, [filtered]);
 
   const enabledCount = skills?.filter((s) => s.enabled).length ?? 0;
@@ -99,7 +139,12 @@ export function SkillsTab() {
       <div className="flex flex-col gap-3 md:flex-row md:items-center">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search skills…" className="pl-9" />
+          <Input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search skills…"
+            className="pl-9"
+          />
         </div>
         <label className="flex items-center gap-2 text-sm">
           <Switch checked={onlyEnabled} onCheckedChange={setOnlyEnabled} /> Enabled only ({enabledCount})
@@ -112,7 +157,9 @@ export function SkillsTab() {
             onClick={() => setCategory(c)}
             className={cn(
               'cursor-pointer whitespace-nowrap rounded-full border px-3 py-1 text-sm transition-colors',
-              category === c ? 'border-primary bg-primary text-primary-foreground' : 'bg-card hover:bg-accent',
+              category === c
+                ? 'border-primary bg-primary text-primary-foreground'
+                : 'bg-card hover:bg-accent',
             )}
           >
             {c}
@@ -127,7 +174,11 @@ export function SkillsTab() {
           ))}
         </div>
       ) : grouped.length === 0 ? (
-        <EmptyState icon={Sparkles} title="No skills match" description="Try a different search or category." />
+        <EmptyState
+          icon={Sparkles}
+          title="No skills match"
+          description="Try a different search or category."
+        />
       ) : (
         grouped.map(([cat, list]) => (
           <section key={cat}>

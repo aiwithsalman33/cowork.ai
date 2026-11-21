@@ -5,7 +5,8 @@ import { execSync } from 'node:child_process';
  * Non-destructive: tests create uniquely named users, so no reset is needed.
  */
 export default async function setup() {
-  const url = process.env.TEST_DATABASE_URL ?? 'postgresql://partner:partner@localhost:5433/partner_test?schema=public';
+  const url =
+    process.env.TEST_DATABASE_URL ?? 'postgresql://partner:partner@localhost:5433/partner_test?schema=public';
   execSync('npx prisma migrate deploy', {
     stdio: 'inherit',
     env: { ...process.env, DATABASE_URL: url, PRISMA_HIDE_UPDATE_MESSAGE: '1' },

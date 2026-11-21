@@ -67,7 +67,8 @@ function ThreadView({ id, onBack }: { id: string; onBack: () => void }) {
           <div className="min-w-0">
             <div className="truncate font-semibold">{displayName(c)}</div>
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <ChannelIcon type={c.channelType} className="h-3 w-3" /> {CHANNEL_LABEL[c.channelType]} · {c.channelName}
+              <ChannelIcon type={c.channelType} className="h-3 w-3" /> {CHANNEL_LABEL[c.channelType]} ·{' '}
+              {c.channelName}
             </div>
           </div>
         </div>
@@ -89,7 +90,8 @@ function ThreadView({ id, onBack }: { id: string; onBack: () => void }) {
                   {m.content}
                 </div>
                 <div className="mt-1 flex items-center gap-1.5 px-1 text-[11px] text-muted-foreground">
-                  {out && (m.role === 'OWNER' ? <UserRound className="h-3 w-3" /> : <Bot className="h-3 w-3" />)}
+                  {out &&
+                    (m.role === 'OWNER' ? <UserRound className="h-3 w-3" /> : <Bot className="h-3 w-3" />)}
                   {m.role === 'OWNER' ? 'You · ' : m.role === 'SYSTEM' ? 'Boss Mode · ' : ''}
                   {formatDateTime(m.createdAt)}
                   {m.toolCalls?.map((t) => (
@@ -123,7 +125,13 @@ function ThreadView({ id, onBack }: { id: string; onBack: () => void }) {
               }
             }}
           />
-          <Button type="submit" size="icon" className="h-11 w-11 shrink-0" loading={reply.isPending} aria-label="Send">
+          <Button
+            type="submit"
+            size="icon"
+            className="h-11 w-11 shrink-0"
+            loading={reply.isPending}
+            aria-label="Send"
+          >
             {!reply.isPending && <Send />}
           </Button>
         </form>
@@ -150,7 +158,9 @@ function ThreadView({ id, onBack }: { id: string; onBack: () => void }) {
           </div>
         )}
         {!data.contact.summary && !facts.length && !data.summary && (
-          <p className="text-sm text-muted-foreground">Nothing learned yet. Memory builds up after a few messages.</p>
+          <p className="text-sm text-muted-foreground">
+            Nothing learned yet. Memory builds up after a few messages.
+          </p>
         )}
       </aside>
     </div>
@@ -172,10 +182,13 @@ function Inbox() {
   const { data, isLoading } = useQuery({
     queryKey: ['conversations', filter, debounced],
     queryFn: () =>
-      get<{ conversations: ConversationDTO[] }>(`/conversations?channel=${filter}${debounced ? `&search=${encodeURIComponent(debounced)}` : ''}`),
+      get<{ conversations: ConversationDTO[] }>(
+        `/conversations?channel=${filter}${debounced ? `&search=${encodeURIComponent(debounced)}` : ''}`,
+      ),
     refetchInterval: 10_000,
   });
-  const select = (id: string | null) => router.replace(id ? `/conversations?id=${id}` : '/conversations', { scroll: false });
+  const select = (id: string | null) =>
+    router.replace(id ? `/conversations?id=${id}` : '/conversations', { scroll: false });
 
   return (
     <Card className="flex h-[calc(100dvh-13rem)] min-h-[480px] overflow-hidden">
@@ -183,7 +196,12 @@ function Inbox() {
         <div className="space-y-3 border-b p-3">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search name, phone, message" className="pl-9" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search name, phone, message"
+              className="pl-9"
+            />
           </div>
           <div className="flex gap-1 rounded-lg bg-muted p-1">
             {(['ALL', 'TELEGRAM', 'WHATSAPP'] as Filter[]).map((f) => (
@@ -208,7 +226,9 @@ function Inbox() {
               ))}
             </div>
           ) : !data?.conversations.length ? (
-            <p className="p-6 text-center text-sm text-muted-foreground">No conversations{debounced ? ' match your search' : ' yet'}.</p>
+            <p className="p-6 text-center text-sm text-muted-foreground">
+              No conversations{debounced ? ' match your search' : ' yet'}.
+            </p>
           ) : (
             data.conversations.map((c) => (
               <button
@@ -228,7 +248,9 @@ function Inbox() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2">
                     <span className="truncate text-sm font-medium">{displayName(c)}</span>
-                    <span className="shrink-0 text-[11px] text-muted-foreground">{timeAgo(c.lastMessageAt)}</span>
+                    <span className="shrink-0 text-[11px] text-muted-foreground">
+                      {timeAgo(c.lastMessageAt)}
+                    </span>
                   </div>
                   <p className="truncate text-xs text-muted-foreground">{c.lastMessage}</p>
                 </div>
@@ -242,7 +264,12 @@ function Inbox() {
           <ThreadView key={selected} id={selected} onBack={() => select(null)} />
         ) : (
           <div className="flex flex-1 items-center justify-center p-6">
-            <EmptyState icon={MessagesSquare} title="Select a conversation" description="Messages from Telegram and WhatsApp appear here in real time." className="border-0" />
+            <EmptyState
+              icon={MessagesSquare}
+              title="Select a conversation"
+              description="Messages from Telegram and WhatsApp appear here in real time."
+              className="border-0"
+            />
           </div>
         )}
       </div>

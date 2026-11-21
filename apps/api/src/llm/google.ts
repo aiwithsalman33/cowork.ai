@@ -54,7 +54,8 @@ export function toGemini(req: CompletionRequest) {
       let response: Record<string, unknown>;
       try {
         const parsed = JSON.parse(m.content);
-        response = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : { result: parsed };
+        response =
+          parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : { result: parsed };
       } catch {
         response = { result: m.content };
       }
@@ -94,10 +95,18 @@ export async function googleComplete(req: CompletionRequest): Promise<Completion
     .join('');
   const toolCalls: ToolCall[] = parts
     .filter((p): p is Extract<Part, { functionCall: unknown }> => 'functionCall' in p)
-    .map((p) => ({ id: randomUUID(), name: p.functionCall.name, arguments: p.functionCall.args ?? {}, raw: p }));
+    .map((p) => ({
+      id: randomUUID(),
+      name: p.functionCall.name,
+      arguments: p.functionCall.args ?? {},
+      raw: p,
+    }));
   return {
     content: text || null,
     toolCalls,
-    usage: { input: data.usageMetadata?.promptTokenCount ?? 0, output: data.usageMetadata?.candidatesTokenCount ?? 0 },
+    usage: {
+      input: data.usageMetadata?.promptTokenCount ?? 0,
+      output: data.usageMetadata?.candidatesTokenCount ?? 0,
+    },
   };
 }

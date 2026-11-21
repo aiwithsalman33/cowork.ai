@@ -33,7 +33,9 @@ export async function assertCanAddChannel(user: Pick<User, 'id' | 'plan'>, type:
   const limits = limitsFor(user);
   const channels = await prisma.channel.findMany({ where: { userId: user.id }, select: { type: true } });
   if (channels.length >= limits.channels) {
-    throw paymentRequired(`Your ${PLANS[user.plan].name} plan allows ${limits.channels} channels. Upgrade to add more.`);
+    throw paymentRequired(
+      `Your ${PLANS[user.plan].name} plan allows ${limits.channels} channels. Upgrade to add more.`,
+    );
   }
   if (type === 'WHATSAPP_QR') {
     const qr = channels.filter((c) => c.type === 'WHATSAPP_QR').length;
@@ -50,14 +52,20 @@ export async function assertCanEnableSkill(user: Pick<User, 'id' | 'plan'>) {
   if (!Number.isFinite(limits.skills)) return;
   const enabled = await prisma.userSkill.count({ where: { userId: user.id, enabled: true } });
   if (enabled >= limits.skills) {
-    throw paymentRequired(`Your ${PLANS[user.plan].name} plan allows ${limits.skills} active skills. Upgrade for more.`);
+    throw paymentRequired(
+      `Your ${PLANS[user.plan].name} plan allows ${limits.skills} active skills. Upgrade for more.`,
+    );
   }
 }
 
-export type ReplyGate = { ok: true } | { ok: false; reason: 'plan_inactive' | 'message_limit' | 'agent_paused' };
+export type ReplyGate =
+  { ok: true } | { ok: false; reason: 'plan_inactive' | 'message_limit' | 'agent_paused' };
 
 /** Checked by the message worker before every AI reply. */
-export async function canReply(user: PlanUser & { id: string; plan: User['plan'] }, agentActive: boolean): Promise<ReplyGate> {
+export async function canReply(
+  user: PlanUser & { id: string; plan: User['plan'] },
+  agentActive: boolean,
+): Promise<ReplyGate> {
   if (!isPlanActive(user)) return { ok: false, reason: 'plan_inactive' };
   if (!agentActive) return { ok: false, reason: 'agent_paused' };
   const used = await messagesThisMonth(user.id);

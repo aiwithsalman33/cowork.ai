@@ -70,7 +70,11 @@ export function tenantDb(userId: string, client: PrismaClient = basePrisma) {
           if (operation === 'upsert') {
             a.create = { ...(a.create ?? {}), userId };
           }
-          if ((operation === 'update' || operation === 'updateMany') && a.data && typeof a.data === 'object') {
+          if (
+            (operation === 'update' || operation === 'updateMany') &&
+            a.data &&
+            typeof a.data === 'object'
+          ) {
             // never allow moving a row to another tenant
             const d = { ...(a.data as Record<string, unknown>) };
             delete d.userId;

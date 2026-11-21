@@ -14,7 +14,10 @@ import { wireHandlers } from './background.js';
 export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({
     logger: loggerOptions,
-    trustProxy: env.TRUST_PROXY,
+    trustProxy:
+      typeof env.TRUST_PROXY === 'number'
+        ? (_addr: string, hop: number) => hop < (env.TRUST_PROXY as number)
+        : env.TRUST_PROXY,
     bodyLimit: 2 * 1024 * 1024,
     genReqId: () => crypto.randomUUID(),
   });
@@ -35,7 +38,10 @@ export async function buildApp(): Promise<FastifyInstance> {
   app.decorateRequest('currentUser', null);
   app.decorateRequest('db', null as never);
 
-  await app.register(helmet, { contentSecurityPolicy: false, crossOriginResourcePolicy: { policy: 'same-site' } });
+  await app.register(helmet, {
+    contentSecurityPolicy: false,
+    crossOriginResourcePolicy: { policy: 'same-site' },
+  });
   await app.register(cors, {
     origin: [env.WEB_ORIGIN],
     credentials: true,
@@ -43,24 +49,28 @@ export async function buildApp(): Promise<FastifyInstance> {
     allowedHeaders: ['content-type', 'x-csrf-token', 'authorization'],
   });
   await app.register(cookie);
-  await app.register(rateLimit, { global: false });
+  // Global safety net per client IP; auth/webhook routes set stricter limits of their own.
+  await app.register(rateLimit, { global: true, max: 600, timeWindow: '1 minute' });
 
   app.setErrorHandler((err: FastifyError | HttpError, req, reply) => {
     if (err instanceof HttpError) {
       return reply.code(err.statusCode).send({ error: err.message, code: err.code, details: err.details });
     }
     const status = (err as FastifyError).statusCode ?? 500;
-    if (status === 429) return reply.code(429).send({ error: 'Too many requests, slow down.', code: 'RATE_LIMITED' });
+    if (status === 429)
+      return reply.code(429).send({ error: 'Too many requests, slow down.', code: 'RATE_LIMITED' });
     if (status >= 500) req.log.error({ err }, 'unhandled error');
-    return reply
-      .code(status)
-      .send({ error: status >= 500 ? 'Something went wrong' : err.message, code: (err as FastifyError).code ?? 'ERROR' });
+    return reply.code(status).send({
+      error: status >= 500 ? 'Something went wrong' : err.message,
+      code: (err as FastifyError).code ?? 'ERROR',
+    });
   });
 
   app.setNotFoundHandler((_req, reply) => reply.code(404).send({ error: 'Not found', code: 'NOT_FOUND' }));
 
-  app.get('/health', async () => ({ ok: true }));
-  app.get('/health/ready', async (_req, reply) => {
+  const quiet = { logLevel: 'silent' as const, config: { rateLimit: false as const } };
+  app.get('/health', quiet, async () => ({ ok: true }));
+  app.get('/health/ready', quiet, async (_req, reply) => {
     try {
       await prisma.$queryRaw`SELECT 1`;
       return { ok: true, db: 'up' };

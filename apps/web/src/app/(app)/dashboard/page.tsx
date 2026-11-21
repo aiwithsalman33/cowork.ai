@@ -37,7 +37,11 @@ function ImpactStrip({ d }: { d: DashboardDTO }) {
   const hours = d.impact.minutesSaved / 60;
   const items: { label: string; value: string; icon: LucideIcon }[] = [
     { label: 'Messages handled', value: formatNumber(d.impact.messagesHandled), icon: MessageCircle },
-    { label: 'Time saved', value: hours >= 1 ? `${hours.toFixed(1)} hrs` : `${d.impact.minutesSaved} min`, icon: Clock },
+    {
+      label: 'Time saved',
+      value: hours >= 1 ? `${hours.toFixed(1)} hrs` : `${d.impact.minutesSaved} min`,
+      icon: Clock,
+    },
     { label: 'Money saved', value: formatInr(d.impact.moneySavedInr), icon: IndianRupee },
     { label: 'Tokens used', value: formatNumber(d.impact.tokensUsed), icon: Coins },
     { label: 'Availability', value: d.impact.availability, icon: Radio },
@@ -62,7 +66,17 @@ function ImpactStrip({ d }: { d: DashboardDTO }) {
   );
 }
 
-function StatCard({ label, value, icon: Icon, suffix }: { label: string; value: number; icon: LucideIcon; suffix?: string }) {
+function StatCard({
+  label,
+  value,
+  icon: Icon,
+  suffix,
+}: {
+  label: string;
+  value: number;
+  icon: LucideIcon;
+  suffix?: string;
+}) {
   return (
     <Card className="p-4">
       <div className="flex items-center justify-between">
@@ -81,7 +95,12 @@ function StatCard({ label, value, icon: Icon, suffix }: { label: string; value: 
 
 function Checklist({ d }: { d: DashboardDTO }) {
   const steps = [
-    { done: d.checklist.customized, label: 'Customize your agent', href: '/agent?tab=personality', icon: Bot },
+    {
+      done: d.checklist.customized,
+      label: 'Customize your agent',
+      href: '/agent?tab=personality',
+      icon: Bot,
+    },
     { done: d.checklist.aiKey, label: 'Add your AI key', href: '/agent?tab=keys', icon: KeyRound },
     { done: d.checklist.channel, label: 'Connect a channel', href: '/agent?tab=channels', icon: Plug },
     { done: d.checklist.testMessage, label: 'Send a test message', href: '/agent?tab=channels', icon: Send },
@@ -109,7 +128,11 @@ function Checklist({ d }: { d: DashboardDTO }) {
               s.done && 'opacity-70',
             )}
           >
-            {s.done ? <CheckCircle2 className="h-5 w-5 text-success" /> : <Circle className="h-5 w-5 text-muted-foreground" />}
+            {s.done ? (
+              <CheckCircle2 className="h-5 w-5 text-success" />
+            ) : (
+              <Circle className="h-5 w-5 text-muted-foreground" />
+            )}
             <span className={cn('font-medium', s.done && 'line-through')}>{s.label}</span>
           </Link>
         ))}
@@ -151,7 +174,9 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="font-display text-2xl font-semibold sm:text-3xl">Namaste, {me?.name.split(' ')[0]} 👋</h1>
+          <h1 className="font-display text-2xl font-semibold sm:text-3xl">
+            Namaste, {me?.name.split(' ')[0]} 👋
+          </h1>
           <p className="text-sm text-muted-foreground">Here is how your agent is doing today.</p>
         </div>
       </div>
@@ -196,16 +221,23 @@ export default function DashboardPage() {
               <ul className="divide-y">
                 {d.recentConversations.map((c) => (
                   <li key={c.id}>
-                    <Link href={`/conversations?id=${c.id}`} className="flex items-center gap-3 py-3 hover:opacity-80">
+                    <Link
+                      href={`/conversations?id=${c.id}`}
+                      className="flex items-center gap-3 py-3 hover:opacity-80"
+                    >
                       <Avatar name={c.contact.name ?? c.contact.externalId} />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <span className="truncate text-sm font-medium">{c.contact.name ?? c.contact.phone ?? c.contact.externalId}</span>
+                          <span className="truncate text-sm font-medium">
+                            {c.contact.name ?? c.contact.phone ?? c.contact.externalId}
+                          </span>
                           <ChannelIcon type={c.channelType} className="h-3.5 w-3.5 text-muted-foreground" />
                         </div>
                         <p className="truncate text-sm text-muted-foreground">{c.lastMessage}</p>
                       </div>
-                      <span className="shrink-0 text-xs text-muted-foreground">{timeAgo(c.lastMessageAt)}</span>
+                      <span className="shrink-0 text-xs text-muted-foreground">
+                        {timeAgo(c.lastMessageAt)}
+                      </span>
                     </Link>
                   </li>
                 ))}
@@ -234,7 +266,13 @@ export default function DashboardPage() {
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Model</span>
-                <span className="font-medium">{d.agent.model ?? <Link className="text-primary" href="/agent?tab=keys">Add a key</Link>}</span>
+                <span className="font-medium">
+                  {d.agent.model ?? (
+                    <Link className="text-primary" href="/agent?tab=keys">
+                      Add a key
+                    </Link>
+                  )}
+                </span>
               </div>
               <div>
                 <div className="mb-1 flex justify-between">
@@ -285,7 +323,10 @@ export default function DashboardPage() {
             ) : (
               <div className="flex flex-wrap gap-2">
                 {d.activeSkills.map((s) => (
-                  <span key={s.slug} className="inline-flex items-center gap-1.5 rounded-full border bg-background px-3 py-1 text-sm">
+                  <span
+                    key={s.slug}
+                    className="inline-flex items-center gap-1.5 rounded-full border bg-background px-3 py-1 text-sm"
+                  >
                     <SkillIcon name={s.icon} className="h-3.5 w-3.5 text-primary" />
                     {s.name}
                   </span>

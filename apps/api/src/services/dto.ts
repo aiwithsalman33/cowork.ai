@@ -28,7 +28,12 @@ export function toConversationDTO(c: Conversation & { contact: Contact; channel:
     id: c.id,
     channelType: c.channel.type,
     channelName: c.channel.name,
-    contact: { id: c.contact.id, name: c.contact.name, externalId: c.contact.externalId, phone: c.contact.phone },
+    contact: {
+      id: c.contact.id,
+      name: c.contact.name,
+      externalId: c.contact.externalId,
+      phone: c.contact.phone,
+    },
     lastMessage: c.lastMessage,
     lastMessageAt: c.lastMessageAt.toISOString(),
     messageCount: c.messageCount,

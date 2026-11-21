@@ -95,7 +95,8 @@ export function composeSystemPrompt(ctx: PromptContext): string {
     if (mem.isReturning) lines.push('This is a returning customer.');
     if (mem.profile && Object.keys(mem.profile).length) {
       for (const [k, v] of Object.entries(mem.profile)) {
-        if (v !== null && v !== undefined && v !== '') lines.push(`${k}: ${typeof v === 'string' ? v : JSON.stringify(v)}`);
+        if (v !== null && v !== undefined && v !== '')
+          lines.push(`${k}: ${typeof v === 'string' ? v : JSON.stringify(v)}`);
       }
     }
     if (mem.summary) lines.push(`Earlier conversation summary: ${mem.summary}`);

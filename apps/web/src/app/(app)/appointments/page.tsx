@@ -6,7 +6,12 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { EmptyState, PageHeader, Skeleton } from '@/components/ui/misc';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { get, patch } from '@/lib/api';
 import { useAction } from '@/lib/hooks';
 import { cn } from '@/lib/utils';
@@ -24,7 +29,10 @@ type Appointment = {
   googleEventId: string | null;
 };
 
-const STATUS: Record<Appointment['status'], { label: string; variant: 'success' | 'secondary' | 'destructive' | 'default' }> = {
+const STATUS: Record<
+  Appointment['status'],
+  { label: string; variant: 'success' | 'secondary' | 'destructive' | 'default' }
+> = {
   CONFIRMED: { label: 'Confirmed', variant: 'default' },
   COMPLETED: { label: 'Completed', variant: 'success' },
   CANCELLED: { label: 'Cancelled', variant: 'secondary' },
@@ -37,14 +45,23 @@ export default function AppointmentsPage() {
     queryKey: ['appointments', scope],
     queryFn: () => get<{ appointments: Appointment[] }>(`/appointments?scope=${scope}`),
   });
-  const update = useAction(({ id, status }: { id: string; status: Appointment['status'] }) => patch(`/appointments/${id}`, { status }), {
-    success: 'Appointment updated',
-    invalidate: [['appointments']],
-  });
+  const update = useAction(
+    ({ id, status }: { id: string; status: Appointment['status'] }) =>
+      patch(`/appointments/${id}`, { status }),
+    {
+      success: 'Appointment updated',
+      invalidate: [['appointments']],
+    },
+  );
 
   const groups = new Map<string, Appointment[]>();
   for (const a of data?.appointments ?? []) {
-    const key = new Date(a.startsAt).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const key = new Date(a.startsAt).toLocaleDateString('en-IN', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
     groups.set(key, [...(groups.get(key) ?? []), a]);
   }
 
@@ -59,7 +76,10 @@ export default function AppointmentsPage() {
               <button
                 key={s}
                 onClick={() => setScope(s)}
-                className={cn('cursor-pointer rounded-md px-3 py-1 text-sm capitalize', scope === s ? 'bg-card shadow-sm' : 'text-muted-foreground')}
+                className={cn(
+                  'cursor-pointer rounded-md px-3 py-1 text-sm capitalize',
+                  scope === s ? 'bg-card shadow-sm' : 'text-muted-foreground',
+                )}
               >
                 {s}
               </button>
@@ -91,7 +111,10 @@ export default function AppointmentsPage() {
                   <Card key={a.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
                     <div className="flex w-24 shrink-0 items-center gap-2 font-semibold tabular-nums">
                       <Clock className="h-4 w-4 text-primary" />
-                      {new Date(a.startsAt).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' })}
+                      {new Date(a.startsAt).toLocaleTimeString('en-IN', {
+                        hour: 'numeric',
+                        minute: '2-digit',
+                      })}
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
@@ -111,7 +134,12 @@ export default function AppointmentsPage() {
                             <Mail className="h-3 w-3" /> {a.customerEmail}
                           </span>
                         )}
-                        <span>{Math.round((new Date(a.endsAt).getTime() - new Date(a.startsAt).getTime()) / 60000)} min</span>
+                        <span>
+                          {Math.round(
+                            (new Date(a.endsAt).getTime() - new Date(a.startsAt).getTime()) / 60000,
+                          )}{' '}
+                          min
+                        </span>
                       </div>
                       {a.notes && <p className="mt-1 text-sm">{a.notes}</p>}
                     </div>

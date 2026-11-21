@@ -32,7 +32,9 @@ export function cookiesFrom(res: LightMyRequestResponse, prev: Record<string, st
 }
 
 let counter = 0;
-export async function signup(overrides: Partial<{ email: string; name: string; password: string }> = {}): Promise<Session> {
+export async function signup(
+  overrides: Partial<{ email: string; name: string; password: string }> = {},
+): Promise<Session> {
   const app = await getApp();
   const email = overrides.email ?? `user${Date.now()}_${counter++}@test.dev`;
   const res = await app.inject({

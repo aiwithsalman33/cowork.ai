@@ -45,19 +45,33 @@ export function ApiKeysTab() {
 
   const save = useAction(
     () => put('/keys', { provider, model: selectedModel, apiKey: apiKey || undefined, makeActive: true }),
-    { success: 'Saved — encrypted and set as active', invalidate: [['keys'], ['dashboard']], onSuccess: () => setApiKey('') },
+    {
+      success: 'Saved — encrypted and set as active',
+      invalidate: [['keys'], ['dashboard']],
+      onSuccess: () => setApiKey(''),
+    },
   );
-  const remove = useAction((prov: string) => del(`/keys/${prov}`), { success: 'Key removed', invalidate: [['keys'], ['dashboard']] });
-  const test = useAction((prov: string) => post<{ ok: boolean; latencyMs?: number; error?: string }>('/keys/test', { provider: prov }), {
-    onSuccess: (r) => (r.ok ? toast.success(`Key works · ${r.latencyMs} ms`) : toast.error(r.error ?? 'Key test failed')),
+  const remove = useAction((prov: string) => del(`/keys/${prov}`), {
+    success: 'Key removed',
+    invalidate: [['keys'], ['dashboard']],
   });
+  const test = useAction(
+    (prov: string) =>
+      post<{ ok: boolean; latencyMs?: number; error?: string }>('/keys/test', { provider: prov }),
+    {
+      onSuccess: (r) =>
+        r.ok ? toast.success(`Key works · ${r.latencyMs} ms`) : toast.error(r.error ?? 'Key test failed'),
+    },
+  );
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
       <Card>
         <CardHeader>
           <CardTitle>Bring your own AI key</CardTitle>
-          <CardDescription>You pay your AI provider directly. Keys are encrypted with AES-256-GCM and never shown again.</CardDescription>
+          <CardDescription>
+            You pay your AI provider directly. Keys are encrypted with AES-256-GCM and never shown again.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
           <div>
@@ -75,7 +89,9 @@ export function ApiKeysTab() {
                     }}
                     className={cn(
                       'relative cursor-pointer rounded-lg border p-3 text-left text-sm font-medium transition-colors',
-                      provider === id ? 'border-primary bg-primary-soft/50 ring-1 ring-primary' : 'hover:bg-accent',
+                      provider === id
+                        ? 'border-primary bg-primary-soft/50 ring-1 ring-primary'
+                        : 'hover:bg-accent',
                     )}
                   >
                     {PROVIDERS[id].name}
@@ -86,7 +102,14 @@ export function ApiKeysTab() {
             </div>
           </div>
 
-          <Field label="Model" hint={modelDef ? `${modelDef.cost} · ${modelDef.hint} (price tier is approximate — check ${p.name} pricing)` : 'Type the exact model id from your provider'}>
+          <Field
+            label="Model"
+            hint={
+              modelDef
+                ? `${modelDef.cost} · ${modelDef.hint} (price tier is approximate — check ${p.name} pricing)`
+                : 'Type the exact model id from your provider'
+            }
+          >
             <Select value={model} onValueChange={setModel}>
               <SelectTrigger>
                 <SelectValue />
@@ -103,14 +126,23 @@ export function ApiKeysTab() {
           </Field>
           {model === CUSTOM && (
             <Field label="Custom model id">
-              <Input value={customModel} onChange={(e) => setCustomModel(e.target.value)} placeholder="e.g. gpt-4.1-nano" />
+              <Input
+                value={customModel}
+                onChange={(e) => setCustomModel(e.target.value)}
+                placeholder="e.g. gpt-4.1-nano"
+              />
             </Field>
           )}
 
           <Field
             label="API key"
             hint={
-              <a href={p.keyUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">
+              <a
+                href={p.keyUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 text-primary hover:underline"
+              >
                 Get a {p.name} key <ExternalLink className="h-3 w-3" />
               </a>
             }
@@ -122,13 +154,19 @@ export function ApiKeysTab() {
                 autoComplete="off"
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
-                placeholder={existing ? `Saved key ••••${existing.last4} — leave blank to keep` : `${p.keyPrefix ?? ''}…`}
+                placeholder={
+                  existing ? `Saved key ••••${existing.last4} — leave blank to keep` : `${p.keyPrefix ?? ''}…`
+                }
                 className="pl-9 font-mono"
               />
             </div>
           </Field>
 
-          <Button onClick={() => save.mutate(undefined)} loading={save.isPending} disabled={!selectedModel || (!apiKey && !existing)}>
+          <Button
+            onClick={() => save.mutate(undefined)}
+            loading={save.isPending}
+            disabled={!selectedModel || (!apiKey && !existing)}
+          >
             <KeyRound /> Save & use this model
           </Button>
         </CardContent>
@@ -155,10 +193,20 @@ export function ApiKeysTab() {
                 </div>
               </div>
               <div className="flex gap-1">
-                <Button variant="outline" size="sm" loading={test.isPending && test.variables === k.provider} onClick={() => test.mutate(k.provider)}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  loading={test.isPending && test.variables === k.provider}
+                  onClick={() => test.mutate(k.provider)}
+                >
                   <Zap /> Test
                 </Button>
-                <Button variant="ghost" size="icon" aria-label="Remove key" onClick={() => remove.mutate(k.provider)}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Remove key"
+                  onClick={() => remove.mutate(k.provider)}
+                >
                   <Trash2 className="text-destructive" />
                 </Button>
               </div>

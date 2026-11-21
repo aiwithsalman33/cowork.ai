@@ -30,7 +30,10 @@ export async function agentRoutes(app: FastifyInstance) {
 
   app.put('/agent/personality', async (req) => {
     const input = parse(personalitySchema, req.body);
-    const agent = await req.db.agent.update({ where: { userId: user(req).id }, data: { ...input, customized: true } });
+    const agent = await req.db.agent.update({
+      where: { userId: user(req).id },
+      data: { ...input, customized: true },
+    });
     return { agent };
   });
 
@@ -54,19 +57,24 @@ export async function agentRoutes(app: FastifyInstance) {
   });
 
   // ---------------- API keys ----------------
-  app.get('/keys', async (req): Promise<{ keys: ApiKeyDTO[]; active: { provider: string | null; model: string | null } }> => {
-    const [keys, agent] = await Promise.all([req.db.apiKey.findMany(), req.db.agent.findFirst()]);
-    return {
-      keys: keys.map((k) => ({
-        provider: k.provider as ProviderId,
-        model: k.model,
-        last4: k.last4,
-        isActive: agent?.provider === k.provider,
-        updatedAt: k.updatedAt.toISOString(),
-      })),
-      active: { provider: agent?.provider ?? null, model: agent?.model ?? null },
-    };
-  });
+  app.get(
+    '/keys',
+    async (
+      req,
+    ): Promise<{ keys: ApiKeyDTO[]; active: { provider: string | null; model: string | null } }> => {
+      const [keys, agent] = await Promise.all([req.db.apiKey.findMany(), req.db.agent.findFirst()]);
+      return {
+        keys: keys.map((k) => ({
+          provider: k.provider as ProviderId,
+          model: k.model,
+          last4: k.last4,
+          isActive: agent?.provider === k.provider,
+          updatedAt: k.updatedAt.toISOString(),
+        })),
+        active: { provider: agent?.provider ?? null, model: agent?.model ?? null },
+      };
+    },
+  );
 
   app.put('/keys', async (req) => {
     const input = parse(apiKeySchema, req.body);
@@ -97,7 +105,10 @@ export async function agentRoutes(app: FastifyInstance) {
       });
     }
     if (input.makeActive) {
-      await req.db.agent.update({ where: { userId: u.id }, data: { provider: input.provider, model: input.model } });
+      await req.db.agent.update({
+        where: { userId: u.id },
+        data: { provider: input.provider, model: input.model },
+      });
     }
     await logEvent(u.id, 'INFO', 'api_key.saved', `${p.name} key saved (model ${input.model})`);
     return { ok: true };

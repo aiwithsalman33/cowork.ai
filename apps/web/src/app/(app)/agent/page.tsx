@@ -58,7 +58,10 @@ function AgentConfig() {
 export default function AgentPage() {
   return (
     <div>
-      <PageHeader title="Agent Config" description="Skills, channels, AI model and personality for your agent." />
+      <PageHeader
+        title="Agent Config"
+        description="Skills, channels, AI model and personality for your agent."
+      />
       <Suspense>
         <AgentConfig />
       </Suspense>

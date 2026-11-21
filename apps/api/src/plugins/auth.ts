@@ -40,12 +40,16 @@ async function resolve(req: FastifyRequest): Promise<AuthContext | null> {
   const header = req.headers.authorization;
   if (header?.startsWith('Bearer ')) {
     const claims = await verifyAccessToken(header.slice(7));
-    return claims ? { userId: claims.sub, role: claims.role, impersonatorId: claims.imp ?? null, via: 'bearer' } : null;
+    return claims
+      ? { userId: claims.sub, role: claims.role, impersonatorId: claims.imp ?? null, via: 'bearer' }
+      : null;
   }
   const cookie = req.cookies[COOKIE_ACCESS];
   if (cookie) {
     const claims = await verifyAccessToken(cookie);
-    return claims ? { userId: claims.sub, role: claims.role, impersonatorId: claims.imp ?? null, via: 'cookie' } : null;
+    return claims
+      ? { userId: claims.sub, role: claims.role, impersonatorId: claims.imp ?? null, via: 'cookie' }
+      : null;
   }
   return null;
 }
@@ -57,7 +61,8 @@ export async function authenticate(req: FastifyRequest, _reply: FastifyReply) {
   if (auth.via === 'cookie') checkCsrf(req);
   const user = await prisma.user.findUnique({ where: { id: auth.userId } });
   if (!user) throw unauthorized();
-  if (user.status === 'SUSPENDED' && !auth.impersonatorId) throw forbidden('Your account is suspended. Contact support.');
+  if (user.status === 'SUSPENDED' && !auth.impersonatorId)
+    throw forbidden('Your account is suspended. Contact support.');
   req.auth = auth;
   req.currentUser = user;
   req.db = tenantDb(user.id);

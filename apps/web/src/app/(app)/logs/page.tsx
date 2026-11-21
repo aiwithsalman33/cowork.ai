@@ -17,7 +17,8 @@ export default function LogsPage() {
   const [page, setPage] = useState(1);
   const { data, isLoading } = useQuery({
     queryKey: ['logs', level, page],
-    queryFn: () => get<{ items: Log[]; total: number; pageSize: number }>(`/logs?level=${level}&page=${page}`),
+    queryFn: () =>
+      get<{ items: Log[]; total: number; pageSize: number }>(`/logs?level=${level}&page=${page}`),
     refetchInterval: 15_000,
   });
   const pages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
@@ -36,7 +37,10 @@ export default function LogsPage() {
                   setLevel(l);
                   setPage(1);
                 }}
-                className={cn('cursor-pointer rounded-md px-3 py-1 text-xs font-medium', level === l ? 'bg-card shadow-sm' : 'text-muted-foreground')}
+                className={cn(
+                  'cursor-pointer rounded-md px-3 py-1 text-xs font-medium',
+                  level === l ? 'bg-card shadow-sm' : 'text-muted-foreground',
+                )}
               >
                 {l === 'ALL' ? 'All' : l === 'WARN' ? 'Warnings' : l === 'ERROR' ? 'Errors' : 'Info'}
               </button>
@@ -47,7 +51,11 @@ export default function LogsPage() {
       {isLoading ? (
         <Skeleton className="h-64 rounded-xl" />
       ) : !data?.items.length ? (
-        <EmptyState icon={ScrollText} title="No logs yet" description="Events will appear here as your agent works." />
+        <EmptyState
+          icon={ScrollText}
+          title="No logs yet"
+          description="Events will appear here as your agent works."
+        />
       ) : (
         <Card className="divide-y">
           {data.items.map((l) => {

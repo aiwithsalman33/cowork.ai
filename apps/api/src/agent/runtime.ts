@@ -12,7 +12,14 @@ const TIME_ZONE = 'Asia/Kolkata';
 
 interface PromptOptions {
   channel: string;
-  contact?: { id: string; name: string | null; phone: string | null; profile: unknown; summary: string; messageCount: number } | null;
+  contact?: {
+    id: string;
+    name: string | null;
+    phone: string | null;
+    profile: unknown;
+    summary: string;
+    messageCount: number;
+  } | null;
   conversationSummary?: string;
 }
 
@@ -21,7 +28,10 @@ async function loadIntegrations(userId: string): Promise<ToolContext['integratio
   return new Map(
     rows.map((r) => [
       r.toolkit as Toolkit,
-      { connectedAccountId: r.connectedAccountId, settings: (r.settings ?? {}) as Record<string, string | undefined> },
+      {
+        connectedAccountId: r.connectedAccountId,
+        settings: (r.settings ?? {}) as Record<string, string | undefined>,
+      },
     ]),
   );
 }
@@ -34,7 +44,8 @@ export async function buildAgentPrompt(userId: string, opts: PromptOptions) {
     loadIntegrations(userId),
   ]);
   const requested = new Set<ToolName>();
-  for (const us of userSkills) for (const t of us.skill.tools) if (TOOL_NAMES.includes(t as ToolName)) requested.add(t as ToolName);
+  for (const us of userSkills)
+    for (const t of us.skill.tools) if (TOOL_NAMES.includes(t as ToolName)) requested.add(t as ToolName);
   const toolNames = availableTools(requested, { integrations });
   const tools: ToolDef[] = toolNames.map((t) => TOOL_DEFS[t]);
 
@@ -86,13 +97,18 @@ export async function runAgent(params: {
   });
 
   const cutoff = params.upToMessageId
-    ? (await prisma.message.findUnique({ where: { id: params.upToMessageId }, select: { createdAt: true } }))?.createdAt
+    ? (await prisma.message.findUnique({ where: { id: params.upToMessageId }, select: { createdAt: true } }))
+        ?.createdAt
     : undefined;
   const history = await prisma.message.findMany({
     where: {
       conversationId: conversation.id,
       role: { in: ['USER', 'ASSISTANT'] },
-      ...(conversation.summarizedUntil ? { createdAt: { gt: conversation.summarizedUntil, ...(cutoff ? { lte: cutoff } : {}) } } : cutoff ? { createdAt: { lte: cutoff } } : {}),
+      ...(conversation.summarizedUntil
+        ? { createdAt: { gt: conversation.summarizedUntil, ...(cutoff ? { lte: cutoff } : {}) } }
+        : cutoff
+          ? { createdAt: { lte: cutoff } }
+          : {}),
     },
     orderBy: { createdAt: 'desc' },
     take: HISTORY_LIMIT,
@@ -135,7 +151,9 @@ export async function runAgent(params: {
     messages.push({ role: 'assistant', content: res.content, toolCalls: res.toolCalls });
     for (const tc of res.toolCalls) {
       const allowed = tools.some((t) => t.name === tc.name);
-      const out = allowed ? await runTool(tc.name, tc.arguments, ctx) : { ok: false, error: 'Tool not available' };
+      const out = allowed
+        ? await runTool(tc.name, tc.arguments, ctx)
+        : { ok: false, error: 'Tool not available' };
       calls.push({ name: tc.name, ok: out.ok === true });
       messages.push({ role: 'tool', toolCallId: tc.id, name: tc.name, content: JSON.stringify(out) });
     }

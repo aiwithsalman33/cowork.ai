@@ -1,5 +1,17 @@
 'use client';
-import { Area, AreaChart, Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import {
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 import { formatNumber } from '@/lib/utils';
 
 type Point = { day: string; inbound: number; outbound: number; tokens: number; signups: number };
@@ -7,7 +19,15 @@ type Point = { day: string; inbound: number; outbound: number; tokens: number; s
 const axis = { stroke: 'var(--muted-foreground)', fontSize: 11, tickLine: false, axisLine: false } as const;
 const fmtDay = (d: string) => new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 
-function TooltipBox({ active, payload, label }: { active?: boolean; payload?: { name: string; value: number; color: string }[]; label?: string }) {
+function TooltipBox({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean;
+  payload?: { name: string; value: number; color: string }[];
+  label?: string;
+}) {
   if (!active || !payload?.length) return null;
   return (
     <div className="rounded-lg border bg-card px-3 py-2 text-xs shadow-lg">
@@ -15,7 +35,8 @@ function TooltipBox({ active, payload, label }: { active?: boolean; payload?: { 
       {payload.map((p) => (
         <div key={p.name} className="flex items-center gap-2 text-muted-foreground">
           <span className="h-2 w-2 rounded-full" style={{ background: p.color }} />
-          {p.name}: <span className="font-medium text-foreground tabular-nums">{p.value.toLocaleString('en-IN')}</span>
+          {p.name}:{' '}
+          <span className="font-medium text-foreground tabular-nums">{p.value.toLocaleString('en-IN')}</span>
         </div>
       ))}
     </div>
@@ -39,9 +60,28 @@ export function MessagesChart({ data }: { data: Point[] }) {
           <CartesianGrid stroke="var(--border)" vertical={false} />
           <XAxis dataKey="day" tickFormatter={fmtDay} minTickGap={24} {...axis} />
           <YAxis allowDecimals={false} tickFormatter={formatNumber} {...axis} />
-          <Tooltip content={<TooltipBox />} cursor={{ stroke: 'var(--muted-foreground)', strokeDasharray: '3 3' }} />
-          <Line type="monotone" dataKey="inbound" name="Customer messages" stroke="var(--chart-1)" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
-          <Line type="monotone" dataKey="outbound" name="AI replies" stroke="var(--chart-2)" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+          <Tooltip
+            content={<TooltipBox />}
+            cursor={{ stroke: 'var(--muted-foreground)', strokeDasharray: '3 3' }}
+          />
+          <Line
+            type="monotone"
+            dataKey="inbound"
+            name="Customer messages"
+            stroke="var(--chart-1)"
+            strokeWidth={2}
+            dot={false}
+            activeDot={{ r: 4 }}
+          />
+          <Line
+            type="monotone"
+            dataKey="outbound"
+            name="AI replies"
+            stroke="var(--chart-2)"
+            strokeWidth={2}
+            dot={false}
+            activeDot={{ r: 4 }}
+          />
         </LineChart>
       </ResponsiveContainer>
     </div>
@@ -69,8 +109,19 @@ export function TokensChart({ data }: { data: Point[] }) {
         <CartesianGrid stroke="var(--border)" vertical={false} />
         <XAxis dataKey="day" tickFormatter={fmtDay} minTickGap={24} {...axis} />
         <YAxis tickFormatter={formatNumber} {...axis} />
-        <Tooltip content={<TooltipBox />} cursor={{ stroke: 'var(--muted-foreground)', strokeDasharray: '3 3' }} />
-        <Area type="monotone" dataKey="tokens" name="Tokens" stroke="var(--chart-1)" strokeWidth={2} fill="var(--chart-1)" fillOpacity={0.12} />
+        <Tooltip
+          content={<TooltipBox />}
+          cursor={{ stroke: 'var(--muted-foreground)', strokeDasharray: '3 3' }}
+        />
+        <Area
+          type="monotone"
+          dataKey="tokens"
+          name="Tokens"
+          stroke="var(--chart-1)"
+          strokeWidth={2}
+          fill="var(--chart-1)"
+          fillOpacity={0.12}
+        />
       </AreaChart>
     </ResponsiveContainer>
   );

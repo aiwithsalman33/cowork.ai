@@ -31,12 +31,16 @@ const EMPTY: SkillUpsertInput = {
 
 function SkillEditor({ skill, onClose }: { skill: AdminSkill | null; onClose: () => void }) {
   const [form, setForm] = useState<SkillUpsertInput>(skill ? { ...skill } : EMPTY);
-  const save = useAction(() => (skill ? put(`/admin/skills/${skill.id}`, form) : post('/admin/skills', form)), {
-    success: skill ? 'Skill updated' : 'Skill created',
-    invalidate: [['admin-skills']],
-    onSuccess: onClose,
-  });
-  const set = <K extends keyof SkillUpsertInput>(k: K, v: SkillUpsertInput[K]) => setForm({ ...form, [k]: v });
+  const save = useAction(
+    () => (skill ? put(`/admin/skills/${skill.id}`, form) : post('/admin/skills', form)),
+    {
+      success: skill ? 'Skill updated' : 'Skill created',
+      invalidate: [['admin-skills']],
+      onSuccess: onClose,
+    },
+  );
+  const set = <K extends keyof SkillUpsertInput>(k: K, v: SkillUpsertInput[K]) =>
+    setForm({ ...form, [k]: v });
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-2xl">
@@ -48,10 +52,17 @@ function SkillEditor({ skill, onClose }: { skill: AdminSkill | null; onClose: ()
             <Input value={form.name} onChange={(e) => set('name', e.target.value)} />
           </Field>
           <Field label="Slug">
-            <Input value={form.slug} onChange={(e) => set('slug', e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-'))} className="font-mono" />
+            <Input
+              value={form.slug}
+              onChange={(e) => set('slug', e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-'))}
+              className="font-mono"
+            />
           </Field>
           <Field label="Category">
-            <Select value={form.category} onValueChange={(v) => set('category', v as SkillUpsertInput['category'])}>
+            <Select
+              value={form.category}
+              onValueChange={(v) => set('category', v as SkillUpsertInput['category'])}
+            >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -75,7 +86,11 @@ function SkillEditor({ skill, onClose }: { skill: AdminSkill | null; onClose: ()
           <Input value={form.description} onChange={(e) => set('description', e.target.value)} />
         </Field>
         <Field label="System prompt fragment">
-          <Textarea value={form.promptFragment} onChange={(e) => set('promptFragment', e.target.value)} className="min-h-[140px]" />
+          <Textarea
+            value={form.promptFragment}
+            onChange={(e) => set('promptFragment', e.target.value)}
+            className="min-h-[140px]"
+          />
         </Field>
         <div>
           <p className="mb-2 text-sm font-medium">Tools</p>
@@ -83,7 +98,11 @@ function SkillEditor({ skill, onClose }: { skill: AdminSkill | null; onClose: ()
             {TOOL_NAMES.map((t) => {
               const on = form.tools.includes(t);
               return (
-                <button key={t} className="cursor-pointer" onClick={() => set('tools', on ? form.tools.filter((x) => x !== t) : [...form.tools, t])}>
+                <button
+                  key={t}
+                  className="cursor-pointer"
+                  onClick={() => set('tools', on ? form.tools.filter((x) => x !== t) : [...form.tools, t])}
+                >
                   <Badge variant={on ? 'default' : 'outline'}>{t}</Badge>
                 </button>
               );
@@ -91,7 +110,8 @@ function SkillEditor({ skill, onClose }: { skill: AdminSkill | null; onClose: ()
           </div>
         </div>
         <label className="flex items-center gap-2 text-sm">
-          <Switch checked={form.isPublic} onCheckedChange={(v) => set('isPublic', v)} /> Published (visible to all tenants)
+          <Switch checked={form.isPublic} onCheckedChange={(v) => set('isPublic', v)} /> Published (visible to
+          all tenants)
         </label>
         <DialogFooter>
           <Button onClick={() => save.mutate(undefined)} loading={save.isPending}>
@@ -104,11 +124,19 @@ function SkillEditor({ skill, onClose }: { skill: AdminSkill | null; onClose: ()
 }
 
 export default function AdminSkills() {
-  const { data, isLoading } = useQuery({ queryKey: ['admin-skills'], queryFn: () => get<{ skills: AdminSkill[] }>('/admin/skills') });
+  const { data, isLoading } = useQuery({
+    queryKey: ['admin-skills'],
+    queryFn: () => get<{ skills: AdminSkill[] }>('/admin/skills'),
+  });
   const [editing, setEditing] = useState<AdminSkill | null | 'new'>(null);
   const [q, setQ] = useState('');
-  const publish = useAction((s: AdminSkill) => put(`/admin/skills/${s.id}`, { ...s, isPublic: !s.isPublic }), { invalidate: [['admin-skills']] });
-  const list = (data?.skills ?? []).filter((s) => !q || `${s.name} ${s.slug} ${s.category}`.toLowerCase().includes(q.toLowerCase()));
+  const publish = useAction(
+    (s: AdminSkill) => put(`/admin/skills/${s.id}`, { ...s, isPublic: !s.isPublic }),
+    { invalidate: [['admin-skills']] },
+  );
+  const list = (data?.skills ?? []).filter(
+    (s) => !q || `${s.name} ${s.slug} ${s.category}`.toLowerCase().includes(q.toLowerCase()),
+  );
 
   return (
     <div>
@@ -123,7 +151,12 @@ export default function AdminSkills() {
       />
       <div className="relative mb-4 max-w-md">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search skills" className="pl-9" />
+        <Input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Search skills"
+          className="pl-9"
+        />
       </div>
       {isLoading ? (
         <Skeleton className="h-96 rounded-xl" />
@@ -139,7 +172,8 @@ export default function AdminSkills() {
                   {s.name} <code className="text-xs font-normal text-muted-foreground">{s.slug}</code>
                 </div>
                 <div className="truncate text-xs text-muted-foreground">
-                  {s.category} · {s.activeUsers} tenants using · {s.tools.length ? s.tools.join(', ') : 'no tools'}
+                  {s.category} · {s.activeUsers} tenants using ·{' '}
+                  {s.tools.length ? s.tools.join(', ') : 'no tools'}
                 </div>
               </div>
               <label className="flex items-center gap-2 text-xs text-muted-foreground">

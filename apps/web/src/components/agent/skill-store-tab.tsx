@@ -25,9 +25,12 @@ export function SkillStoreTab() {
   const [description, setDescription] = useState('');
   const [draft, setDraft] = useState<SkillUpsertInput | null>(null);
 
-  const generate = useAction((d: string) => post<{ draft: SkillUpsertInput }>('/skills/generate', { description: d }), {
-    onSuccess: (r) => setDraft(r.draft),
-  });
+  const generate = useAction(
+    (d: string) => post<{ draft: SkillUpsertInput }>('/skills/generate', { description: d }),
+    {
+      onSuccess: (r) => setDraft(r.draft),
+    },
+  );
   const save = useAction((d: SkillUpsertInput) => post('/skills', d), {
     success: 'Skill created and enabled',
     invalidate: [['skills'], ['dashboard']],
@@ -37,9 +40,12 @@ export function SkillStoreTab() {
     },
   });
 
-  const toggle = useAction(({ id, enabled }: { id: string; enabled: boolean }) => put(`/skills/${id}`, { enabled }), {
-    invalidate: [['skills'], ['dashboard']],
-  });
+  const toggle = useAction(
+    ({ id, enabled }: { id: string; enabled: boolean }) => put(`/skills/${id}`, { enabled }),
+    {
+      invalidate: [['skills'], ['dashboard']],
+    },
+  );
   const custom = skills?.filter((s) => s.isCustom) ?? [];
 
   return (
@@ -50,7 +56,9 @@ export function SkillStoreTab() {
             <div className="flex items-center gap-2 text-sm font-medium text-white/80">
               <Wand2 className="h-4 w-4" /> AI Skill Creator
             </div>
-            <h3 className="mt-1 font-display text-xl font-semibold">Describe a behaviour. We’ll turn it into a skill.</h3>
+            <h3 className="mt-1 font-display text-xl font-semibold">
+              Describe a behaviour. We’ll turn it into a skill.
+            </h3>
           </div>
           <CardContent className="space-y-4 pt-5">
             <Textarea
@@ -72,7 +80,11 @@ export function SkillStoreTab() {
                 </button>
               ))}
             </div>
-            <Button onClick={() => generate.mutate(description)} loading={generate.isPending} disabled={description.trim().length < 10}>
+            <Button
+              onClick={() => generate.mutate(description)}
+              loading={generate.isPending}
+              disabled={description.trim().length < 10}
+            >
               <Sparkles /> Generate skill
             </Button>
           </CardContent>
@@ -92,7 +104,10 @@ export function SkillStoreTab() {
                   <Input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
                 </Field>
                 <Field label="Category">
-                  <Select value={draft.category} onValueChange={(v) => setDraft({ ...draft, category: v as SkillUpsertInput['category'] })}>
+                  <Select
+                    value={draft.category}
+                    onValueChange={(v) => setDraft({ ...draft, category: v as SkillUpsertInput['category'] })}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -107,7 +122,10 @@ export function SkillStoreTab() {
                 </Field>
               </div>
               <Field label="Description">
-                <Input value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} />
+                <Input
+                  value={draft.description}
+                  onChange={(e) => setDraft({ ...draft, description: e.target.value })}
+                />
               </Field>
               <Field label="Instructions for the agent">
                 <Textarea
@@ -124,7 +142,12 @@ export function SkillStoreTab() {
                     return (
                       <button
                         key={t}
-                        onClick={() => setDraft({ ...draft, tools: on ? draft.tools.filter((x) => x !== t) : [...draft.tools, t] })}
+                        onClick={() =>
+                          setDraft({
+                            ...draft,
+                            tools: on ? draft.tools.filter((x) => x !== t) : [...draft.tools, t],
+                          })
+                        }
                         className="cursor-pointer"
                       >
                         <Badge variant={on ? 'default' : 'outline'}>{t}</Badge>

@@ -20,10 +20,18 @@ export function Field({
   children: React.ReactNode;
   htmlFor?: string;
 }) {
+  // Associate the label with a single input child automatically (accessibility + getByLabel).
+  const autoId = React.useId();
+  const child = React.Children.only(children);
+  const isInput =
+    React.isValidElement<{ id?: string }>(child) &&
+    typeof child.type !== 'string' &&
+    ['Input', 'Textarea'].includes((child.type as { displayName?: string }).displayName ?? '');
+  const id = htmlFor ?? (isInput ? ((child as React.ReactElement<{ id?: string }>).props.id ?? autoId) : undefined);
   return (
     <div className="space-y-1.5">
-      <Label htmlFor={htmlFor}>{label}</Label>
-      {children}
+      <Label htmlFor={id}>{label}</Label>
+      {isInput && !htmlFor ? React.cloneElement(child as React.ReactElement<{ id?: string }>, { id }) : children}
       {error ? (
         <p className="text-xs text-destructive">{error}</p>
       ) : hint ? (

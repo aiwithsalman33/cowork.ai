@@ -16,7 +16,11 @@ const envSchema = z.object({
   PUBLIC_API_URL: z.string().url().default('http://localhost:4000'),
   COOKIE_DOMAIN: z.string().optional(),
   COOKIE_SECURE: bool.optional(),
-  TRUST_PROXY: bool.default(true),
+  /** 'true' trusts all proxies; a number = how many proxy hops to trust (Traefik + Next = 2). */
+  TRUST_PROXY: z
+    .string()
+    .default('2')
+    .transform((v) => (/^\d+$/.test(v) ? Number(v) : ['true', 'yes'].includes(v.toLowerCase()))),
 
   QUEUE_ENABLED: bool.default(true),
   WORKERS_ENABLED: bool.default(true),

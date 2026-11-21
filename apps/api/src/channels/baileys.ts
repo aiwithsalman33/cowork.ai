@@ -55,7 +55,14 @@ export function sessionDir(userId: string, channelId: string) {
   return path.resolve(env.WA_SESSIONS_DIR, userId, channelId);
 }
 
-async function setStatus(channelId: string, data: { status: 'CONNECTING' | 'QR' | 'CONNECTED' | 'DISCONNECTED' | 'ERROR'; externalId?: string | null; lastError?: string | null }) {
+async function setStatus(
+  channelId: string,
+  data: {
+    status: 'CONNECTING' | 'QR' | 'CONNECTED' | 'DISCONNECTED' | 'ERROR';
+    externalId?: string | null;
+    lastError?: string | null;
+  },
+) {
   await prisma.channel
     .update({
       where: { id: channelId },
@@ -141,28 +148,54 @@ async function connect(s: Session) {
       s.qrDataUrl = null;
       const phone = sock.user?.id?.split(':')[0]?.split('@')[0] ?? null;
       await setStatus(s.channelId, { status: 'CONNECTED', externalId: phone ? `+${phone}` : null });
-      await logEvent(s.userId, 'INFO', 'channel.connected', `WhatsApp (QR) connected${phone ? ` as +${phone}` : ''}`);
+      await logEvent(
+        s.userId,
+        'INFO',
+        'channel.connected',
+        `WhatsApp (QR) connected${phone ? ` as +${phone}` : ''}`,
+      );
     }
     if (u.connection === 'close') {
       s.sock = null;
-      const code = (u.lastDisconnect?.error as { output?: { statusCode?: number } } | undefined)?.output?.statusCode;
+      const code = (u.lastDisconnect?.error as { output?: { statusCode?: number } } | undefined)?.output
+        ?.statusCode;
       if (s.stopping) return;
       if (code === DisconnectReason.loggedOut) {
         await rm(dir, { recursive: true, force: true });
         sessions.delete(s.channelId);
-        await setStatus(s.channelId, { status: 'DISCONNECTED', lastError: 'Logged out from the phone. Scan the QR code again.' });
-        await logEvent(s.userId, 'WARN', 'channel.logged_out', 'WhatsApp (QR) session was logged out from the phone');
+        await setStatus(s.channelId, {
+          status: 'DISCONNECTED',
+          lastError: 'Logged out from the phone. Scan the QR code again.',
+        });
+        await logEvent(
+          s.userId,
+          'WARN',
+          'channel.logged_out',
+          'WhatsApp (QR) session was logged out from the phone',
+        );
         return;
       }
       s.attempts += 1;
       if (s.attempts > 8) {
-        await setStatus(s.channelId, { status: 'ERROR', lastError: 'Could not reconnect to WhatsApp. Click Reconnect.' });
-        await logEvent(s.userId, 'ERROR', 'channel.reconnect_failed', `WhatsApp (QR) reconnect failed (code ${code ?? 'unknown'})`);
+        await setStatus(s.channelId, {
+          status: 'ERROR',
+          lastError: 'Could not reconnect to WhatsApp. Click Reconnect.',
+        });
+        await logEvent(
+          s.userId,
+          'ERROR',
+          'channel.reconnect_failed',
+          `WhatsApp (QR) reconnect failed (code ${code ?? 'unknown'})`,
+        );
         return;
       }
-      const delay = code === DisconnectReason.restartRequired ? 500 : Math.min(30_000, 1000 * 2 ** s.attempts);
+      const delay =
+        code === DisconnectReason.restartRequired ? 500 : Math.min(30_000, 1000 * 2 ** s.attempts);
       await setStatus(s.channelId, { status: 'CONNECTING' });
-      s.timer = setTimeout(() => void connect(s).catch((err) => logger.error({ err }, 'baileys reconnect failed')), delay);
+      s.timer = setTimeout(
+        () => void connect(s).catch((err) => logger.error({ err }, 'baileys reconnect failed')),
+        delay,
+      );
     }
   });
 }
@@ -170,7 +203,16 @@ async function connect(s: Session) {
 export async function startSession(channelId: string, userId: string) {
   const existing = sessions.get(channelId);
   if (existing?.sock) return existing;
-  const s: Session = existing ?? { channelId, userId, sock: null, qr: null, qrDataUrl: null, attempts: 0, stopping: false, timer: null };
+  const s: Session = existing ?? {
+    channelId,
+    userId,
+    sock: null,
+    qr: null,
+    qrDataUrl: null,
+    attempts: 0,
+    stopping: false,
+    timer: null,
+  };
   s.stopping = false;
   s.attempts = 0;
   sessions.set(channelId, s);
@@ -235,10 +277,15 @@ export async function bootSessions() {
     try {
       await access(path.join(sessionDir(c.userId, c.id), 'creds.json'));
     } catch {
-      await setStatus(c.id, { status: 'DISCONNECTED', lastError: 'Session not found on disk. Scan the QR code again.' });
+      await setStatus(c.id, {
+        status: 'DISCONNECTED',
+        lastError: 'Session not found on disk. Scan the QR code again.',
+      });
       continue;
     }
-    startSession(c.id, c.userId).catch((err) => logger.error({ err, channelId: c.id }, 'failed to restore WhatsApp session'));
+    startSession(c.id, c.userId).catch((err) =>
+      logger.error({ err, channelId: c.id }, 'failed to restore WhatsApp session'),
+    );
   }
   logger.info({ count: channels.length }, 'restoring WhatsApp QR sessions');
 }

@@ -11,7 +11,16 @@ function openaiText(content: string) {
 }
 function openaiTool(name: string, args: Record<string, unknown>) {
   return {
-    choices: [{ message: { content: null, tool_calls: [{ id: 'call_1', type: 'function', function: { name, arguments: JSON.stringify(args) } }] } }],
+    choices: [
+      {
+        message: {
+          content: null,
+          tool_calls: [
+            { id: 'call_1', type: 'function', function: { name, arguments: JSON.stringify(args) } },
+          ],
+        },
+      },
+    ],
     usage: { prompt_tokens: 100, completion_tokens: 20 },
   };
 }
@@ -32,7 +41,10 @@ beforeEach(() => {
     sent.push({ url, body });
     const route = routes.find(([re]) => re.test(url));
     if (!route) return new Response(JSON.stringify({ error: `unmocked ${url}` }), { status: 500 });
-    return new Response(JSON.stringify(route[1](url, body)), { status: 200, headers: { 'content-type': 'application/json' } });
+    return new Response(JSON.stringify(route[1](url, body)), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    });
   });
 });
 afterEach(() => vi.restoreAllMocks());
@@ -41,9 +53,18 @@ async function setupTenant(opts: { withKey?: boolean } = {}) {
   const s = await signup();
   if (opts.withKey !== false) {
     await prisma.apiKey.create({
-      data: { userId: s.userId, provider: 'openai', model: 'gpt-4.1-mini', encryptedKey: encrypt('sk-test-123456789'), last4: '6789' },
+      data: {
+        userId: s.userId,
+        provider: 'openai',
+        model: 'gpt-4.1-mini',
+        encryptedKey: encrypt('sk-test-123456789'),
+        last4: '6789',
+      },
     });
-    await prisma.agent.update({ where: { userId: s.userId }, data: { provider: 'openai', model: 'gpt-4.1-mini' } });
+    await prisma.agent.update({
+      where: { userId: s.userId },
+      data: { provider: 'openai', model: 'gpt-4.1-mini' },
+    });
   }
   const channel = await prisma.channel.create({
     data: {
@@ -97,10 +118,25 @@ describe('telegram webhook → agent reply', () => {
     const res = await postTelegram(channel.id, tgUpdate('What are your timings?'));
     expect(res.statusCode).toBe(200);
 
-    const msgs = await prisma.message.findMany({ where: { userId: channel.userId }, orderBy: { createdAt: 'asc' } });
+    const msgs = await prisma.message.findMany({
+      where: { userId: channel.userId },
+      orderBy: { createdAt: 'asc' },
+    });
     expect(msgs).toHaveLength(2);
-    expect(msgs[0]).toMatchObject({ direction: 'IN', role: 'USER', status: 'REPLIED', content: 'What are your timings?' });
-    expect(msgs[1]).toMatchObject({ direction: 'OUT', role: 'ASSISTANT', status: 'SENT', content: 'Hello from the agent!', tokensIn: 120, tokensOut: 30 });
+    expect(msgs[0]).toMatchObject({
+      direction: 'IN',
+      role: 'USER',
+      status: 'REPLIED',
+      content: 'What are your timings?',
+    });
+    expect(msgs[1]).toMatchObject({
+      direction: 'OUT',
+      role: 'ASSISTANT',
+      status: 'SENT',
+      content: 'Hello from the agent!',
+      tokensIn: 120,
+      tokensOut: 30,
+    });
     const tgSend = sent.find((r) => r.url.includes('/sendMessage'));
     expect(tgSend?.body).toMatchObject({ chat_id: '555001', text: 'Hello from the agent!' });
     expect(sent.some((r) => r.url.includes('/sendChatAction'))).toBe(true);
@@ -124,7 +160,12 @@ describe('telegram webhook → agent reply', () => {
     const { channel } = await setupTenant();
     const start = new Date(Date.now() + 2 * 86400_000).toISOString();
     llmQueue = [
-      openaiTool('book_appointment', { customer_name: 'Ravi Kumar', service: 'Cleaning', start_time: start, customer_phone: '9876543210' }),
+      openaiTool('book_appointment', {
+        customer_name: 'Ravi Kumar',
+        service: 'Cleaning',
+        start_time: start,
+        customer_phone: '9876543210',
+      }),
       openaiText('Booked ✅ See you then!'),
     ];
     await postTelegram(channel.id, tgUpdate('Book a cleaning for day after tomorrow'));
@@ -150,10 +191,21 @@ describe('telegram webhook → agent reply', () => {
 
   it('stops replying at the monthly message limit', async () => {
     const { s, channel } = await setupTenant();
-    const filler = await prisma.contact.create({ data: { userId: s.userId, channelType: 'TELEGRAM', externalId: 'filler' } });
-    const convo = await prisma.conversation.create({ data: { userId: s.userId, channelId: channel.id, contactId: filler.id } });
+    const filler = await prisma.contact.create({
+      data: { userId: s.userId, channelType: 'TELEGRAM', externalId: 'filler' },
+    });
+    const convo = await prisma.conversation.create({
+      data: { userId: s.userId, channelId: channel.id, contactId: filler.id },
+    });
     await prisma.message.createMany({
-      data: Array.from({ length: 200 }, () => ({ userId: s.userId, conversationId: convo.id, direction: 'OUT' as const, role: 'ASSISTANT' as const, content: 'x', status: 'SENT' as const })),
+      data: Array.from({ length: 200 }, () => ({
+        userId: s.userId,
+        conversationId: convo.id,
+        direction: 'OUT' as const,
+        role: 'ASSISTANT' as const,
+        content: 'x',
+        status: 'SENT' as const,
+      })),
     });
     await postTelegram(channel.id, tgUpdate('one more'));
     const inbound = await prisma.message.findFirst({ where: { userId: s.userId, direction: 'IN' } });
@@ -174,11 +226,16 @@ describe('Boss Mode', () => {
     const { s, channel } = await setupTenant();
     await prisma.user.update({ where: { id: s.userId }, data: { bossNumbers: ['919876543210'] } });
     // owner shares their contact so Telegram reveals the phone number
-    await postTelegram(channel.id, tgUpdate('', { text: undefined, contact: { phone_number: '+91 98765 43210', user_id: 555001 } }));
+    await postTelegram(
+      channel.id,
+      tgUpdate('', { text: undefined, contact: { phone_number: '+91 98765 43210', user_id: 555001 } }),
+    );
     await postTelegram(channel.id, tgUpdate('info: Closed this Monday for Diwali'));
     const agent = await prisma.agent.findUniqueOrThrow({ where: { userId: s.userId } });
     expect(agent.businessDetails).toContain('Closed this Monday for Diwali');
-    const replies = await prisma.message.findMany({ where: { userId: s.userId, direction: 'OUT', role: 'SYSTEM' } });
+    const replies = await prisma.message.findMany({
+      where: { userId: s.userId, direction: 'OUT', role: 'SYSTEM' },
+    });
     expect(replies.some((r) => r.content.includes('Added to Business details'))).toBe(true);
   });
 });
@@ -193,22 +250,45 @@ describe('WhatsApp Cloud API webhook', () => {
         name: 'Biz',
         status: 'CONNECTING',
         webhookSecret: 'verify-me-123',
-        encryptedConfig: encryptJson({ phoneNumberId: '1111111', accessToken: 'EAAG'.padEnd(30, 'x'), appSecret: 'app-secret-0123456789' }),
+        encryptedConfig: encryptJson({
+          phoneNumberId: '1111111',
+          accessToken: 'EAAG'.padEnd(30, 'x'),
+          appSecret: 'app-secret-0123456789',
+        }),
       },
     });
     return { s, channel };
   }
   const payload = (id: string) => ({
     object: 'whatsapp_business_account',
-    entry: [{ changes: [{ field: 'messages', value: { metadata: { phone_number_id: '1111111' }, contacts: [{ wa_id: '919000000001', profile: { name: 'Meera' } }], messages: [{ from: '919000000001', id, type: 'text', text: { body: 'Hi there' } }] } }] }],
+    entry: [
+      {
+        changes: [
+          {
+            field: 'messages',
+            value: {
+              metadata: { phone_number_id: '1111111' },
+              contacts: [{ wa_id: '919000000001', profile: { name: 'Meera' } }],
+              messages: [{ from: '919000000001', id, type: 'text', text: { body: 'Hi there' } }],
+            },
+          },
+        ],
+      },
+    ],
   });
 
   it('answers the verification handshake only with the right token', async () => {
     const app = await getApp();
     const { channel } = await cloudChannel();
-    const bad = await app.inject({ method: 'GET', url: `/webhooks/whatsapp/${channel.id}?hub.mode=subscribe&hub.verify_token=nope&hub.challenge=42` });
+    const bad = await app.inject({
+      method: 'GET',
+      url: `/webhooks/whatsapp/${channel.id}?hub.mode=subscribe&hub.verify_token=nope&hub.challenge=42`,
+    });
     expect(bad.statusCode).toBe(403);
-    const ok = await app.inject({ method: 'GET', url: `/webhooks/whatsapp/${channel.id}?hub.mode=subscribe&hub.verify_token=verify-me-123&hub.challenge=42` });
+    const ok = await app.inject({
+      method: 'GET',
+      url: `/webhooks/whatsapp/${channel.id}?hub.mode=subscribe&hub.verify_token=verify-me-123&hub.challenge=42`,
+    });
     expect(ok.statusCode).toBe(200);
     expect(ok.body).toBe('42');
     expect((await prisma.channel.findUniqueOrThrow({ where: { id: channel.id } })).status).toBe('CONNECTED');
@@ -229,11 +309,16 @@ describe('WhatsApp Cloud API webhook', () => {
     const good = await app.inject({
       method: 'POST',
       url: `/webhooks/whatsapp/${channel.id}`,
-      headers: { 'content-type': 'application/json', 'x-hub-signature-256': `sha256=${hmacSha256Hex('app-secret-0123456789', body)}` },
+      headers: {
+        'content-type': 'application/json',
+        'x-hub-signature-256': `sha256=${hmacSha256Hex('app-secret-0123456789', body)}`,
+      },
       payload: body,
     });
     expect(good.statusCode).toBe(200);
-    const contact = await prisma.contact.findFirst({ where: { userId: s.userId, channelType: 'WHATSAPP_CLOUD' } });
+    const contact = await prisma.contact.findFirst({
+      where: { userId: s.userId, channelType: 'WHATSAPP_CLOUD' },
+    });
     expect(contact).toMatchObject({ name: 'Meera', phone: '919000000001' });
     const send = sent.find((r) => r.url.includes('graph.facebook.com') && r.body.type === 'text');
     expect(send?.body).toMatchObject({ messaging_product: 'whatsapp', to: '919000000001' });
@@ -244,7 +329,9 @@ describe('plan limits', () => {
   it('blocks adding channels beyond the plan limit (trial = 2)', async () => {
     const s = await signup();
     for (let i = 0; i < 2; i++) {
-      await prisma.channel.create({ data: { userId: s.userId, type: 'TELEGRAM', name: `b${i}`, webhookSecret: 'x' } });
+      await prisma.channel.create({
+        data: { userId: s.userId, type: 'TELEGRAM', name: `b${i}`, webhookSecret: 'x' },
+      });
     }
     const res = await call(s, 'POST', '/api/channels/whatsapp-cloud', {
       phoneNumberId: '1234567',
@@ -259,7 +346,8 @@ describe('plan limits', () => {
     const s = await signup();
     const skills = await prisma.skill.findMany({ where: { isPublic: true }, take: 12 });
     await prisma.userSkill.deleteMany({ where: { userId: s.userId } });
-    for (const sk of skills.slice(0, 10)) await prisma.userSkill.create({ data: { userId: s.userId, skillId: sk.id, enabled: true } });
+    for (const sk of skills.slice(0, 10))
+      await prisma.userSkill.create({ data: { userId: s.userId, skillId: sk.id, enabled: true } });
     const res = await call(s, 'PUT', `/api/skills/${skills[10]!.id}`, { enabled: true });
     expect(res.statusCode).toBe(402);
     const ok = await call(s, 'PUT', `/api/skills/${skills[0]!.id}`, { enabled: false });
@@ -280,7 +368,9 @@ describe('tenant isolation over HTTP', () => {
     bConvoId = (await prisma.conversation.findFirstOrThrow({ where: { userId: b.userId } })).id;
 
     expect((await call(a, 'GET', `/api/conversations/${bConvoId}/messages`)).statusCode).toBe(404);
-    expect((await call(a, 'POST', `/api/conversations/${bConvoId}/reply`, { text: 'hi' })).statusCode).toBe(404);
+    expect((await call(a, 'POST', `/api/conversations/${bConvoId}/reply`, { text: 'hi' })).statusCode).toBe(
+      404,
+    );
     expect((await call(a, 'DELETE', `/api/channels/${bChannelId}`)).statusCode).toBe(404);
     const list = await call(a, 'GET', '/api/conversations');
     expect(list.json().conversations).toHaveLength(0);

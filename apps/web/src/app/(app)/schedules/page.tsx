@@ -11,7 +11,14 @@ import { Field } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { EmptyState, PageHeader, Skeleton } from '@/components/ui/misc';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { ChannelIcon } from '@/components/channel-badge';
 import { del, get, patch, post } from '@/lib/api';
 import { useAction } from '@/lib/hooks';
@@ -64,7 +71,11 @@ function NewSchedule({ channels }: { channels: ChannelDTO[] }) {
         </DialogHeader>
         <div className="space-y-3">
           <Field label="Name">
-            <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Weekly offer reminder" />
+            <Input
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              placeholder="Weekly offer reminder"
+            />
           </Field>
           <Field label="Channel">
             <Select value={form.channelId} onValueChange={(v) => setForm({ ...form, channelId: v })}>
@@ -82,7 +93,11 @@ function NewSchedule({ channels }: { channels: ChannelDTO[] }) {
           </Field>
           <Field
             label="Recipient"
-            hint={ch?.type === 'TELEGRAM' ? 'Telegram chat ID (the person must have messaged your bot first)' : 'WhatsApp number with country code, e.g. 919876543210'}
+            hint={
+              ch?.type === 'TELEGRAM'
+                ? 'Telegram chat ID (the person must have messaged your bot first)'
+                : 'WhatsApp number with country code, e.g. 919876543210'
+            }
           >
             <Input value={form.recipient} onChange={(e) => setForm({ ...form, recipient: e.target.value })} />
           </Field>
@@ -91,7 +106,10 @@ function NewSchedule({ channels }: { channels: ChannelDTO[] }) {
           </Field>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Repeat">
-              <Select value={form.frequency} onValueChange={(v) => setForm({ ...form, frequency: v as Schedule['frequency'] })}>
+              <Select
+                value={form.frequency}
+                onValueChange={(v) => setForm({ ...form, frequency: v as Schedule['frequency'] })}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -103,15 +121,26 @@ function NewSchedule({ channels }: { channels: ChannelDTO[] }) {
               </Select>
             </Field>
             <Field label="First run">
-              <Input type="datetime-local" value={form.runAt} onChange={(e) => setForm({ ...form, runAt: e.target.value })} />
+              <Input
+                type="datetime-local"
+                value={form.runAt}
+                onChange={(e) => setForm({ ...form, runAt: e.target.value })}
+              />
             </Field>
           </div>
           {ch?.type === 'WHATSAPP_CLOUD' && (
-            <p className="text-xs text-muted-foreground">Note: WhatsApp Business API only allows free-form messages within 24 hours of the customer’s last message.</p>
+            <p className="text-xs text-muted-foreground">
+              Note: WhatsApp Business API only allows free-form messages within 24 hours of the customer’s
+              last message.
+            </p>
           )}
         </div>
         <DialogFooter>
-          <Button onClick={() => create.mutate(undefined)} loading={create.isPending} disabled={!form.name || !form.recipient || !form.message}>
+          <Button
+            onClick={() => create.mutate(undefined)}
+            loading={create.isPending}
+            disabled={!form.name || !form.recipient || !form.message}
+          >
             Create
           </Button>
         </DialogFooter>
@@ -121,27 +150,49 @@ function NewSchedule({ channels }: { channels: ChannelDTO[] }) {
 }
 
 export default function SchedulesPage() {
-  const { data, isLoading } = useQuery({ queryKey: ['schedules'], queryFn: () => get<{ schedules: Schedule[] }>('/schedules') });
-  const channels = useQuery({ queryKey: ['channels'], queryFn: () => get<{ channels: ChannelDTO[] }>('/channels') });
-  const toggle = useAction(({ id, enabled }: { id: string; enabled: boolean }) => patch(`/schedules/${id}`, { enabled }), { invalidate: [['schedules']] });
-  const remove = useAction((id: string) => del(`/schedules/${id}`), { success: 'Schedule deleted', invalidate: [['schedules']] });
+  const { data, isLoading } = useQuery({
+    queryKey: ['schedules'],
+    queryFn: () => get<{ schedules: Schedule[] }>('/schedules'),
+  });
+  const channels = useQuery({
+    queryKey: ['channels'],
+    queryFn: () => get<{ channels: ChannelDTO[] }>('/channels'),
+  });
+  const toggle = useAction(
+    ({ id, enabled }: { id: string; enabled: boolean }) => patch(`/schedules/${id}`, { enabled }),
+    { invalidate: [['schedules']] },
+  );
+  const remove = useAction((id: string) => del(`/schedules/${id}`), {
+    success: 'Schedule deleted',
+    invalidate: [['schedules']],
+  });
 
   return (
     <div>
       <PageHeader
         title="Schedules"
         description="Send reminders, offers and follow-ups automatically."
-        actions={<NewSchedule key={channels.data?.channels.length} channels={channels.data?.channels ?? []} />}
+        actions={
+          <NewSchedule key={channels.data?.channels.length} channels={channels.data?.channels ?? []} />
+        }
       />
       {isLoading ? (
         <Skeleton className="h-40 rounded-xl" />
       ) : !data?.schedules.length ? (
-        <EmptyState icon={CalendarClock} title="No schedules yet" description="Create one to send a message at a set time — once, daily or weekly." />
+        <EmptyState
+          icon={CalendarClock}
+          title="No schedules yet"
+          description="Create one to send a message at a set time — once, daily or weekly."
+        />
       ) : (
         <div className="space-y-3">
           {data.schedules.map((s) => (
             <Card key={s.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
-              <Switch checked={s.enabled} onCheckedChange={(v) => toggle.mutate({ id: s.id, enabled: v })} aria-label="Enabled" />
+              <Switch
+                checked={s.enabled}
+                onCheckedChange={(v) => toggle.mutate({ id: s.id, enabled: v })}
+                aria-label="Enabled"
+              />
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2 font-medium">
                   {s.name}
@@ -154,7 +205,13 @@ export default function SchedulesPage() {
                   <span className="flex items-center gap-1">
                     <ChannelIcon type={s.channel.type} className="h-3 w-3" /> {s.channel.name} → {s.recipient}
                   </span>
-                  <span>{s.enabled ? `Next: ${formatDateTime(s.nextRunAt)}` : s.lastRunAt ? `Last ran ${formatDateTime(s.lastRunAt)}` : 'Paused'}</span>
+                  <span>
+                    {s.enabled
+                      ? `Next: ${formatDateTime(s.nextRunAt)}`
+                      : s.lastRunAt
+                        ? `Last ran ${formatDateTime(s.lastRunAt)}`
+                        : 'Paused'}
+                  </span>
                 </div>
                 {s.lastError && <p className="mt-1 text-xs text-destructive">{s.lastError}</p>}
               </div>

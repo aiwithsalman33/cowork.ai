@@ -6,12 +6,19 @@ import { cn } from '@/lib/utils';
 export const DropdownMenu = DM.Root;
 export const DropdownMenuTrigger = DM.Trigger;
 
-export function DropdownMenuContent({ className, sideOffset = 6, ...props }: React.ComponentProps<typeof DM.Content>) {
+export function DropdownMenuContent({
+  className,
+  sideOffset = 6,
+  ...props
+}: React.ComponentProps<typeof DM.Content>) {
   return (
     <DM.Portal>
       <DM.Content
         sideOffset={sideOffset}
-        className={cn('z-50 min-w-[10rem] overflow-hidden rounded-lg border bg-card p-1 text-card-foreground shadow-lg', className)}
+        className={cn(
+          'z-50 min-w-[10rem] overflow-hidden rounded-lg border bg-card p-1 text-card-foreground shadow-lg',
+          className,
+        )}
         {...props}
       />
     </DM.Portal>
@@ -31,7 +38,9 @@ export function DropdownMenuItem({ className, ...props }: React.ComponentProps<t
 }
 
 export function DropdownMenuLabel({ className, ...props }: React.ComponentProps<typeof DM.Label>) {
-  return <DM.Label className={cn('px-2 py-1.5 text-xs font-medium text-muted-foreground', className)} {...props} />;
+  return (
+    <DM.Label className={cn('px-2 py-1.5 text-xs font-medium text-muted-foreground', className)} {...props} />
+  );
 }
 
 export function DropdownMenuSeparator({ className, ...props }: React.ComponentProps<typeof DM.Separator>) {

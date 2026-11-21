@@ -33,7 +33,10 @@ async function refreshSession(): Promise<boolean> {
   return refreshing;
 }
 
-export async function api<T = unknown>(path: string, init: RequestInit & { json?: unknown } = {}): Promise<T> {
+export async function api<T = unknown>(
+  path: string,
+  init: RequestInit & { json?: unknown } = {},
+): Promise<T> {
   const { json, ...rest } = init;
   const doFetch = () =>
     fetch(`/api${path}`, {
@@ -55,7 +58,12 @@ export async function api<T = unknown>(path: string, init: RequestInit & { json?
   const text = await res.text();
   const data = text ? JSON.parse(text) : undefined;
   if (!res.ok) {
-    throw new ApiError(res.status, data?.error ?? `Request failed (${res.status})`, data?.code, data?.details);
+    throw new ApiError(
+      res.status,
+      data?.error ?? `Request failed (${res.status})`,
+      data?.code,
+      data?.details,
+    );
   }
   return data as T;
 }

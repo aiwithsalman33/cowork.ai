@@ -12,7 +12,13 @@ import { timeAgo } from '@/lib/utils';
 type KB = { businessDetails: string; productsServices: string; commonQuestions: string };
 type SaveState = 'idle' | 'dirty' | 'saving' | 'saved' | 'error';
 
-const FIELDS: { key: keyof KB; title: string; description: string; icon: typeof Building2; placeholder: string }[] = [
+const FIELDS: {
+  key: keyof KB;
+  title: string;
+  description: string;
+  icon: typeof Building2;
+  placeholder: string;
+}[] = [
   {
     key: 'businessDetails',
     title: 'Business details',
@@ -26,14 +32,16 @@ const FIELDS: { key: keyof KB; title: string; description: string; icon: typeof 
     title: 'Products & services',
     description: 'What you sell, with prices and details.',
     icon: Package,
-    placeholder: 'Teeth cleaning — ₹800 (30 min)\nTeeth whitening — ₹4,500 (60 min)\nRoot canal — from ₹6,000\nBraces consultation — free',
+    placeholder:
+      'Teeth cleaning — ₹800 (30 min)\nTeeth whitening — ₹4,500 (60 min)\nRoot canal — from ₹6,000\nBraces consultation — free',
   },
   {
     key: 'commonQuestions',
     title: 'Common questions',
     description: 'Questions customers ask often, with your answers.',
     icon: HelpCircle,
-    placeholder: 'Q: Do you accept insurance?\nA: Yes, we accept most major insurers.\n\nQ: Is there parking?\nA: Yes, free parking in front of the clinic.',
+    placeholder:
+      'Q: Do you accept insurance?\nA: Yes, we accept most major insurers.\n\nQ: Is there parking?\nA: Yes, free parking in front of the clinic.',
   },
 ];
 
@@ -87,7 +95,10 @@ export default function KnowledgePage() {
         title="Knowledge Base"
         description="Everything your agent knows about your business. Changes apply to the agent immediately."
         actions={
-          <div className="flex items-center gap-2 rounded-full border bg-card px-3 py-1.5 text-sm" aria-live="polite">
+          <div
+            className="flex items-center gap-2 rounded-full border bg-card px-3 py-1.5 text-sm"
+            aria-live="polite"
+          >
             {state === 'saving' || state === 'dirty' ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /> Saving…
@@ -127,7 +138,9 @@ export default function KnowledgePage() {
                     maxLength={20000}
                     aria-label={title}
                   />
-                  <p className="mt-1.5 text-right text-xs text-muted-foreground">{kb[key].length.toLocaleString()} / 20,000</p>
+                  <p className="mt-1.5 text-right text-xs text-muted-foreground">
+                    {kb[key].length.toLocaleString()} / 20,000
+                  </p>
                 </>
               )}
             </CardContent>

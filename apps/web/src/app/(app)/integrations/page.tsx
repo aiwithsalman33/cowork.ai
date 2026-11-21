@@ -11,7 +11,14 @@ import { Badge } from '@/components/ui/badge';
 import { Input, Textarea } from '@/components/ui/input';
 import { Field } from '@/components/ui/label';
 import { PageHeader, Skeleton } from '@/components/ui/misc';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { del, get, post, put } from '@/lib/api';
 import { useAction } from '@/lib/hooks';
 
@@ -26,11 +33,18 @@ const LOGOS: Record<Toolkit, { bg: string; letter: string }> = {
 function SettingsDialog({ integration, onClose }: { integration: IntegrationDTO; onClose: () => void }) {
   const [sheetId, setSheetId] = useState(integration.settings.sheetId ?? '');
   const [calendarId, setCalendarId] = useState(integration.settings.calendarId ?? '');
-  const save = useAction(() => put(`/integrations/${integration.toolkit}/settings`, integration.toolkit === 'googlesheets' ? { sheetId } : { calendarId }), {
-    success: 'Settings saved',
-    invalidate: [['integrations']],
-    onSuccess: onClose,
-  });
+  const save = useAction(
+    () =>
+      put(
+        `/integrations/${integration.toolkit}/settings`,
+        integration.toolkit === 'googlesheets' ? { sheetId } : { calendarId },
+      ),
+    {
+      success: 'Settings saved',
+      invalidate: [['integrations']],
+      onSuccess: onClose,
+    },
+  );
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent>
@@ -43,8 +57,15 @@ function SettingsDialog({ integration, onClose }: { integration: IntegrationDTO;
           </DialogDescription>
         </DialogHeader>
         {integration.toolkit === 'googlesheets' ? (
-          <Field label="Google Sheet URL or ID" hint="Columns: Date, Name, Phone, Email, Interest, Notes, Channel">
-            <Input value={sheetId} onChange={(e) => setSheetId(e.target.value)} placeholder="https://docs.google.com/spreadsheets/d/…" />
+          <Field
+            label="Google Sheet URL or ID"
+            hint="Columns: Date, Name, Phone, Email, Interest, Notes, Channel"
+          >
+            <Input
+              value={sheetId}
+              onChange={(e) => setSheetId(e.target.value)}
+              placeholder="https://docs.google.com/spreadsheets/d/…"
+            />
           </Field>
         ) : (
           <Field label="Calendar ID" hint="Leave empty to use your primary calendar.">
@@ -96,7 +117,10 @@ function Integrations() {
   const connect = useAction((t: Toolkit) => post<{ redirectUrl: string }>(`/integrations/${t}/connect`), {
     onSuccess: (r) => (window.location.href = r.redirectUrl),
   });
-  const disconnect = useAction((t: Toolkit) => del(`/integrations/${t}`), { success: 'Disconnected', invalidate: [['integrations']] });
+  const disconnect = useAction((t: Toolkit) => del(`/integrations/${t}`), {
+    success: 'Disconnected',
+    invalidate: [['integrations']],
+  });
   const submitRequest = useAction(() => post('/integration-requests', request), {
     success: 'Thanks! We’ll let you know when it’s available.',
     onSuccess: () => setRequest({ toolName: '', useCase: '' }),
@@ -106,7 +130,8 @@ function Integrations() {
     <>
       {data && !data.enabled && (
         <div className="mb-6 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-amber-800 dark:text-amber-300">
-          Integrations are not configured on this server yet (Composio API key missing). Ask your administrator.
+          Integrations are not configured on this server yet (Composio API key missing). Ask your
+          administrator.
         </div>
       )}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -118,7 +143,11 @@ function Integrations() {
               return (
                 <Card key={i.toolkit} className="flex flex-col p-5">
                   <div className="flex items-start justify-between">
-                    <span className={`flex h-11 w-11 items-center justify-center rounded-xl text-sm font-bold text-white ${logo.bg}`}>{logo.letter}</span>
+                    <span
+                      className={`flex h-11 w-11 items-center justify-center rounded-xl text-sm font-bold text-white ${logo.bg}`}
+                    >
+                      {logo.letter}
+                    </span>
                     {i.status === 'CONNECTED' ? (
                       <Badge variant="success">
                         <CheckCircle2 /> Connected
@@ -138,10 +167,19 @@ function Integrations() {
                       <>
                         {(i.toolkit === 'googlesheets' || i.toolkit === 'googlecalendar') && (
                           <Button size="sm" variant="outline" onClick={() => setSettingsFor(i)}>
-                            <Settings2 /> {i.toolkit === 'googlesheets' && !i.settings.sheetId ? 'Choose sheet' : 'Settings'}
+                            <Settings2 />{' '}
+                            {i.toolkit === 'googlesheets' && !i.settings.sheetId
+                              ? 'Choose sheet'
+                              : 'Settings'}
                           </Button>
                         )}
-                        <Button size="sm" variant="ghost" className="text-destructive" onClick={() => disconnect.mutate(i.toolkit)} loading={disconnect.isPending && disconnect.variables === i.toolkit}>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-destructive"
+                          onClick={() => disconnect.mutate(i.toolkit)}
+                          loading={disconnect.isPending && disconnect.variables === i.toolkit}
+                        >
                           <Unplug /> Disconnect
                         </Button>
                       </>
@@ -157,7 +195,9 @@ function Integrations() {
                       </Button>
                     )}
                   </div>
-                  {!i.configured && <p className="mt-2 text-xs text-muted-foreground">Not available on this server yet.</p>}
+                  {!i.configured && (
+                    <p className="mt-2 text-xs text-muted-foreground">Not available on this server yet.</p>
+                  )}
                 </Card>
               );
             })}
@@ -168,16 +208,30 @@ function Integrations() {
           <CardTitle className="flex items-center gap-2">
             <Wand2 className="h-4 w-4 text-primary" /> Request a tool
           </CardTitle>
-          <CardDescription>Need Shopify, Zoho, Razorpay, Calendly or something else? Tell us what you’d use it for.</CardDescription>
+          <CardDescription>
+            Need Shopify, Zoho, Razorpay, Calendly or something else? Tell us what you’d use it for.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           <Field label="Tool name">
-            <Input value={request.toolName} onChange={(e) => setRequest({ ...request, toolName: e.target.value })} placeholder="e.g. Shopify" />
+            <Input
+              value={request.toolName}
+              onChange={(e) => setRequest({ ...request, toolName: e.target.value })}
+              placeholder="e.g. Shopify"
+            />
           </Field>
           <Field label="What should the agent do with it?">
-            <Textarea value={request.useCase} onChange={(e) => setRequest({ ...request, useCase: e.target.value })} placeholder="Check order status when customers ask where their order is." />
+            <Textarea
+              value={request.useCase}
+              onChange={(e) => setRequest({ ...request, useCase: e.target.value })}
+              placeholder="Check order status when customers ask where their order is."
+            />
           </Field>
-          <Button onClick={() => submitRequest.mutate(undefined)} loading={submitRequest.isPending} disabled={request.toolName.length < 2 || request.useCase.length < 5}>
+          <Button
+            onClick={() => submitRequest.mutate(undefined)}
+            loading={submitRequest.isPending}
+            disabled={request.toolName.length < 2 || request.useCase.length < 5}
+          >
             Submit request
           </Button>
         </CardContent>
@@ -190,7 +244,10 @@ function Integrations() {
 export default function IntegrationsPage() {
   return (
     <div>
-      <PageHeader title="Integrations" description="Connect Google apps so your agent can book, log leads, email and look things up. Secure OAuth via Composio." />
+      <PageHeader
+        title="Integrations"
+        description="Connect Google apps so your agent can book, log leads, email and look things up. Secure OAuth via Composio."
+      />
       <Suspense>
         <Integrations />
       </Suspense>

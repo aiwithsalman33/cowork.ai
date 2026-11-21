@@ -31,10 +31,12 @@ export function toAnthropic(req: CompletionRequest) {
     if (m.role === 'assistant') {
       const blocks: Block[] = [];
       if (m.content) blocks.push({ type: 'text', text: m.content });
-      for (const t of m.toolCalls ?? []) blocks.push({ type: 'tool_use', id: t.id, name: t.name, input: t.arguments });
+      for (const t of m.toolCalls ?? [])
+        blocks.push({ type: 'tool_use', id: t.id, name: t.name, input: t.arguments });
       if (blocks.length) push('assistant', blocks);
     }
-    if (m.role === 'tool') push('user', [{ type: 'tool_result', tool_use_id: m.toolCallId, content: m.content }]);
+    if (m.role === 'tool')
+      push('user', [{ type: 'tool_result', tool_use_id: m.toolCallId, content: m.content }]);
   }
   return { system, messages };
 }
@@ -49,7 +51,11 @@ export async function anthropicComplete(req: CompletionRequest): Promise<Complet
   if (system) body.system = system;
   if (req.temperature !== undefined) body.temperature = req.temperature;
   if (req.tools?.length) {
-    body.tools = req.tools.map((t) => ({ name: t.name, description: t.description, input_schema: t.parameters }));
+    body.tools = req.tools.map((t) => ({
+      name: t.name,
+      description: t.description,
+      input_schema: t.parameters,
+    }));
   }
   const data = await postJson<AnthropicResponse>(
     `${PROVIDERS.anthropic.baseUrl}/messages`,

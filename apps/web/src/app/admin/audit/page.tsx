@@ -23,7 +23,8 @@ export default function AdminAudit() {
   const [page, setPage] = useState(1);
   const { data, isLoading } = useQuery({
     queryKey: ['admin-audit', page],
-    queryFn: () => get<{ items: Entry[]; total: number; pageSize: number }>(`/admin/audit?page=${page}&pageSize=50`),
+    queryFn: () =>
+      get<{ items: Entry[]; total: number; pageSize: number }>(`/admin/audit?page=${page}&pageSize=50`),
   });
   const pages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
   return (
@@ -48,13 +49,19 @@ export default function AdminAudit() {
             <tbody className="divide-y">
               {data.items.map((e) => (
                 <tr key={e.id}>
-                  <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatDateTime(e.createdAt)}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
+                    {formatDateTime(e.createdAt)}
+                  </td>
                   <td className="px-4 py-3">{e.actor?.email ?? '—'}</td>
                   <td className="px-4 py-3">
                     <code className="rounded bg-muted px-1.5 py-0.5 text-xs">{e.action}</code>
                   </td>
-                  <td className="px-4 py-3 text-xs text-muted-foreground">{e.targetType ? `${e.targetType}:${e.targetId}` : '—'}</td>
-                  <td className="max-w-xs truncate px-4 py-3 font-mono text-xs text-muted-foreground">{e.meta ? JSON.stringify(e.meta) : ''}</td>
+                  <td className="px-4 py-3 text-xs text-muted-foreground">
+                    {e.targetType ? `${e.targetType}:${e.targetId}` : '—'}
+                  </td>
+                  <td className="max-w-xs truncate px-4 py-3 font-mono text-xs text-muted-foreground">
+                    {e.meta ? JSON.stringify(e.meta) : ''}
+                  </td>
                 </tr>
               ))}
             </tbody>

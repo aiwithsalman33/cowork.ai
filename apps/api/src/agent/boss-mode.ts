@@ -24,7 +24,11 @@ function startOfToday() {
   return d;
 }
 
-async function appendKb(userId: string, field: 'businessDetails' | 'productsServices' | 'commonQuestions', text: string) {
+async function appendKb(
+  userId: string,
+  field: 'businessDetails' | 'productsServices' | 'commonQuestions',
+  text: string,
+) {
   const agent = await prisma.agent.findUniqueOrThrow({ where: { userId } });
   const current = agent[field].trim();
   await prisma.agent.update({ where: { userId }, data: { [field]: current ? `${current}\n${text}` : text } });
@@ -35,7 +39,9 @@ async function stats(userId: string) {
   const today = startOfToday();
   const [msgs, replies, convos, newContacts, appts, leads] = await Promise.all([
     prisma.message.count({ where: { userId, direction: 'IN', createdAt: { gte: today } } }),
-    prisma.message.count({ where: { userId, direction: 'OUT', role: 'ASSISTANT', createdAt: { gte: today } } }),
+    prisma.message.count({
+      where: { userId, direction: 'OUT', role: 'ASSISTANT', createdAt: { gte: today } },
+    }),
     prisma.conversation.count({ where: { userId, lastMessageAt: { gte: today } } }),
     prisma.contact.count({ where: { userId, firstSeenAt: { gte: today } } }),
     prisma.appointment.count({ where: { userId, createdAt: { gte: today } } }),
@@ -115,7 +121,10 @@ export async function handleBossMessage(userId: string, raw: string): Promise<st
     });
     if (!appts.length) return 'No upcoming appointments.';
     return `📅 Upcoming\n${appts
-      .map((a) => `• ${a.startsAt.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' })} — ${a.title}, ${a.customerName}`)
+      .map(
+        (a) =>
+          `• ${a.startsAt.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' })} — ${a.title}, ${a.customerName}`,
+      )
       .join('\n')}`;
   }
   for (const [prefix, field, label] of [
@@ -130,7 +139,9 @@ export async function handleBossMessage(userId: string, raw: string): Promise<st
     }
   }
   if (lower.startsWith('faq:')) {
-    const [q, a] = after('faq:').split('|').map((s) => s.trim());
+    const [q, a] = after('faq:')
+      .split('|')
+      .map((s) => s.trim());
     if (!q || !a) return 'Usage: faq: <question> | <answer>';
     await appendKb(userId, 'commonQuestions', `Q: ${q}\nA: ${a}`);
     return '✅ FAQ added.';

@@ -4,7 +4,13 @@ import { prisma } from '../db/client.js';
 import { parse } from '../lib/validate.js';
 import { conflict, forbidden, unauthorized } from '../lib/errors.js';
 import { hashPassword, verifyPassword, fakeVerify } from '../auth/password.js';
-import { clearSessionCookies, COOKIE_REFRESH, issueSession, revokeSession, rotateSession } from '../auth/session.js';
+import {
+  clearSessionCookies,
+  COOKIE_REFRESH,
+  issueSession,
+  revokeSession,
+  rotateSession,
+} from '../auth/session.js';
 import { authenticate, checkCsrf, user } from '../plugins/auth.js';
 import { toMeDTO } from '../services/me.js';
 import { audit, logEvent } from '../services/audit.js';
@@ -72,9 +78,16 @@ export async function authRoutes(app: FastifyInstance) {
   app.post('/password', { preHandler: authenticate, config: authLimit }, async (req) => {
     const input = parse(changePasswordSchema, req.body);
     const u = user(req);
-    if (!(await verifyPassword(u.passwordHash, input.currentPassword))) throw unauthorized('Current password is incorrect');
-    await prisma.user.update({ where: { id: u.id }, data: { passwordHash: await hashPassword(input.newPassword) } });
-    await prisma.refreshToken.updateMany({ where: { userId: u.id, revokedAt: null }, data: { revokedAt: new Date() } });
+    if (!(await verifyPassword(u.passwordHash, input.currentPassword)))
+      throw unauthorized('Current password is incorrect');
+    await prisma.user.update({
+      where: { id: u.id },
+      data: { passwordHash: await hashPassword(input.newPassword) },
+    });
+    await prisma.refreshToken.updateMany({
+      where: { userId: u.id, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
     return { ok: true };
   });
 

@@ -1,16 +1,51 @@
 import Link from 'next/link';
-import { ArrowRight, BookOpen, Bot, CalendarCheck, Check, KeyRound, MessageCircle, Send, Sparkles, Zap } from 'lucide-react';
+import {
+  ArrowRight,
+  BookOpen,
+  Bot,
+  CalendarCheck,
+  Check,
+  KeyRound,
+  MessageCircle,
+  Send,
+  Sparkles,
+  Zap,
+} from 'lucide-react';
 import { PLANS, formatLimit } from '@partner/shared';
 import { Logo } from '@/components/brand';
 import { Button } from '@/components/ui/button';
 
 const features = [
-  { icon: MessageCircle, title: 'WhatsApp & Telegram', text: 'Official WhatsApp Business API or quick QR connect, plus Telegram bots.' },
-  { icon: BookOpen, title: 'Knows your business', text: 'Paste your details, products and FAQs. Changes apply instantly.' },
-  { icon: Sparkles, title: '40+ skills', text: 'FAQ bot, lead capture, appointments, complaints, orders, refunds and more.' },
-  { icon: CalendarCheck, title: 'Google integrations', text: 'Calendar bookings, Sheets lead logs, Gmail follow-ups, Drive & Docs lookup.' },
-  { icon: KeyRound, title: 'Bring your own key', text: 'OpenAI, Anthropic, Gemini, Groq, OpenRouter, DeepSeek or Mistral.' },
-  { icon: Zap, title: 'Boss Mode', text: 'Text your agent from your own phone to update info or get today’s stats.' },
+  {
+    icon: MessageCircle,
+    title: 'WhatsApp & Telegram',
+    text: 'Official WhatsApp Business API or quick QR connect, plus Telegram bots.',
+  },
+  {
+    icon: BookOpen,
+    title: 'Knows your business',
+    text: 'Paste your details, products and FAQs. Changes apply instantly.',
+  },
+  {
+    icon: Sparkles,
+    title: '40+ skills',
+    text: 'FAQ bot, lead capture, appointments, complaints, orders, refunds and more.',
+  },
+  {
+    icon: CalendarCheck,
+    title: 'Google integrations',
+    text: 'Calendar bookings, Sheets lead logs, Gmail follow-ups, Drive & Docs lookup.',
+  },
+  {
+    icon: KeyRound,
+    title: 'Bring your own key',
+    text: 'OpenAI, Anthropic, Gemini, Groq, OpenRouter, DeepSeek or Mistral.',
+  },
+  {
+    icon: Zap,
+    title: 'Boss Mode',
+    text: 'Text your agent from your own phone to update info or get today’s stats.',
+  },
 ];
 
 export default function Home() {
@@ -63,7 +98,9 @@ export default function Home() {
             <p className="w-fit max-w-[85%] rounded-2xl rounded-bl-sm bg-muted px-3 py-2">
               Of course! We have 5:30 PM or 6:15 PM free tomorrow. Which works for you? 😊
             </p>
-            <p className="ml-auto w-fit max-w-[80%] rounded-2xl rounded-br-sm bg-primary px-3 py-2 text-primary-foreground">6:15 please</p>
+            <p className="ml-auto w-fit max-w-[80%] rounded-2xl rounded-br-sm bg-primary px-3 py-2 text-primary-foreground">
+              6:15 please
+            </p>
             <p className="w-fit max-w-[85%] rounded-2xl rounded-bl-sm bg-muted px-3 py-2">
               Booked ✅ Teeth cleaning, tomorrow 6:15 PM. See you then!
             </p>
@@ -87,7 +124,9 @@ export default function Home() {
 
       <section id="pricing" className="mx-auto max-w-5xl px-4 py-20 sm:px-6">
         <h2 className="text-center font-display text-3xl font-semibold sm:text-4xl">Simple pricing in ₹</h2>
-        <p className="mt-2 text-center text-muted-foreground">Start free for 24 hours. Upgrade when you are ready.</p>
+        <p className="mt-2 text-center text-muted-foreground">
+          Start free for 24 hours. Upgrade when you are ready.
+        </p>
         <div className="mt-10 grid gap-5 md:grid-cols-3">
           {Object.values(PLANS).map((p) => (
             <div

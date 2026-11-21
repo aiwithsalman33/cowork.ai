@@ -14,7 +14,10 @@ export interface ToolContext {
   channelLabel: string;
   timeZone: string;
   /** toolkit → { connectedAccountId, settings } for CONNECTED integrations */
-  integrations: Map<Toolkit, { connectedAccountId: string | null; settings: Record<string, string | undefined> }>;
+  integrations: Map<
+    Toolkit,
+    { connectedAccountId: string | null; settings: Record<string, string | undefined> }
+  >;
 }
 
 export const TOOL_DEFS: Record<ToolName, ToolDef> = {
@@ -28,7 +31,10 @@ export const TOOL_DEFS: Record<ToolName, ToolDef> = {
         customer_name: { type: 'string', description: 'Customer full name' },
         customer_phone: { type: 'string', description: 'Customer phone number, if known' },
         customer_email: { type: 'string', description: 'Customer email, if given' },
-        service: { type: 'string', description: 'What the appointment is for, e.g. "Haircut" or "Site visit"' },
+        service: {
+          type: 'string',
+          description: 'What the appointment is for, e.g. "Haircut" or "Site visit"',
+        },
         start_time: {
           type: 'string',
           description: 'Start time in ISO 8601 with timezone offset, e.g. 2026-11-22T17:30:00+05:30',
@@ -41,14 +47,18 @@ export const TOOL_DEFS: Record<ToolName, ToolDef> = {
   },
   capture_lead: {
     name: 'capture_lead',
-    description: "Save a potential customer's details or a customer request (order, complaint, return) for the business.",
+    description:
+      "Save a potential customer's details or a customer request (order, complaint, return) for the business.",
     parameters: {
       type: 'object',
       properties: {
         name: { type: 'string' },
         phone: { type: 'string' },
         email: { type: 'string' },
-        interest: { type: 'string', description: 'What they want, e.g. "3BHK in Whitefield" or "Return request: order #123"' },
+        interest: {
+          type: 'string',
+          description: 'What they want, e.g. "3BHK in Whitefield" or "Return request: order #123"',
+        },
         notes: { type: 'string', description: 'Budget, timeline, or other useful details' },
       },
       required: ['name', 'interest'],
@@ -62,7 +72,10 @@ export const TOOL_DEFS: Record<ToolName, ToolDef> = {
       properties: {
         to: { type: 'string', description: 'Recipient email address' },
         subject: { type: 'string' },
-        body: { type: 'string', description: 'Plain-text email body, polite and concise, signed with the business name' },
+        body: {
+          type: 'string',
+          description: 'Plain-text email body, polite and concise, signed with the business name',
+        },
       },
       required: ['to', 'subject', 'body'],
     },
@@ -103,18 +116,25 @@ export function availableTools(requested: Set<ToolName>, ctx: Pick<ToolContext, 
   });
 }
 
-const str = (v: unknown) => (typeof v === 'string' ? v.trim() : v === undefined || v === null ? '' : String(v));
+const str = (v: unknown) =>
+  typeof v === 'string' ? v.trim() : v === undefined || v === null ? '' : String(v);
 
 function findId(data: Record<string, unknown>): string | null {
-  const candidates = [data.id, (data.response_data as Record<string, unknown> | undefined)?.id, (data.event as Record<string, unknown> | undefined)?.id];
+  const candidates = [
+    data.id,
+    (data.response_data as Record<string, unknown> | undefined)?.id,
+    (data.event as Record<string, unknown> | undefined)?.id,
+  ];
   const found = candidates.find((c) => typeof c === 'string');
   return (found as string | undefined) ?? null;
 }
 
 async function bookAppointment(args: Record<string, unknown>, ctx: ToolContext) {
   const start = new Date(str(args.start_time));
-  if (Number.isNaN(start.getTime())) return { ok: false, error: 'start_time must be a valid ISO 8601 date-time' };
-  if (start.getTime() < Date.now() - 5 * 60_000) return { ok: false, error: 'That time is in the past. Ask for a future time.' };
+  if (Number.isNaN(start.getTime()))
+    return { ok: false, error: 'start_time must be a valid ISO 8601 date-time' };
+  if (start.getTime() < Date.now() - 5 * 60_000)
+    return { ok: false, error: 'That time is in the past. Ask for a future time.' };
   const duration = Math.min(Math.max(Number(args.duration_minutes) || 30, 5), 8 * 60);
   const end = new Date(start.getTime() + duration * 60_000);
   const name = str(args.customer_name) || ctx.contactName || 'Customer';
@@ -147,7 +167,12 @@ async function bookAppointment(args: Record<string, unknown>, ctx: ToolContext) 
           startIso: start.toISOString(),
           durationMinutes: duration,
           title: `${service} — ${name}`,
-          description: [`Booked by AI via ${ctx.channelLabel}`, phone && `Phone: ${phone}`, email && `Email: ${email}`, str(args.notes)]
+          description: [
+            `Booked by AI via ${ctx.channelLabel}`,
+            phone && `Phone: ${phone}`,
+            email && `Email: ${email}`,
+            str(args.notes),
+          ]
             .filter(Boolean)
             .join('\n'),
           attendeeEmail: email,
@@ -159,14 +184,25 @@ async function bookAppointment(args: Record<string, unknown>, ctx: ToolContext) 
       if (res.ok) {
         calendar = 'added';
         const eventId = findId(res.data);
-        if (eventId) await prisma.appointment.update({ where: { id: appt.id }, data: { googleEventId: eventId } });
+        if (eventId)
+          await prisma.appointment.update({ where: { id: appt.id }, data: { googleEventId: eventId } });
       } else {
         calendar = 'failed';
-        await logEvent(ctx.userId, 'WARN', 'tool.calendar_failed', `Google Calendar: ${res.error ?? 'unknown error'}`);
+        await logEvent(
+          ctx.userId,
+          'WARN',
+          'tool.calendar_failed',
+          `Google Calendar: ${res.error ?? 'unknown error'}`,
+        );
       }
     } catch (err) {
       calendar = 'failed';
-      await logEvent(ctx.userId, 'WARN', 'tool.calendar_failed', `Google Calendar: ${(err as Error).message}`);
+      await logEvent(
+        ctx.userId,
+        'WARN',
+        'tool.calendar_failed',
+        `Google Calendar: ${(err as Error).message}`,
+      );
     }
   }
   return {
@@ -215,7 +251,13 @@ async function captureLead(args: Record<string, unknown>, ctx: ToolContext) {
         );
         sheet = res.ok ? 'added' : 'failed';
         if (res.ok) await prisma.lead.update({ where: { id: lead.id }, data: { syncedToSheet: true } });
-        else await logEvent(ctx.userId, 'WARN', 'tool.sheets_failed', `Google Sheets: ${res.error ?? 'unknown error'}`);
+        else
+          await logEvent(
+            ctx.userId,
+            'WARN',
+            'tool.sheets_failed',
+            `Google Sheets: ${res.error ?? 'unknown error'}`,
+          );
       } catch (err) {
         sheet = 'failed';
         await logEvent(ctx.userId, 'WARN', 'tool.sheets_failed', `Google Sheets: ${(err as Error).message}`);
@@ -233,7 +275,11 @@ async function sendEmail(args: Record<string, unknown>, ctx: ToolContext) {
   const res = await executeTool(
     ctx.userId,
     COMPOSIO_TOOLS.sendEmail.slug,
-    COMPOSIO_TOOLS.sendEmail.args({ to, subject: str(args.subject).slice(0, 200), body: str(args.body).slice(0, 5000) }),
+    COMPOSIO_TOOLS.sendEmail.args({
+      to,
+      subject: str(args.subject).slice(0, 200),
+      body: str(args.body).slice(0, 5000),
+    }),
     gm.connectedAccountId,
   );
   return res.ok ? { ok: true, sent_to: to } : { ok: false, error: res.error ?? 'Email failed' };
@@ -272,7 +318,10 @@ async function readDoc(args: Record<string, unknown>, ctx: ToolContext) {
   return { ok: true, text: text || '(document is empty or not a Google Doc)' };
 }
 
-const EXECUTORS: Record<ToolName, (args: Record<string, unknown>, ctx: ToolContext) => Promise<Record<string, unknown>>> = {
+const EXECUTORS: Record<
+  ToolName,
+  (args: Record<string, unknown>, ctx: ToolContext) => Promise<Record<string, unknown>>
+> = {
   book_appointment: bookAppointment,
   capture_lead: captureLead,
   send_email: sendEmail,
@@ -280,7 +329,11 @@ const EXECUTORS: Record<ToolName, (args: Record<string, unknown>, ctx: ToolConte
   read_doc: readDoc,
 };
 
-export async function runTool(name: string, args: Record<string, unknown>, ctx: ToolContext): Promise<Record<string, unknown>> {
+export async function runTool(
+  name: string,
+  args: Record<string, unknown>,
+  ctx: ToolContext,
+): Promise<Record<string, unknown>> {
   const exec = EXECUTORS[name as ToolName];
   if (!exec) return { ok: false, error: `Unknown tool ${name}` };
   try {

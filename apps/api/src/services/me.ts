@@ -6,7 +6,10 @@ import { isPlanActive } from './plan.js';
 export async function toMeDTO(user: User, impersonatorId: string | null): Promise<MeDTO> {
   let impersonatedBy: MeDTO['impersonatedBy'] = null;
   if (impersonatorId) {
-    const admin = await prisma.user.findUnique({ where: { id: impersonatorId }, select: { id: true, email: true } });
+    const admin = await prisma.user.findUnique({
+      where: { id: impersonatorId },
+      select: { id: true, email: true },
+    });
     impersonatedBy = admin;
   }
   return {

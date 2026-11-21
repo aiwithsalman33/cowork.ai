@@ -11,7 +11,13 @@ export interface CatalogSkill {
 }
 
 /** Skills turned on for every new account. */
-export const DEFAULT_SKILL_SLUGS = ['faq-bot', 'lead-capture', 'appointment-scheduler', 'smart-greeting', 'human-handoff'];
+export const DEFAULT_SKILL_SLUGS = [
+  'faq-bot',
+  'lead-capture',
+  'appointment-scheduler',
+  'smart-greeting',
+  'human-handoff',
+];
 
 export const SKILL_CATALOG: CatalogSkill[] = [
   // ---------------- Customer Support ----------------
@@ -22,7 +28,7 @@ export const SKILL_CATALOG: CatalogSkill[] = [
     category: 'Customer Support',
     icon: 'help-circle',
     promptFragment:
-      'Answer frequently asked questions using ONLY the facts in the knowledge base. If the answer is not there, say you will check with the team instead of guessing, and offer to take the customer\'s contact details.',
+      "Answer frequently asked questions using ONLY the facts in the knowledge base. If the answer is not there, say you will check with the team instead of guessing, and offer to take the customer's contact details.",
   },
   {
     slug: 'complaint-handler',
@@ -229,7 +235,7 @@ export const SKILL_CATALOG: CatalogSkill[] = [
   {
     slug: 'multilingual',
     name: 'Multilingual Replies',
-    description: 'Replies in the customer\'s language, including Hinglish.',
+    description: "Replies in the customer's language, including Hinglish.",
     category: 'Communication',
     icon: 'languages',
     promptFragment:
@@ -252,7 +258,7 @@ export const SKILL_CATALOG: CatalogSkill[] = [
     category: 'Communication',
     icon: 'audio-lines',
     promptFragment:
-      'Mirror the customer\'s formality: casual and short if they are casual, formal if they are formal. Stay polite at all times.',
+      "Mirror the customer's formality: casual and short if they are casual, formal if they are formal. Stay polite at all times.",
   },
   {
     slug: 'concise-replies',
@@ -281,7 +287,7 @@ export const SKILL_CATALOG: CatalogSkill[] = [
     category: 'Analytics',
     icon: 'chart-pie',
     promptFragment:
-      'Pay attention to the customer\'s main intent (enquiry, purchase, booking, complaint, support) and their key preferences so the conversation summary captures them accurately.',
+      "Pay attention to the customer's main intent (enquiry, purchase, booking, complaint, support) and their key preferences so the conversation summary captures them accurately.",
   },
   {
     slug: 'survey-runner',

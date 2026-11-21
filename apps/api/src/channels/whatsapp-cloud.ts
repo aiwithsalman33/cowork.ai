@@ -21,7 +21,11 @@ const graph = (path: string) => `https://graph.facebook.com/${env.WA_GRAPH_VERSI
 
 export class CloudApiError extends Error {}
 
-async function graphFetch<T>(cfg: CloudConfig, path: string, init: { method: 'GET' | 'POST'; body?: unknown }): Promise<T> {
+async function graphFetch<T>(
+  cfg: CloudConfig,
+  path: string,
+  init: { method: 'GET' | 'POST'; body?: unknown },
+): Promise<T> {
   const res = await fetch(graph(path), {
     method: init.method,
     headers: { authorization: `Bearer ${cfg.accessToken}`, 'content-type': 'application/json' },
@@ -48,7 +52,13 @@ export async function sendText(cfg: CloudConfig, to: string, body: string): Prom
   for (const chunk of chunks) {
     const r = await graphFetch<{ messages?: { id: string }[] }>(cfg, `${cfg.phoneNumberId}/messages`, {
       method: 'POST',
-      body: { messaging_product: 'whatsapp', recipient_type: 'individual', to, type: 'text', text: { preview_url: false, body: chunk } },
+      body: {
+        messaging_product: 'whatsapp',
+        recipient_type: 'individual',
+        to,
+        type: 'text',
+        text: { preview_url: false, body: chunk },
+      },
     });
     id = r.messages?.[0]?.id ?? id;
   }
@@ -62,11 +72,20 @@ export async function sendText(cfg: CloudConfig, to: string, body: string): Prom
 export async function markReadWithTyping(cfg: CloudConfig, messageId: string) {
   await graphFetch(cfg, `${cfg.phoneNumberId}/messages`, {
     method: 'POST',
-    body: { messaging_product: 'whatsapp', status: 'read', message_id: messageId, typing_indicator: { type: 'text' } },
+    body: {
+      messaging_product: 'whatsapp',
+      status: 'read',
+      message_id: messageId,
+      typing_indicator: { type: 'text' },
+    },
   });
 }
 
-export function verifySignature(appSecret: string, rawBody: Buffer | undefined, header: string | undefined): boolean {
+export function verifySignature(
+  appSecret: string,
+  rawBody: Buffer | undefined,
+  header: string | undefined,
+): boolean {
   if (!rawBody || !header?.startsWith('sha256=')) return false;
   return safeEqual(header.slice(7), hmacSha256Hex(appSecret, rawBody));
 }

@@ -24,7 +24,10 @@ export const CHANNEL_LABEL: Record<ChannelType, string> = {
 };
 
 export function ChannelStatusBadge({ status }: { status: ChannelStatus }) {
-  const map: Record<ChannelStatus, { label: string; variant: 'success' | 'warning' | 'secondary' | 'destructive' }> = {
+  const map: Record<
+    ChannelStatus,
+    { label: string; variant: 'success' | 'warning' | 'secondary' | 'destructive' }
+  > = {
     CONNECTED: { label: 'Connected', variant: 'success' },
     CONNECTING: { label: 'Connecting…', variant: 'warning' },
     QR: { label: 'Waiting for scan', variant: 'warning' },

@@ -30,10 +30,20 @@ export function registerHandlers(h: Handlers) {
 
 export async function startQueue(withWorkers: boolean) {
   if (!env.QUEUE_ENABLED) return;
-  boss = new PgBoss({ connectionString: pgConnectionString(env.DATABASE_URL), schema: 'pgboss', application_name: 'partner-api' });
+  boss = new PgBoss({
+    connectionString: pgConnectionString(env.DATABASE_URL),
+    schema: 'pgboss',
+    application_name: 'partner-api',
+  });
   boss.on('error', (err) => logger.error({ err }, 'pg-boss error'));
   await boss.start();
-  await boss.createQueue(QUEUES.inbound, { retryLimit: 4, retryDelay: 5, retryBackoff: true, retryDelayMax: 300, expireInSeconds: 300 });
+  await boss.createQueue(QUEUES.inbound, {
+    retryLimit: 4,
+    retryDelay: 5,
+    retryBackoff: true,
+    retryDelayMax: 300,
+    expireInSeconds: 300,
+  });
   await boss.createQueue(QUEUES.summarize, { retryLimit: 2, retryDelay: 30, expireInSeconds: 300 });
   await boss.createQueue(QUEUES.tick, { retryLimit: 0, expireInSeconds: 120 });
 
@@ -69,13 +79,21 @@ export async function enqueueInbound(messageId: string) {
     return;
   }
   // inline: no retries available, so treat this as the final attempt
-  if (handlers) await handlers.inbound(messageId, Number.MAX_SAFE_INTEGER).catch((err) => logger.warn({ err }, 'inline inbound failed'));
+  if (handlers)
+    await handlers
+      .inbound(messageId, Number.MAX_SAFE_INTEGER)
+      .catch((err) => logger.warn({ err }, 'inline inbound failed'));
 }
 
 export async function enqueueSummarize(conversationId: string) {
   if (boss) {
-    await boss.send(QUEUES.summarize, { conversationId }, { singletonKey: conversationId, singletonSeconds: 120 });
+    await boss.send(
+      QUEUES.summarize,
+      { conversationId },
+      { singletonKey: conversationId, singletonSeconds: 120 },
+    );
     return;
   }
-  if (handlers) await handlers.summarize(conversationId).catch((err) => logger.warn({ err }, 'inline summarize failed'));
+  if (handlers)
+    await handlers.summarize(conversationId).catch((err) => logger.warn({ err }, 'inline summarize failed'));
 }

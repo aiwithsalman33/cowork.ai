@@ -43,12 +43,18 @@ export async function inboxRoutes(app: FastifyInstance) {
       take: 40,
       ...(q.cursor ? { skip: 1, cursor: { id: q.cursor } } : {}),
     });
-    return { conversations: rows.map(toConversationDTO), nextCursor: rows.length === 40 ? rows[rows.length - 1]!.id : null };
+    return {
+      conversations: rows.map(toConversationDTO),
+      nextCursor: rows.length === 40 ? rows[rows.length - 1]!.id : null,
+    };
   });
 
   app.get('/conversations/:id/messages', async (req) => {
     const { id } = parse(idParam, req.params);
-    const convo = await req.db.conversation.findFirst({ where: { id }, include: { contact: true, channel: true } });
+    const convo = await req.db.conversation.findFirst({
+      where: { id },
+      include: { contact: true, channel: true },
+    });
     if (!convo) throw notFound('Conversation not found');
     const messages = await req.db.message.findMany({
       where: { conversationId: id, NOT: { content: { startsWith: '[memory]' } } },
@@ -71,25 +77,34 @@ export async function inboxRoutes(app: FastifyInstance) {
     };
   });
 
-  app.post('/conversations/:id/reply', { config: { rateLimit: { max: 30, timeWindow: '1 minute' } } }, async (req) => {
-    const { id } = parse(idParam, req.params);
-    const { text } = parse(z.object({ text: z.string().trim().min(1).max(4000) }), req.body);
-    const convo = await req.db.conversation.findFirst({ where: { id } });
-    if (!convo) throw notFound('Conversation not found');
-    try {
-      await sendOwnerReply(id, user(req).id, text);
-    } catch (err) {
-      throw badRequest(`Could not send: ${(err as Error).message}`);
-    }
-    return { ok: true };
-  });
+  app.post(
+    '/conversations/:id/reply',
+    { config: { rateLimit: { max: 30, timeWindow: '1 minute' } } },
+    async (req) => {
+      const { id } = parse(idParam, req.params);
+      const { text } = parse(z.object({ text: z.string().trim().min(1).max(4000) }), req.body);
+      const convo = await req.db.conversation.findFirst({ where: { id } });
+      if (!convo) throw notFound('Conversation not found');
+      try {
+        await sendOwnerReply(id, user(req).id, text);
+      } catch (err) {
+        throw badRequest(`Could not send: ${(err as Error).message}`);
+      }
+      return { ok: true };
+    },
+  );
 
   // ---------------- Appointments & leads ----------------
   app.get('/appointments', async (req) => {
     const q = parse(z.object({ scope: z.enum(['upcoming', 'past', 'all']).default('upcoming') }), req.query);
     const now = new Date();
     const appointments = await req.db.appointment.findMany({
-      where: q.scope === 'upcoming' ? { startsAt: { gte: now } } : q.scope === 'past' ? { startsAt: { lt: now } } : {},
+      where:
+        q.scope === 'upcoming'
+          ? { startsAt: { gte: now } }
+          : q.scope === 'past'
+            ? { startsAt: { lt: now } }
+            : {},
       orderBy: { startsAt: q.scope === 'past' ? 'desc' : 'asc' },
       take: 200,
     });
@@ -119,7 +134,13 @@ export async function inboxRoutes(app: FastifyInstance) {
         orderBy: { updatedAt: 'desc' },
         skip: (page - 1) * pageSize,
         take: pageSize,
-        include: { conversations: { select: { id: true, summary: true, lastMessageAt: true }, orderBy: { lastMessageAt: 'desc' }, take: 1 } },
+        include: {
+          conversations: {
+            select: { id: true, summary: true, lastMessageAt: true },
+            orderBy: { lastMessageAt: 'desc' },
+            take: 1,
+          },
+        },
       }),
       req.db.contact.count({ where }),
       req.db.contact.count(),
@@ -153,7 +174,10 @@ export async function inboxRoutes(app: FastifyInstance) {
   // ---------------- Logs ----------------
   app.get('/logs', async (req) => {
     const q = parse(
-      z.object({ level: z.enum(['ALL', 'INFO', 'WARN', 'ERROR']).default('ALL'), page: z.coerce.number().int().min(1).default(1) }),
+      z.object({
+        level: z.enum(['ALL', 'INFO', 'WARN', 'ERROR']).default('ALL'),
+        page: z.coerce.number().int().min(1).default(1),
+      }),
       req.query,
     );
     const where = q.level === 'ALL' ? {} : { level: q.level };
@@ -166,7 +190,10 @@ export async function inboxRoutes(app: FastifyInstance) {
 
   // ---------------- Schedules ----------------
   app.get('/schedules', async (req) => {
-    const schedules = await req.db.schedule.findMany({ orderBy: { nextRunAt: 'asc' }, include: { channel: { select: { name: true, type: true } } } });
+    const schedules = await req.db.schedule.findMany({
+      orderBy: { nextRunAt: 'asc' },
+      include: { channel: { select: { name: true, type: true } } },
+    });
     return { schedules };
   });
 

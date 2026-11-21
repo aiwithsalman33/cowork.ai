@@ -17,12 +17,19 @@ export const PROFILE_EVERY = 8; // refresh learned facts every N user messages
 
 async function unsummarizedCount(conversationId: string, since: Date | null) {
   return prisma.message.count({
-    where: { conversationId, role: { in: ['USER', 'ASSISTANT'] }, ...(since ? { createdAt: { gt: since } } : {}) },
+    where: {
+      conversationId,
+      role: { in: ['USER', 'ASSISTANT'] },
+      ...(since ? { createdAt: { gt: since } } : {}),
+    },
   });
 }
 
 export async function shouldSummarize(conversationId: string): Promise<boolean> {
-  const c = await prisma.conversation.findUnique({ where: { id: conversationId }, include: { contact: true } });
+  const c = await prisma.conversation.findUnique({
+    where: { id: conversationId },
+    include: { contact: true },
+  });
   if (!c) return false;
   if ((await unsummarizedCount(conversationId, c.summarizedUntil)) > COMPRESS_AFTER) return true;
   const userMsgs = await prisma.message.count({ where: { conversationId, direction: 'IN' } });
@@ -40,7 +47,10 @@ Given the previous memory and new chat messages, return ONLY a JSON object:
 Only include facts the customer actually stated. Keep values short. Never invent.`;
 
 export async function summarizeConversation(conversationId: string): Promise<void> {
-  const convo = await prisma.conversation.findUnique({ where: { id: conversationId }, include: { contact: true } });
+  const convo = await prisma.conversation.findUnique({
+    where: { id: conversationId },
+    include: { contact: true },
+  });
   if (!convo) return;
   const model = await resolveModel(convo.userId);
   if (!model) return;
@@ -85,7 +95,9 @@ export async function summarizeConversation(conversationId: string): Promise<voi
   }
 
   const facts = Object.fromEntries(
-    Object.entries(parsed.facts ?? {}).filter(([, v]) => typeof v === 'string' && v.trim() !== '').map(([k, v]) => [k, (v as string).slice(0, 200)]),
+    Object.entries(parsed.facts ?? {})
+      .filter(([, v]) => typeof v === 'string' && v.trim() !== '')
+      .map(([k, v]) => [k, (v as string).slice(0, 200)]),
   );
   const mergedProfile = { ...((convo.contact.profile as Record<string, unknown>) ?? {}), ...facts };
 
@@ -112,7 +124,9 @@ export async function summarizeConversation(conversationId: string): Promise<voi
         conversationId,
         direction: 'OUT',
         role: 'SYSTEM',
-        content: compress ? `[memory] compressed ${toSummarize.length} messages` : '[memory] updated customer profile',
+        content: compress
+          ? `[memory] compressed ${toSummarize.length} messages`
+          : '[memory] updated customer profile',
         status: 'SENT',
         tokensIn: res.usage.input,
         tokensOut: res.usage.output,

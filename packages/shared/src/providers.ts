@@ -1,4 +1,12 @@
-export const PROVIDER_IDS = ['openai', 'anthropic', 'google', 'groq', 'openrouter', 'deepseek', 'mistral'] as const;
+export const PROVIDER_IDS = [
+  'openai',
+  'anthropic',
+  'google',
+  'groq',
+  'openrouter',
+  'deepseek',
+  'mistral',
+] as const;
 export type ProviderId = (typeof PROVIDER_IDS)[number];
 
 export type ApiStyle = 'openai' | 'anthropic' | 'google';
@@ -46,7 +54,12 @@ export const PROVIDERS: Record<ProviderId, ProviderDef> = {
     keyUrl: 'https://console.anthropic.com/settings/keys',
     models: [
       { id: 'claude-haiku-5-5', label: 'Claude Haiku 5.5', cost: '$', hint: 'Fastest Claude, low cost' },
-      { id: 'claude-sonnet-5-5', label: 'Claude Sonnet 5.5', cost: '$$', hint: 'Best balance for support agents' },
+      {
+        id: 'claude-sonnet-5-5',
+        label: 'Claude Sonnet 5.5',
+        cost: '$$',
+        hint: 'Best balance for support agents',
+      },
       { id: 'claude-opus-5-5', label: 'Claude Opus 5.5', cost: '$$$', hint: 'Most capable Claude' },
     ],
   },
@@ -83,9 +96,24 @@ export const PROVIDERS: Record<ProviderId, ProviderDef> = {
     keyPrefix: 'sk-or-',
     keyUrl: 'https://openrouter.ai/keys',
     models: [
-      { id: 'openai/gpt-4.1-mini', label: 'GPT-4.1 mini (via OpenRouter)', cost: '$', hint: 'One key, many models' },
-      { id: 'google/gemini-2.5-flash', label: 'Gemini 2.5 Flash (via OpenRouter)', cost: '$', hint: 'Cheap and fast' },
-      { id: 'meta-llama/llama-3.3-70b-instruct', label: 'Llama 3.3 70B (via OpenRouter)', cost: '$', hint: 'Open model' },
+      {
+        id: 'openai/gpt-4.1-mini',
+        label: 'GPT-4.1 mini (via OpenRouter)',
+        cost: '$',
+        hint: 'One key, many models',
+      },
+      {
+        id: 'google/gemini-2.5-flash',
+        label: 'Gemini 2.5 Flash (via OpenRouter)',
+        cost: '$',
+        hint: 'Cheap and fast',
+      },
+      {
+        id: 'meta-llama/llama-3.3-70b-instruct',
+        label: 'Llama 3.3 70B (via OpenRouter)',
+        cost: '$',
+        hint: 'Open model',
+      },
     ],
   },
   deepseek: {

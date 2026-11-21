@@ -39,7 +39,8 @@ export async function sendTyping(c: Channel, to: string, inboundExternalId?: str
   try {
     if (c.type === 'TELEGRAM') await telegram.sendTyping(telegramToken(c), to);
     else if (c.type === 'WHATSAPP_QR') await baileys.sendTyping(c.id, to);
-    else if (c.type === 'WHATSAPP_CLOUD' && inboundExternalId) await cloud.markReadWithTyping(cloudConfig(c), inboundExternalId);
+    else if (c.type === 'WHATSAPP_CLOUD' && inboundExternalId)
+      await cloud.markReadWithTyping(cloudConfig(c), inboundExternalId);
   } catch {
     /* typing indicators are cosmetic */
   }

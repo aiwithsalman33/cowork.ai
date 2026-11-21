@@ -16,8 +16,12 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           <Logo />
         </div>
         <div className="relative z-10 max-w-md">
-          <h2 className="font-display text-4xl font-semibold leading-tight">Your business, answering every message.</h2>
-          <p className="mt-3 text-white/75">Set up an AI agent in minutes. It learns your business and never sleeps.</p>
+          <h2 className="font-display text-4xl font-semibold leading-tight">
+            Your business, answering every message.
+          </h2>
+          <p className="mt-3 text-white/75">
+            Set up an AI agent in minutes. It learns your business and never sleeps.
+          </p>
           <ul className="mt-8 space-y-4">
             {points.map(({ icon: Icon, text }) => (
               <li key={text} className="flex items-center gap-3 text-white/90">

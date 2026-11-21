@@ -19,7 +19,9 @@ type BillingRes = {
   currentPeriodEnd: string | null;
   pendingPlan: PlanId | null;
   usage: { messages: Usage; channels: Usage; skills: Usage };
-  plans: (Omit<PlanDef, 'limits'> & { limits: { channels: number; whatsappSessions: number; messagesPerMonth: number; skills: number | null } })[];
+  plans: (Omit<PlanDef, 'limits'> & {
+    limits: { channels: number; whatsappSessions: number; messagesPerMonth: number; skills: number | null };
+  })[];
   razorpayConfigured: boolean;
   history: { id: string; message: string; createdAt: string; level: string }[];
 };
@@ -31,7 +33,8 @@ function UsageRow({ label, u }: { label: string; u: Usage }) {
       <div className="mb-1 flex justify-between text-sm">
         <span className="text-muted-foreground">{label}</span>
         <span className="font-medium tabular-nums">
-          {u.used.toLocaleString('en-IN')} / {u.limit === null ? 'Unlimited' : u.limit.toLocaleString('en-IN')}
+          {u.used.toLocaleString('en-IN')} /{' '}
+          {u.limit === null ? 'Unlimited' : u.limit.toLocaleString('en-IN')}
         </span>
       </div>
       <Progress value={u.limit === null ? 5 : pct} className={cn(pct >= 90 && '[&>div]:bg-destructive')} />
@@ -41,9 +44,12 @@ function UsageRow({ label, u }: { label: string; u: Usage }) {
 
 export default function BillingPage() {
   const { data, isLoading } = useQuery({ queryKey: ['billing'], queryFn: () => get<BillingRes>('/billing') });
-  const checkout = useAction((plan: 'STARTER' | 'GROWTH') => post<{ url: string }>('/billing/checkout', { plan }), {
-    onSuccess: (r) => (window.location.href = r.url),
-  });
+  const checkout = useAction(
+    (plan: 'STARTER' | 'GROWTH') => post<{ url: string }>('/billing/checkout', { plan }),
+    {
+      onSuccess: (r) => (window.location.href = r.url),
+    },
+  );
   const cancel = useAction(() => post('/billing/cancel'), {
     success: 'Cancellation requested. You keep access until the end of the paid period.',
     invalidate: [['billing']],
@@ -63,7 +69,8 @@ export default function BillingPage() {
           <div>
             <p className="font-semibold text-destructive">Your agent has stopped replying.</p>
             <p className="text-muted-foreground">
-              {data.plan === 'TRIAL' ? 'Your free trial has ended.' : 'Your subscription is not active.'} Choose a plan below to turn it back on instantly.
+              {data.plan === 'TRIAL' ? 'Your free trial has ended.' : 'Your subscription is not active.'}{' '}
+              Choose a plan below to turn it back on instantly.
             </p>
           </div>
         </div>
@@ -75,7 +82,9 @@ export default function BillingPage() {
             <CardDescription>Current plan</CardDescription>
             <CardTitle className="flex items-center gap-2 font-display text-2xl">
               {current.name}
-              <Badge variant={data.planActive ? 'success' : 'destructive'}>{data.planActive ? 'Active' : 'Inactive'}</Badge>
+              <Badge variant={data.planActive ? 'success' : 'destructive'}>
+                {data.planActive ? 'Active' : 'Inactive'}
+              </Badge>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm text-muted-foreground">
@@ -86,13 +95,22 @@ export default function BillingPage() {
             )}
             {data.currentPeriodEnd && data.plan !== 'TRIAL' && (
               <p>
-                {data.subscriptionStatus === 'cancelled' ? 'Access until' : 'Renews'} {formatDateTime(data.currentPeriodEnd)}
+                {data.subscriptionStatus === 'cancelled' ? 'Access until' : 'Renews'}{' '}
+                {formatDateTime(data.currentPeriodEnd)}
               </p>
             )}
             {data.subscriptionStatus && <p>Subscription status: {data.subscriptionStatus}</p>}
-            {data.pendingPlan && <p>Waiting for payment confirmation for {data.pendingPlan.toLowerCase()}…</p>}
+            {data.pendingPlan && (
+              <p>Waiting for payment confirmation for {data.pendingPlan.toLowerCase()}…</p>
+            )}
             {subscribed && (
-              <Button variant="ghost" size="sm" className="-ml-3 text-destructive" onClick={() => cancel.mutate(undefined)} loading={cancel.isPending}>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="-ml-3 text-destructive"
+                onClick={() => cancel.mutate(undefined)}
+                loading={cancel.isPending}
+              >
                 Cancel subscription
               </Button>
             )}
@@ -115,7 +133,13 @@ export default function BillingPage() {
           const isCurrent = p.id === data.plan && data.planActive;
           const highlight = p.id === 'STARTER';
           return (
-            <Card key={p.id} className={cn('relative flex flex-col p-6', highlight && 'border-primary ring-2 ring-primary/20')}>
+            <Card
+              key={p.id}
+              className={cn(
+                'relative flex flex-col p-6',
+                highlight && 'border-primary ring-2 ring-primary/20',
+              )}
+            >
               {highlight && (
                 <Badge className="absolute -top-2.5 left-6 bg-primary text-primary-foreground">
                   <Crown /> Most popular
@@ -125,11 +149,15 @@ export default function BillingPage() {
               <p className="text-sm text-muted-foreground">{p.tagline}</p>
               <p className="mt-4 font-display text-4xl font-semibold">
                 {p.priceInr === 0 ? 'Free' : `₹${p.priceInr.toLocaleString('en-IN')}`}
-                {p.priceInr > 0 && <span className="text-base font-normal text-muted-foreground">/month</span>}
+                {p.priceInr > 0 && (
+                  <span className="text-base font-normal text-muted-foreground">/month</span>
+                )}
               </p>
               <ul className="mt-5 flex-1 space-y-2 text-sm">
                 <li className="flex gap-2">
-                  <Check className="h-4 w-4 text-primary" /> {p.limits.messagesPerMonth.toLocaleString('en-IN')} AI replies / {p.id === 'TRIAL' ? 'trial' : 'month'}
+                  <Check className="h-4 w-4 text-primary" />{' '}
+                  {p.limits.messagesPerMonth.toLocaleString('en-IN')} AI replies /{' '}
+                  {p.id === 'TRIAL' ? 'trial' : 'month'}
                 </li>
                 {p.features.map((f) => (
                   <li key={f} className="flex gap-2">
@@ -139,7 +167,11 @@ export default function BillingPage() {
               </ul>
               {p.id === 'TRIAL' ? (
                 <Button variant="outline" className="mt-6" disabled>
-                  {data.plan === 'TRIAL' ? (data.planActive ? 'Current plan' : 'Trial used') : 'Included at signup'}
+                  {data.plan === 'TRIAL'
+                    ? data.planActive
+                      ? 'Current plan'
+                      : 'Trial used'
+                    : 'Included at signup'}
                 </Button>
               ) : (
                 <Button
@@ -149,7 +181,12 @@ export default function BillingPage() {
                   loading={checkout.isPending && checkout.variables === p.id}
                   onClick={() => checkout.mutate(p.id as 'STARTER' | 'GROWTH')}
                 >
-                  <CreditCard /> {isCurrent && subscribed ? 'Current plan' : data.plan === 'TRIAL' || !data.planActive ? `Get ${p.name}` : `Switch to ${p.name}`}
+                  <CreditCard />{' '}
+                  {isCurrent && subscribed
+                    ? 'Current plan'
+                    : data.plan === 'TRIAL' || !data.planActive
+                      ? `Get ${p.name}`
+                      : `Switch to ${p.name}`}
                 </Button>
               )}
             </Card>
@@ -157,7 +194,8 @@ export default function BillingPage() {
         })}
       </div>
       <p className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
-        <ShieldCheck className="h-3.5 w-3.5" /> Payments are processed securely by Razorpay (UPI, cards, netbanking). GST invoices are emailed by Razorpay.
+        <ShieldCheck className="h-3.5 w-3.5" /> Payments are processed securely by Razorpay (UPI, cards,
+        netbanking). GST invoices are emailed by Razorpay.
         {!data.razorpayConfigured && ' Payments are not configured on this server yet.'}
       </p>
 

@@ -12,7 +12,9 @@ export interface ResolvedModel {
 export async function resolveModel(userId: string): Promise<ResolvedModel | null> {
   const agent = await prisma.agent.findUnique({ where: { userId }, select: { provider: true, model: true } });
   if (!agent?.provider) return null;
-  const key = await prisma.apiKey.findUnique({ where: { userId_provider: { userId, provider: agent.provider } } });
+  const key = await prisma.apiKey.findUnique({
+    where: { userId_provider: { userId, provider: agent.provider } },
+  });
   if (!key) return null;
   const provider = agent.provider as ProviderId;
   if (!PROVIDER_IDS.includes(provider)) return null;

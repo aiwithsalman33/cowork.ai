@@ -16,7 +16,12 @@ import { logEvent } from '../services/audit.js';
 let client: Razorpay | null = null;
 
 export function razorpayConfigured() {
-  return !!(env.RAZORPAY_KEY_ID && env.RAZORPAY_KEY_SECRET && env.RAZORPAY_PLAN_STARTER && env.RAZORPAY_PLAN_GROWTH);
+  return !!(
+    env.RAZORPAY_KEY_ID &&
+    env.RAZORPAY_KEY_SECRET &&
+    env.RAZORPAY_PLAN_STARTER &&
+    env.RAZORPAY_PLAN_GROWTH
+  );
 }
 
 function rzp(): Razorpay {
@@ -67,7 +72,10 @@ interface RazorpayEvent {
 const ACTIVATING = new Set(['subscription.activated', 'subscription.charged', 'subscription.resumed']);
 
 /** Applies a verified webhook event. Idempotent per Razorpay event id. */
-export async function handleWebhook(eventId: string, body: RazorpayEvent): Promise<'processed' | 'duplicate' | 'ignored'> {
+export async function handleWebhook(
+  eventId: string,
+  body: RazorpayEvent,
+): Promise<'processed' | 'duplicate' | 'ignored'> {
   const sub = body.payload?.subscription?.entity;
   const notes = (sub && !Array.isArray(sub.notes) ? sub.notes : {}) as Record<string, string>;
 
@@ -76,18 +84,28 @@ export async function handleWebhook(eventId: string, body: RazorpayEvent): Promi
 
   try {
     await prisma.billingEvent.create({
-      data: { eventId, type: body.event, userId: user?.id ?? null, payload: body as unknown as Prisma.InputJsonValue },
+      data: {
+        eventId,
+        type: body.event,
+        userId: user?.id ?? null,
+        payload: body as unknown as Prisma.InputJsonValue,
+      },
     });
   } catch {
     return 'duplicate';
   }
   if (!sub || !user) return 'ignored';
 
-  const plan = (notes.plan === 'GROWTH' || notes.plan === 'STARTER' ? notes.plan : user.pendingPlan ?? user.plan) as Plan;
+  const plan = (
+    notes.plan === 'GROWTH' || notes.plan === 'STARTER' ? notes.plan : (user.pendingPlan ?? user.plan)
+  ) as Plan;
   const periodEnd = sub.current_end ? new Date(sub.current_end * 1000) : null;
 
   if (ACTIVATING.has(body.event) || body.event === 'subscription.authenticated') {
-    const previous = user.razorpaySubscriptionId && user.razorpaySubscriptionId !== sub.id ? user.razorpaySubscriptionId : null;
+    const previous =
+      user.razorpaySubscriptionId && user.razorpaySubscriptionId !== sub.id
+        ? user.razorpaySubscriptionId
+        : null;
     const activating = ACTIVATING.has(body.event);
     await prisma.user.update({
       where: { id: user.id },
@@ -100,7 +118,9 @@ export async function handleWebhook(eventId: string, body: RazorpayEvent): Promi
     });
     if (previous && activating) {
       // switched plans: stop billing the old subscription
-      await cancelSubscription(previous).catch((err) => logger.warn({ err: (err as Error).message, previous }, 'failed to cancel previous subscription'));
+      await cancelSubscription(previous).catch((err) =>
+        logger.warn({ err: (err as Error).message, previous }, 'failed to cancel previous subscription'),
+      );
     }
     if (body.event === 'subscription.activated') {
       await logEvent(user.id, 'INFO', 'billing.activated', `Subscription active — ${plan} plan. Thank you!`);
@@ -113,19 +133,37 @@ export async function handleWebhook(eventId: string, body: RazorpayEvent): Promi
   switch (body.event) {
     case 'subscription.pending':
       await prisma.user.update({ where: { id: user.id }, data: { subscriptionStatus: 'pending' } });
-      await logEvent(user.id, 'WARN', 'billing.payment_failed', 'A subscription payment failed. Razorpay will retry — please check your payment method.');
+      await logEvent(
+        user.id,
+        'WARN',
+        'billing.payment_failed',
+        'A subscription payment failed. Razorpay will retry — please check your payment method.',
+      );
       break;
     case 'subscription.halted':
       // retries exhausted: access ends now
-      await prisma.user.update({ where: { id: user.id }, data: { subscriptionStatus: 'halted', currentPeriodEnd: new Date() } });
-      await logEvent(user.id, 'ERROR', 'billing.halted', 'Subscription halted after failed payments. Your agent has stopped replying.');
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { subscriptionStatus: 'halted', currentPeriodEnd: new Date() },
+      });
+      await logEvent(
+        user.id,
+        'ERROR',
+        'billing.halted',
+        'Subscription halted after failed payments. Your agent has stopped replying.',
+      );
       break;
     case 'subscription.cancelled':
     case 'subscription.completed':
     case 'subscription.expired':
       // keep access until the end of the period already paid for
       await prisma.user.update({ where: { id: user.id }, data: { subscriptionStatus: sub.status } });
-      await logEvent(user.id, 'INFO', 'billing.cancelled', `Subscription ${sub.status}. Access continues until the end of the paid period.`);
+      await logEvent(
+        user.id,
+        'INFO',
+        'billing.cancelled',
+        `Subscription ${sub.status}. Access continues until the end of the paid period.`,
+      );
       break;
     default:
       return 'ignored';

@@ -46,7 +46,14 @@ export const knowledgeSchema = z.object({
 export type KnowledgeInput = z.infer<typeof knowledgeSchema>;
 
 export const bossNumbersSchema = z.object({
-  bossNumbers: z.array(z.string().trim().regex(/^\+?\d{7,15}$/, 'Use international format, e.g. +919876543210')).max(5),
+  bossNumbers: z
+    .array(
+      z
+        .string()
+        .trim()
+        .regex(/^\+?\d{7,15}$/, 'Use international format, e.g. +919876543210'),
+    )
+    .max(5),
 });
 
 // ---------- API keys ----------
@@ -71,7 +78,13 @@ export const SKILL_CATEGORIES = [
 ] as const;
 export type SkillCategory = (typeof SKILL_CATEGORIES)[number];
 
-export const TOOL_NAMES = ['book_appointment', 'capture_lead', 'send_email', 'search_drive', 'read_doc'] as const;
+export const TOOL_NAMES = [
+  'book_appointment',
+  'capture_lead',
+  'send_email',
+  'search_drive',
+  'read_doc',
+] as const;
 export type ToolName = (typeof TOOL_NAMES)[number];
 
 export const skillToggleSchema = z.object({ enabled: z.boolean() });
@@ -110,8 +123,15 @@ export const whatsappQrChannelSchema = z.object({
 });
 
 export const whatsappCloudChannelSchema = z.object({
-  phoneNumberId: z.string().trim().regex(/^\d{6,30}$/),
-  businessAccountId: z.string().trim().regex(/^\d{6,30}$/).optional(),
+  phoneNumberId: z
+    .string()
+    .trim()
+    .regex(/^\d{6,30}$/),
+  businessAccountId: z
+    .string()
+    .trim()
+    .regex(/^\d{6,30}$/)
+    .optional(),
   accessToken: z.string().trim().min(20).max(1000),
   appSecret: z.string().trim().min(16).max(200),
   displayPhone: z.string().trim().max(30).optional(),
@@ -163,7 +183,12 @@ export const adminUserQuerySchema = z.object({
 export const adminUserUpdateSchema = z.object({
   plan: z.enum(PLAN_IDS).optional(),
   status: z.enum(['ACTIVE', 'SUSPENDED']).optional(),
-  extendTrialHours: z.number().int().min(1).max(24 * 90).optional(),
+  extendTrialHours: z
+    .number()
+    .int()
+    .min(1)
+    .max(24 * 90)
+    .optional(),
   role: z.enum(['USER', 'ADMIN']).optional(),
 });
 

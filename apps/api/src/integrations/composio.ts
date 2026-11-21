@@ -58,7 +58,11 @@ export async function getConnectionStatus(connectedAccountId: string): Promise<s
 
 /** Finds an ACTIVE account for this user+toolkit (used when the callback id is missing). */
 export async function findActiveAccount(userId: string, toolkit: Toolkit): Promise<string | null> {
-  const res = await getClient().connectedAccounts.list({ userIds: [userId], toolkitSlugs: [toolkit], statuses: ['ACTIVE'] });
+  const res = await getClient().connectedAccounts.list({
+    userIds: [userId],
+    toolkitSlugs: [toolkit],
+    statuses: ['ACTIVE'],
+  });
   return res.items[0]?.id ?? null;
 }
 
@@ -96,7 +100,11 @@ export async function executeTool(
 /** Admin diagnostic: fetch the live input schema of a tool so slug/argument mismatches are visible. */
 export async function describeTool(slug: string) {
   const tool = await getClient().tools.getRawComposioToolBySlug(slug);
-  const t = tool as unknown as { slug?: string; name?: string; inputParameters?: { properties?: Record<string, unknown>; required?: string[] } };
+  const t = tool as unknown as {
+    slug?: string;
+    name?: string;
+    inputParameters?: { properties?: Record<string, unknown>; required?: string[] };
+  };
   return {
     slug: t.slug ?? slug,
     name: t.name ?? slug,

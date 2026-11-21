@@ -88,7 +88,11 @@ export function StatusDot({ status }: { status: 'ok' | 'warn' | 'off' | 'error' 
   }[status];
   return (
     <span className="relative flex h-2.5 w-2.5">
-      {status === 'ok' && <span className={cn('absolute inline-flex h-full w-full animate-ping rounded-full opacity-50', color)} />}
+      {status === 'ok' && (
+        <span
+          className={cn('absolute inline-flex h-full w-full animate-ping rounded-full opacity-50', color)}
+        />
+      )}
       <span className={cn('relative inline-flex h-2.5 w-2.5 rounded-full', color)} />
     </span>
   );

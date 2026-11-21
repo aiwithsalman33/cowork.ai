@@ -20,7 +20,11 @@ export function Tooltip({
     <TP.Root delayDuration={150}>
       <TP.Trigger asChild>{children}</TP.Trigger>
       <TP.Portal>
-        <TP.Content side={side} sideOffset={8} className="z-50 rounded-md bg-foreground px-2.5 py-1 text-xs text-background shadow-md">
+        <TP.Content
+          side={side}
+          sideOffset={8}
+          className="z-50 rounded-md bg-foreground px-2.5 py-1 text-xs text-background shadow-md"
+        >
           {content}
         </TP.Content>
       </TP.Portal>

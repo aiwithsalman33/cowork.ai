@@ -35,9 +35,13 @@ describe('composeSystemPrompt', () => {
     expect(p).toContain('Cleaning ₹800');
     expect(p).toContain('Do you take insurance?');
     expect(p).toContain('- FAQ Bot: Answer FAQs from the knowledge base.');
-    const order = ['Owner instructions', 'Business details', 'Products & services', 'Common questions', '## Skills'].map((h) =>
-      p.indexOf(h),
-    );
+    const order = [
+      'Owner instructions',
+      'Business details',
+      'Products & services',
+      'Common questions',
+      '## Skills',
+    ].map((h) => p.indexOf(h));
     expect([...order].sort((a, b) => a - b)).toEqual(order);
   });
 
@@ -45,7 +49,12 @@ describe('composeSystemPrompt', () => {
     const p = composeSystemPrompt({
       agent: { ...agent, commonQuestions: '', instructions: '' },
       skills: [],
-      memory: { contactName: 'Rahul', profile: { preferred_time: 'evenings' }, summary: 'Asked about whitening.', isReturning: true },
+      memory: {
+        contactName: 'Rahul',
+        profile: { preferred_time: 'evenings' },
+        summary: 'Asked about whitening.',
+        isReturning: true,
+      },
     });
     expect(p).not.toContain('Common questions');
     expect(p).not.toContain('Owner instructions');
@@ -63,7 +72,10 @@ describe('composeSystemPrompt', () => {
 
   it('builds the prompt from the database: enabled skills only, tools only when usable', async () => {
     const s = await signup();
-    await prisma.agent.update({ where: { userId: s.userId }, data: { businessDetails: 'We sell sarees in Jaipur.' } });
+    await prisma.agent.update({
+      where: { userId: s.userId },
+      data: { businessDetails: 'We sell sarees in Jaipur.' },
+    });
     const faq = await prisma.skill.findUniqueOrThrow({ where: { slug: 'faq-bot' } });
     const email = await prisma.skill.findUniqueOrThrow({ where: { slug: 'email-followup' } });
     await prisma.userSkill.deleteMany({ where: { userId: s.userId } });
@@ -77,7 +89,10 @@ describe('composeSystemPrompt', () => {
     expect(tools).toHaveLength(0);
 
     // enabling a skill that needs Gmail still exposes no send_email tool until Gmail is connected
-    await prisma.userSkill.updateMany({ where: { userId: s.userId, skillId: email.id }, data: { enabled: true } });
+    await prisma.userSkill.updateMany({
+      where: { userId: s.userId, skillId: email.id },
+      data: { enabled: true },
+    });
     const again = await buildAgentPrompt(s.userId, { channel: 'Telegram' });
     expect(again.system).toContain('Email Follow-up');
     expect(again.tools.map((t) => t.name)).not.toContain('send_email');
@@ -121,7 +136,13 @@ describe('provider adapters', () => {
   });
 
   it('Gemini: strips unsupported JSON schema keys', () => {
-    expect(cleanSchema({ type: 'object', additionalProperties: false, properties: { a: { type: 'string', default: 'x' } } })).toEqual({
+    expect(
+      cleanSchema({
+        type: 'object',
+        additionalProperties: false,
+        properties: { a: { type: 'string', default: 'x' } },
+      }),
+    ).toEqual({
       type: 'object',
       properties: { a: { type: 'string' } },
     });

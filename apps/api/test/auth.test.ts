@@ -47,16 +47,28 @@ describe('auth', () => {
     });
     expect(dup.statusCode).toBe(409);
 
-    const bad = await app.inject({ method: 'POST', url: '/api/auth/login', payload: { email: s.email, password: 'nope-nope' } });
+    const bad = await app.inject({
+      method: 'POST',
+      url: '/api/auth/login',
+      payload: { email: s.email, password: 'nope-nope' },
+    });
     expect(bad.statusCode).toBe(401);
 
-    const ok = await app.inject({ method: 'POST', url: '/api/auth/login', payload: { email: s.email, password: 'password123' } });
+    const ok = await app.inject({
+      method: 'POST',
+      url: '/api/auth/login',
+      payload: { email: s.email, password: 'password123' },
+    });
     expect(ok.statusCode).toBe(200);
   });
 
   it('validates input with zod', async () => {
     const app = await getApp();
-    const res = await app.inject({ method: 'POST', url: '/api/auth/signup', payload: { email: 'not-an-email', password: 'x' } });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/auth/signup',
+      payload: { email: 'not-an-email', password: 'x' },
+    });
     expect(res.statusCode).toBe(400);
   });
 

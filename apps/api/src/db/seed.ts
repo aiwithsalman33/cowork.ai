@@ -3,9 +3,17 @@ import { SKILL_CATALOG } from './skills-catalog.js';
 import { hashPassword } from '../auth/password.js';
 
 const DEFAULT_FLAGS = [
-  { key: 'boss_mode', description: 'Owner can manage the agent by messaging it from a whitelisted number', enabled: true },
+  {
+    key: 'boss_mode',
+    description: 'Owner can manage the agent by messaging it from a whitelisted number',
+    enabled: true,
+  },
   { key: 'skill_creator', description: 'AI Skill Creator in the Skill Store', enabled: true },
-  { key: 'whatsapp_qr', description: 'Allow connecting WhatsApp by scanning a QR code (Baileys)', enabled: true },
+  {
+    key: 'whatsapp_qr',
+    description: 'Allow connecting WhatsApp by scanning a QR code (Baileys)',
+    enabled: true,
+  },
   { key: 'composio_integrations', description: 'Google integrations via Composio', enabled: true },
 ];
 
@@ -27,7 +35,11 @@ export async function seed() {
     });
   }
   for (const f of DEFAULT_FLAGS) {
-    await prisma.featureFlag.upsert({ where: { key: f.key }, create: f, update: { description: f.description } });
+    await prisma.featureFlag.upsert({
+      where: { key: f.key },
+      create: f,
+      update: { description: f.description },
+    });
   }
 
   const email = process.env.ADMIN_EMAIL?.toLowerCase();
@@ -55,7 +67,10 @@ export async function seed() {
   console.log(`Seeded ${SKILL_CATALOG.length} skills and ${DEFAULT_FLAGS.length} feature flags`);
 }
 
-const isMain = import.meta.url === `file://${process.argv[1]?.replace(/\\/g, '/')}` || process.argv[1]?.endsWith('seed.ts') || process.argv[1]?.endsWith('seed.js');
+const isMain =
+  import.meta.url === `file://${process.argv[1]?.replace(/\\/g, '/')}` ||
+  process.argv[1]?.endsWith('seed.ts') ||
+  process.argv[1]?.endsWith('seed.js');
 if (isMain) {
   seed()
     .catch((e) => {

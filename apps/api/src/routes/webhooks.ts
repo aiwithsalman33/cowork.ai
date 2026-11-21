@@ -26,7 +26,12 @@ export async function webhookRoutes(app: FastifyInstance) {
     const { channelId } = parse(params, req.params);
     const channel = await prisma.channel.findUnique({ where: { id: channelId } });
     const header = req.headers['x-telegram-bot-api-secret-token'];
-    if (!channel || channel.type !== 'TELEGRAM' || typeof header !== 'string' || !safeEqual(header, channel.webhookSecret)) {
+    if (
+      !channel ||
+      channel.type !== 'TELEGRAM' ||
+      typeof header !== 'string' ||
+      !safeEqual(header, channel.webhookSecret)
+    ) {
       return reply.code(401).send({ error: 'unauthorized' });
     }
     const msg = normalizeUpdate(req.body as TelegramUpdate);
@@ -49,8 +54,16 @@ export async function webhookRoutes(app: FastifyInstance) {
       return reply.code(403).send('Forbidden');
     }
     if (channel.status !== 'CONNECTED') {
-      await prisma.channel.update({ where: { id: channel.id }, data: { status: 'CONNECTED', connectedAt: new Date(), lastError: null } });
-      await logEvent(channel.userId, 'INFO', 'channel.connected', `WhatsApp Business API webhook verified for ${channel.externalId}`);
+      await prisma.channel.update({
+        where: { id: channel.id },
+        data: { status: 'CONNECTED', connectedAt: new Date(), lastError: null },
+      });
+      await logEvent(
+        channel.userId,
+        'INFO',
+        'channel.connected',
+        `WhatsApp Business API webhook verified for ${channel.externalId}`,
+      );
     }
     return reply.type('text/plain').send(q['hub.challenge'] ?? '');
   });

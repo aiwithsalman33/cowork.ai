@@ -38,11 +38,26 @@ export async function adminRoutes(app: FastifyInstance) {
   app.get('/overview', async () => {
     const since30 = daysAgo(29);
     const since7 = daysAgo(6);
-    const [users, byPlan, newThisWeek, connectedChannelUsers, msgsPerDay, signupsPerDay, msgs7, errors7, tokens30, paidUsers] = await Promise.all([
+    const [
+      users,
+      byPlan,
+      newThisWeek,
+      connectedChannelUsers,
+      msgsPerDay,
+      signupsPerDay,
+      msgs7,
+      errors7,
+      tokens30,
+      paidUsers,
+    ] = await Promise.all([
       prisma.user.count({ where: { role: 'USER' } }),
       prisma.user.groupBy({ by: ['plan'], where: { role: 'USER' }, _count: true }),
       prisma.user.count({ where: { role: 'USER', createdAt: { gte: since7 } } }),
-      prisma.channel.findMany({ where: { status: 'CONNECTED' }, select: { userId: true }, distinct: ['userId'] }),
+      prisma.channel.findMany({
+        where: { status: 'CONNECTED' },
+        select: { userId: true },
+        distinct: ['userId'],
+      }),
       prisma.$queryRaw<{ day: Date; inbound: bigint; outbound: bigint; tokens: bigint }[]>`
         SELECT date_trunc('day', "createdAt") AS day,
                COUNT(*) FILTER (WHERE direction = 'IN') AS inbound,
@@ -56,10 +71,19 @@ export async function adminRoutes(app: FastifyInstance) {
         GROUP BY 1 ORDER BY 1`,
       prisma.message.count({ where: { createdAt: { gte: since7 }, direction: 'IN' } }),
       prisma.message.count({ where: { createdAt: { gte: since7 }, direction: 'IN', status: 'FAILED' } }),
-      prisma.message.aggregate({ where: { createdAt: { gte: since30 } }, _sum: { tokensIn: true, tokensOut: true } }),
+      prisma.message.aggregate({
+        where: { createdAt: { gte: since30 } },
+        _sum: { tokensIn: true, tokensOut: true },
+      }),
       prisma.user.findMany({
         where: { role: 'USER', plan: { in: ['STARTER', 'GROWTH'] } },
-        select: { plan: true, status: true, trialEndsAt: true, subscriptionStatus: true, currentPeriodEnd: true },
+        select: {
+          plan: true,
+          status: true,
+          trialEndsAt: true,
+          subscriptionStatus: true,
+          currentPeriodEnd: true,
+        },
       }),
     ]);
 
@@ -67,7 +91,13 @@ export async function adminRoutes(app: FastifyInstance) {
     const activeAgentUsers = activeIds.size
       ? await prisma.user.findMany({
           where: { id: { in: [...activeIds] } },
-          select: { plan: true, status: true, trialEndsAt: true, subscriptionStatus: true, currentPeriodEnd: true },
+          select: {
+            plan: true,
+            status: true,
+            trialEndsAt: true,
+            subscriptionStatus: true,
+            currentPeriodEnd: true,
+          },
         })
       : [];
     const mrr = paidUsers.filter((u) => isPlanActive(u)).reduce((s, u) => s + PLANS[u.plan].priceInr, 0);
@@ -76,7 +106,9 @@ export async function adminRoutes(app: FastifyInstance) {
     const days: string[] = [];
     for (let i = 29; i >= 0; i--) days.push(daysAgo(i).toISOString().slice(0, 10));
     const msgMap = new Map(msgsPerDay.map((r) => [new Date(r.day).toISOString().slice(0, 10), r]));
-    const signupMap = new Map(signupsPerDay.map((r) => [new Date(r.day).toISOString().slice(0, 10), Number(r.count)]));
+    const signupMap = new Map(
+      signupsPerDay.map((r) => [new Date(r.day).toISOString().slice(0, 10), Number(r.count)]),
+    );
 
     return {
       kpis: {
@@ -104,7 +136,14 @@ export async function adminRoutes(app: FastifyInstance) {
   app.get('/users', async (req) => {
     const q = parse(adminUserQuerySchema, req.query);
     const where: Prisma.UserWhereInput = {
-      ...(q.q ? { OR: [{ email: { contains: q.q, mode: 'insensitive' } }, { name: { contains: q.q, mode: 'insensitive' } }] } : {}),
+      ...(q.q
+        ? {
+            OR: [
+              { email: { contains: q.q, mode: 'insensitive' } },
+              { name: { contains: q.q, mode: 'insensitive' } },
+            ],
+          }
+        : {}),
       ...(q.plan ? { plan: q.plan } : {}),
       ...(q.status ? { status: q.status } : {}),
     };
@@ -114,7 +153,10 @@ export async function adminRoutes(app: FastifyInstance) {
         orderBy: { createdAt: 'desc' },
         skip: (q.page - 1) * q.pageSize,
         take: q.pageSize,
-        include: { _count: { select: { channels: true, messages: true } }, agent: { select: { businessName: true } } },
+        include: {
+          _count: { select: { channels: true, messages: true } },
+          agent: { select: { businessName: true } },
+        },
       }),
       prisma.user.count({ where }),
     ]);
@@ -158,7 +200,11 @@ export async function adminRoutes(app: FastifyInstance) {
       prisma.message.aggregate({ where: { userId: id }, _sum: { tokensIn: true, tokensOut: true } }),
       prisma.message.count({ where: { userId: id } }),
       prisma.contact.count({ where: { userId: id } }),
-      prisma.eventLog.findMany({ where: { userId: id, level: 'ERROR' }, orderBy: { createdAt: 'desc' }, take: 20 }),
+      prisma.eventLog.findMany({
+        where: { userId: id, level: 'ERROR' },
+        orderBy: { createdAt: 'desc' },
+        take: 20,
+      }),
       prisma.eventLog.findMany({ where: { userId: id }, orderBy: { createdAt: 'desc' }, take: 50 }),
       prisma.userSkill.count({ where: { userId: id, enabled: true } }),
     ]);
@@ -179,8 +225,24 @@ export async function adminRoutes(app: FastifyInstance) {
         createdAt: u.createdAt,
         lastLoginAt: u.lastLoginAt,
       },
-      agent: u.agent ? { name: u.agent.name, businessName: u.agent.businessName, provider: u.agent.provider, model: u.agent.model, isActive: u.agent.isActive } : null,
-      channels: u.channels.map((c) => ({ id: c.id, type: c.type, name: c.name, status: c.status, externalId: c.externalId, lastError: c.lastError, createdAt: c.createdAt })),
+      agent: u.agent
+        ? {
+            name: u.agent.name,
+            businessName: u.agent.businessName,
+            provider: u.agent.provider,
+            model: u.agent.model,
+            isActive: u.agent.isActive,
+          }
+        : null,
+      channels: u.channels.map((c) => ({
+        id: c.id,
+        type: c.type,
+        name: c.name,
+        status: c.status,
+        externalId: c.externalId,
+        lastError: c.lastError,
+        createdAt: c.createdAt,
+      })),
       apiKeys: u.apiKeys,
       integrations: u.integrations,
       usage: {
@@ -201,7 +263,8 @@ export async function adminRoutes(app: FastifyInstance) {
     const admin = user(req);
     const target = await prisma.user.findUnique({ where: { id } });
     if (!target) throw notFound('User not found');
-    if (id === admin.id && (input.status === 'SUSPENDED' || input.role === 'USER')) throw badRequest('You cannot suspend or demote yourself');
+    if (id === admin.id && (input.status === 'SUSPENDED' || input.role === 'USER'))
+      throw badRequest('You cannot suspend or demote yourself');
 
     const data: Prisma.UserUpdateInput = {};
     if (input.status) data.status = input.status;
@@ -210,7 +273,8 @@ export async function adminRoutes(app: FastifyInstance) {
       data.plan = input.plan;
       if (input.plan === 'TRIAL') data.trialEndsAt = new Date(Date.now() + 24 * 3600_000);
       // manual plan grant by admin: 30 days of access unless a live subscription manages it
-      else if (!target.razorpaySubscriptionId || target.subscriptionStatus !== 'active') data.currentPeriodEnd = new Date(Date.now() + 30 * 86400_000);
+      else if (!target.razorpaySubscriptionId || target.subscriptionStatus !== 'active')
+        data.currentPeriodEnd = new Date(Date.now() + 30 * 86400_000);
     }
     if (input.extendTrialHours) {
       const base = target.trialEndsAt && target.trialEndsAt > new Date() ? target.trialEndsAt : new Date();
@@ -219,29 +283,42 @@ export async function adminRoutes(app: FastifyInstance) {
     }
     const updated = await prisma.user.update({ where: { id }, data });
     if (input.status === 'SUSPENDED') {
-      await prisma.refreshToken.updateMany({ where: { userId: id, revokedAt: null }, data: { revokedAt: new Date() } });
+      await prisma.refreshToken.updateMany({
+        where: { userId: id, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
     }
     await audit(admin.id, 'user.update', { type: 'user', id }, { ...input, email: target.email }, req.ip);
-    return { ok: true, user: { id: updated.id, plan: updated.plan, status: updated.status, trialEndsAt: updated.trialEndsAt } };
+    return {
+      ok: true,
+      user: { id: updated.id, plan: updated.plan, status: updated.status, trialEndsAt: updated.trialEndsAt },
+    };
   });
 
   /** "Login as": issues a session for the target user that remembers the admin. */
-  app.post('/users/:id/impersonate', { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, async (req, reply) => {
-    const { id } = parse(idParam, req.params);
-    const admin = user(req);
-    const target = await prisma.user.findUnique({ where: { id } });
-    if (!target) throw notFound('User not found');
-    if (target.role === 'ADMIN') throw badRequest('Cannot impersonate another admin');
-    await issueSession(req, reply, target, { impersonatorId: admin.id });
-    await audit(admin.id, 'user.impersonate', { type: 'user', id }, { email: target.email }, req.ip);
-    return { user: await toMeDTO(target, admin.id) };
-  });
+  app.post(
+    '/users/:id/impersonate',
+    { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } },
+    async (req, reply) => {
+      const { id } = parse(idParam, req.params);
+      const admin = user(req);
+      const target = await prisma.user.findUnique({ where: { id } });
+      if (!target) throw notFound('User not found');
+      if (target.role === 'ADMIN') throw badRequest('Cannot impersonate another admin');
+      await issueSession(req, reply, target, { impersonatorId: admin.id });
+      await audit(admin.id, 'user.impersonate', { type: 'user', id }, { email: target.email }, req.ip);
+      return { user: await toMeDTO(target, admin.id) };
+    },
+  );
 
   app.delete('/users/:id', async (req) => {
     const { id } = parse(idParam, req.params);
     const admin = user(req);
     if (id === admin.id) throw badRequest('You cannot delete yourself');
-    const target = await prisma.user.findUnique({ where: { id }, include: { channels: { where: { type: 'WHATSAPP_QR' } } } });
+    const target = await prisma.user.findUnique({
+      where: { id },
+      include: { channels: { where: { type: 'WHATSAPP_QR' } } },
+    });
     if (!target) throw notFound('User not found');
     for (const c of target.channels) await logoutSession(c.id, id).catch(() => null);
     await prisma.user.delete({ where: { id } });
@@ -261,9 +338,16 @@ export async function adminRoutes(app: FastifyInstance) {
 
   app.post('/skills', async (req, reply) => {
     const input = parse(skillUpsertSchema, req.body);
-    if (await prisma.skill.findUnique({ where: { slug: input.slug } })) throw conflict('A skill with this slug exists');
+    if (await prisma.skill.findUnique({ where: { slug: input.slug } }))
+      throw conflict('A skill with this slug exists');
     const skill = await prisma.skill.create({ data: { ...input, isBuiltin: true } });
-    await audit(user(req).id, 'skill.create', { type: 'skill', id: skill.id }, { slug: skill.slug, isPublic: skill.isPublic }, req.ip);
+    await audit(
+      user(req).id,
+      'skill.create',
+      { type: 'skill', id: skill.id },
+      { slug: skill.slug, isPublic: skill.isPublic },
+      req.ip,
+    );
     return reply.code(201).send({ skill });
   });
 
@@ -272,11 +356,16 @@ export async function adminRoutes(app: FastifyInstance) {
     const input = parse(skillUpsertSchema, req.body);
     const existing = await prisma.skill.findFirst({ where: { id, authorId: null } });
     if (!existing) throw notFound('Skill not found');
-    if (input.slug !== existing.slug && (await prisma.skill.findUnique({ where: { slug: input.slug } }))) throw conflict('Slug in use');
+    if (input.slug !== existing.slug && (await prisma.skill.findUnique({ where: { slug: input.slug } })))
+      throw conflict('Slug in use');
     const skill = await prisma.skill.update({ where: { id }, data: input });
     await audit(
       user(req).id,
-      existing.isPublic !== skill.isPublic ? (skill.isPublic ? 'skill.publish' : 'skill.unpublish') : 'skill.update',
+      existing.isPublic !== skill.isPublic
+        ? skill.isPublic
+          ? 'skill.publish'
+          : 'skill.unpublish'
+        : 'skill.update',
       { type: 'skill', id },
       { slug: skill.slug },
       req.ip,
@@ -297,10 +386,19 @@ export async function adminRoutes(app: FastifyInstance) {
   app.get('/flags', async () => ({ flags: await prisma.featureFlag.findMany({ orderBy: { key: 'asc' } }) }));
 
   app.put('/flags/:key', async (req) => {
-    const input = parse(featureFlagSchema, { ...(req.body as object), key: (req.params as { key: string }).key });
+    const input = parse(featureFlagSchema, {
+      ...(req.body as object),
+      key: (req.params as { key: string }).key,
+    });
     const flag = await prisma.featureFlag.upsert({ where: { key: input.key }, create: input, update: input });
     invalidateFlags();
-    await audit(user(req).id, 'flag.update', { type: 'flag', id: flag.key }, { enabled: flag.enabled, plans: flag.plans }, req.ip);
+    await audit(
+      user(req).id,
+      'flag.update',
+      { type: 'flag', id: flag.key },
+      { enabled: flag.enabled, plans: flag.plans },
+      req.ip,
+    );
     return { flag };
   });
 
@@ -341,7 +439,13 @@ export async function adminRoutes(app: FastifyInstance) {
     const { id } = parse(idParam, req.params);
     const { status } = parse(z.object({ status: z.enum(['OPEN', 'PLANNED', 'DONE', 'DECLINED']) }), req.body);
     await prisma.integrationRequest.update({ where: { id }, data: { status } });
-    await audit(user(req).id, 'integration_request.update', { type: 'integration_request', id }, { status }, req.ip);
+    await audit(
+      user(req).id,
+      'integration_request.update',
+      { type: 'integration_request', id },
+      { status },
+      req.ip,
+    );
     return { ok: true };
   });
 

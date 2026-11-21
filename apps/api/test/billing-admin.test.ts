@@ -5,7 +5,12 @@ import { call, cookiesFrom, getApp, prisma, signup } from './helpers.js';
 
 const SECRET = 'rzp_test_webhook_secret';
 
-async function sendRazorpay(event: string, sub: Record<string, unknown>, eventId: string, signature?: string) {
+async function sendRazorpay(
+  event: string,
+  sub: Record<string, unknown>,
+  eventId: string,
+  signature?: string,
+) {
   const app = await getApp();
   const body = JSON.stringify({ event, payload: { subscription: { entity: sub } } });
   return app.inject({
@@ -27,29 +32,67 @@ describe('plan state', () => {
     expect(isPlanActive({ ...base, plan: 'TRIAL', trialEndsAt: new Date(Date.now() - 1000) })).toBe(false);
   });
   it('suspended users are never active', () => {
-    expect(isPlanActive({ ...base, status: 'SUSPENDED', plan: 'GROWTH', trialEndsAt: null, currentPeriodEnd: new Date(Date.now() + 1e9) })).toBe(false);
+    expect(
+      isPlanActive({
+        ...base,
+        status: 'SUSPENDED',
+        plan: 'GROWTH',
+        trialEndsAt: null,
+        currentPeriodEnd: new Date(Date.now() + 1e9),
+      }),
+    ).toBe(false);
   });
   it('a cancelled paid plan keeps access until the period ends', () => {
-    expect(isPlanActive({ ...base, plan: 'STARTER', trialEndsAt: null, subscriptionStatus: 'cancelled', currentPeriodEnd: new Date(Date.now() + 1e6) })).toBe(true);
-    expect(isPlanActive({ ...base, plan: 'STARTER', trialEndsAt: null, subscriptionStatus: 'cancelled', currentPeriodEnd: new Date(Date.now() - 1e6) })).toBe(false);
+    expect(
+      isPlanActive({
+        ...base,
+        plan: 'STARTER',
+        trialEndsAt: null,
+        subscriptionStatus: 'cancelled',
+        currentPeriodEnd: new Date(Date.now() + 1e6),
+      }),
+    ).toBe(true);
+    expect(
+      isPlanActive({
+        ...base,
+        plan: 'STARTER',
+        trialEndsAt: null,
+        subscriptionStatus: 'cancelled',
+        currentPeriodEnd: new Date(Date.now() - 1e6),
+      }),
+    ).toBe(false);
   });
 });
 
 describe('Razorpay webhooks', () => {
   it('rejects an invalid signature', async () => {
-    const res = await sendRazorpay('subscription.activated', { id: 'sub_x', status: 'active' }, 'evt_bad', 'nope');
+    const res = await sendRazorpay(
+      'subscription.activated',
+      { id: 'sub_x', status: 'active' },
+      'evt_bad',
+      'nope',
+    );
     expect(res.statusCode).toBe(400);
   });
 
   it('activates the plan, is idempotent, and halts access after failed payments', async () => {
     const s = await signup();
     const periodEnd = Math.floor(Date.now() / 1000) + 30 * 86400;
-    const sub = { id: `sub_${s.userId}`, status: 'active', current_end: periodEnd, notes: { userId: s.userId, plan: 'STARTER' } };
+    const sub = {
+      id: `sub_${s.userId}`,
+      status: 'active',
+      current_end: periodEnd,
+      notes: { userId: s.userId, plan: 'STARTER' },
+    };
 
     const first = await sendRazorpay('subscription.activated', sub, `evt_a_${s.userId}`);
     expect(first.json().result).toBe('processed');
     let u = await prisma.user.findUniqueOrThrow({ where: { id: s.userId } });
-    expect(u).toMatchObject({ plan: 'STARTER', subscriptionStatus: 'active', razorpaySubscriptionId: sub.id });
+    expect(u).toMatchObject({
+      plan: 'STARTER',
+      subscriptionStatus: 'active',
+      razorpaySubscriptionId: sub.id,
+    });
     expect(isPlanActive(u)).toBe(true);
 
     const dup = await sendRazorpay('subscription.activated', sub, `evt_a_${s.userId}`);
@@ -65,7 +108,11 @@ describe('Razorpay webhooks', () => {
     const s = await signup();
     const res = await call(s, 'GET', '/api/billing');
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toMatchObject({ plan: 'TRIAL', planActive: true, usage: { messages: { used: 0, limit: 200 } } });
+    expect(res.json()).toMatchObject({
+      plan: 'TRIAL',
+      planActive: true,
+      usage: { messages: { used: 0, limit: 200 } },
+    });
   });
 });
 
@@ -74,7 +121,12 @@ async function adminSession() {
   const s = await signup();
   await prisma.user.update({ where: { id: s.userId }, data: { role: 'ADMIN' } });
   // re-login so the access token carries the ADMIN role
-  const res = await app.inject({ method: 'POST', url: '/api/auth/login', payload: { email: s.email, password: 'password123' }, remoteAddress: '10.9.9.9' });
+  const res = await app.inject({
+    method: 'POST',
+    url: '/api/auth/login',
+    payload: { email: s.email, password: 'password123' },
+    remoteAddress: '10.9.9.9',
+  });
   const cookies = cookiesFrom(res);
   return { ...s, cookies, csrf: cookies.pa_csrf! };
 }
@@ -99,7 +151,9 @@ describe('admin panel', () => {
   it('changes plan, extends trial, suspends — and writes the audit log', async () => {
     const admin = await adminSession();
     const target = await signup();
-    expect((await call(admin, 'PATCH', `/api/admin/users/${target.userId}`, { plan: 'GROWTH' })).statusCode).toBe(200);
+    expect(
+      (await call(admin, 'PATCH', `/api/admin/users/${target.userId}`, { plan: 'GROWTH' })).statusCode,
+    ).toBe(200);
     let u = await prisma.user.findUniqueOrThrow({ where: { id: target.userId } });
     expect(u.plan).toBe('GROWTH');
     expect(isPlanActive(u)).toBe(true);
@@ -112,7 +166,9 @@ describe('admin panel', () => {
     await call(admin, 'PATCH', `/api/admin/users/${target.userId}`, { status: 'SUSPENDED' });
     expect((await call(target, 'GET', '/api/auth/me')).statusCode).toBe(403);
 
-    const audit = await prisma.auditLog.findMany({ where: { actorId: admin.userId, targetId: target.userId } });
+    const audit = await prisma.auditLog.findMany({
+      where: { actorId: admin.userId, targetId: target.userId },
+    });
     expect(audit.length).toBe(3);
     expect(audit.every((a) => a.action === 'user.update')).toBe(true);
   });
@@ -132,9 +188,16 @@ describe('admin panel', () => {
     // impersonated session cannot reach the admin panel
     expect((await call(asUser, 'GET', '/api/admin/overview')).statusCode).toBe(403);
 
-    const exit = await app.inject({ method: 'POST', url: '/api/auth/impersonation/exit', cookies: jar, headers: { 'x-csrf-token': jar.pa_csrf! } });
+    const exit = await app.inject({
+      method: 'POST',
+      url: '/api/auth/impersonation/exit',
+      cookies: jar,
+      headers: { 'x-csrf-token': jar.pa_csrf! },
+    });
     expect(exit.json().user.id).toBe(admin.userId);
-    expect(await prisma.auditLog.count({ where: { actorId: admin.userId, action: 'user.impersonate' } })).toBe(1);
+    expect(
+      await prisma.auditLog.count({ where: { actorId: admin.userId, action: 'user.impersonate' } }),
+    ).toBe(1);
   });
 
   it('manages the global skill library and feature flags', async () => {
@@ -150,11 +213,19 @@ describe('admin panel', () => {
     });
     expect(created.statusCode).toBe(201);
     const id = created.json().skill.id;
-    const published = await call(admin, 'PUT', `/api/admin/skills/${id}`, { ...created.json().skill, tools: [], isPublic: true });
+    const published = await call(admin, 'PUT', `/api/admin/skills/${id}`, {
+      ...created.json().skill,
+      tools: [],
+      isPublic: true,
+    });
     expect(published.json().skill.isPublic).toBe(true);
     expect(await prisma.auditLog.count({ where: { action: 'skill.publish', targetId: id } })).toBe(1);
 
-    const flag = await call(admin, 'PUT', '/api/admin/flags/beta_widget', { description: 'test', enabled: true, plans: ['GROWTH'] });
+    const flag = await call(admin, 'PUT', '/api/admin/flags/beta_widget', {
+      description: 'test',
+      enabled: true,
+      plans: ['GROWTH'],
+    });
     expect(flag.json().flag).toMatchObject({ key: 'beta_widget', enabled: true, plans: ['GROWTH'] });
   });
 });

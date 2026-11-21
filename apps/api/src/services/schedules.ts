@@ -42,7 +42,12 @@ export async function runDueSchedules(now = new Date()) {
     try {
       await sendText(s.channel, recipientFor(s.channel.type, s.recipient), s.message);
       await prisma.schedule.update({ where: { id: s.id }, data: { lastError: null } });
-      await logEvent(s.userId, 'INFO', 'schedule.sent', `Scheduled message "${s.name}" sent to ${s.recipient}`);
+      await logEvent(
+        s.userId,
+        'INFO',
+        'schedule.sent',
+        `Scheduled message "${s.name}" sent to ${s.recipient}`,
+      );
     } catch (err) {
       const msg = scrubSecrets((err as Error).message);
       await prisma.schedule.update({ where: { id: s.id }, data: { lastError: msg } });
@@ -60,7 +65,12 @@ export async function markExpiredTrials(now = new Date()) {
   for (const u of expired) {
     const already = await prisma.eventLog.findFirst({ where: { userId: u.id, type: 'trial.expired' } });
     if (!already) {
-      await logEvent(u.id, 'WARN', 'trial.expired', 'Your free trial ended. The agent has stopped replying — upgrade to resume.');
+      await logEvent(
+        u.id,
+        'WARN',
+        'trial.expired',
+        'Your free trial ended. The agent has stopped replying — upgrade to resume.',
+      );
       logger.info({ userId: u.id }, 'trial expired');
     }
   }

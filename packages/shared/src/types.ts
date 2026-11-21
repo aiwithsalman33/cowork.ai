@@ -104,7 +104,13 @@ export interface DashboardDTO {
   recentConversations: ConversationDTO[];
   activeSkills: { slug: string; name: string; icon: string }[];
   channels: ChannelDTO[];
-  agent: { name: string; isActive: boolean; provider: string | null; model: string | null; planActive: boolean };
+  agent: {
+    name: string;
+    isActive: boolean;
+    provider: string | null;
+    model: string | null;
+    planActive: boolean;
+  };
   usage: { messagesThisMonth: number; messageLimit: number };
 }
 

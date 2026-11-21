@@ -45,16 +45,37 @@ export default function SignupPage() {
       </div>
       <form onSubmit={onSubmit} className="space-y-4">
         <Field label="Your name" htmlFor="name">
-          <Input id="name" name="name" required minLength={2} autoComplete="name" placeholder="Priya Sharma" />
+          <Input
+            id="name"
+            name="name"
+            required
+            minLength={2}
+            autoComplete="name"
+            placeholder="Priya Sharma"
+          />
         </Field>
         <Field label="Business name" htmlFor="businessName">
           <Input id="businessName" name="businessName" placeholder="Sharma Dental Clinic" />
         </Field>
         <Field label="Email" htmlFor="email">
-          <Input id="email" name="email" type="email" required autoComplete="email" placeholder="you@business.com" />
+          <Input
+            id="email"
+            name="email"
+            type="email"
+            required
+            autoComplete="email"
+            placeholder="you@business.com"
+          />
         </Field>
         <Field label="Password" htmlFor="password" hint="At least 8 characters">
-          <Input id="password" name="password" type="password" required minLength={8} autoComplete="new-password" />
+          <Input
+            id="password"
+            name="password"
+            type="password"
+            required
+            minLength={8}
+            autoComplete="new-password"
+          />
         </Field>
         <Button type="submit" className="w-full" loading={loading}>
           Start free trial

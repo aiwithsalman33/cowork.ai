@@ -31,8 +31,21 @@ type Detail = {
     createdAt: string;
     lastLoginAt: string | null;
   };
-  agent: { name: string; businessName: string; provider: string | null; model: string | null; isActive: boolean } | null;
-  channels: { id: string; type: ChannelType; name: string; status: ChannelStatus; externalId: string | null; lastError: string | null }[];
+  agent: {
+    name: string;
+    businessName: string;
+    provider: string | null;
+    model: string | null;
+    isActive: boolean;
+  } | null;
+  channels: {
+    id: string;
+    type: ChannelType;
+    name: string;
+    status: ChannelStatus;
+    externalId: string | null;
+    lastError: string | null;
+  }[];
   apiKeys: { provider: string; model: string; last4: string }[];
   integrations: { toolkit: string; status: string }[];
   usage: { monthMessages: number; totalMessages: number; contacts: number; skills: number; tokens: number };
@@ -45,7 +58,10 @@ const ICON = { INFO: Info, WARN: AlertTriangle, ERROR: AlertCircle };
 export default function TenantDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
-  const { data, isLoading } = useQuery({ queryKey: ['admin-user', id], queryFn: () => get<Detail>(`/admin/users/${id}`) });
+  const { data, isLoading } = useQuery({
+    queryKey: ['admin-user', id],
+    queryFn: () => get<Detail>(`/admin/users/${id}`),
+  });
   if (isLoading || !data) return <Skeleton className="h-96 rounded-xl" />;
   const u = data.user;
 
@@ -103,7 +119,12 @@ export default function TenantDetail({ params }: { params: Promise<{ id: string 
             <span className="text-muted-foreground">Agent</span>
             <span>{data.agent?.isActive ? 'Active' : 'Paused'}</span>
             <span className="text-muted-foreground">Integrations</span>
-            <span>{data.integrations.filter((i) => i.status === 'CONNECTED').map((i) => i.toolkit).join(', ') || '—'}</span>
+            <span>
+              {data.integrations
+                .filter((i) => i.status === 'CONNECTED')
+                .map((i) => i.toolkit)
+                .join(', ') || '—'}
+            </span>
           </CardContent>
         </Card>
         <Card>
@@ -143,7 +164,16 @@ export default function TenantDetail({ params }: { params: Promise<{ id: string 
                 const Icon = ICON[l.level];
                 return (
                   <div key={l.id} className="flex gap-2 py-2 text-sm">
-                    <Icon className={cn('mt-0.5 h-4 w-4 shrink-0', l.level === 'ERROR' ? 'text-destructive' : l.level === 'WARN' ? 'text-amber-600' : 'text-sky-600')} />
+                    <Icon
+                      className={cn(
+                        'mt-0.5 h-4 w-4 shrink-0',
+                        l.level === 'ERROR'
+                          ? 'text-destructive'
+                          : l.level === 'WARN'
+                            ? 'text-amber-600'
+                            : 'text-sky-600',
+                      )}
+                    />
                     <div className="min-w-0 flex-1">
                       <p>{l.message}</p>
                       <p className="text-xs text-muted-foreground">

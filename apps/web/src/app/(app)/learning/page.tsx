@@ -28,9 +28,15 @@ export default function LearningPage() {
   const [page, setPage] = useState(1);
   const { data, isLoading } = useQuery({
     queryKey: ['learning', page],
-    queryFn: () => get<{ items: Item[]; total: number; totalContacts: number; pageSize: number }>(`/learning?page=${page}&pageSize=24`),
+    queryFn: () =>
+      get<{ items: Item[]; total: number; totalContacts: number; pageSize: number }>(
+        `/learning?page=${page}&pageSize=24`,
+      ),
   });
-  const forget = useAction((id: string) => del(`/learning/${id}`), { success: 'Memory cleared', invalidate: [['learning']] });
+  const forget = useAction((id: string) => del(`/learning/${id}`), {
+    success: 'Memory cleared',
+    invalidate: [['learning']],
+  });
   const pages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
 
   return (
@@ -51,7 +57,9 @@ export default function LearningPage() {
           </Card>
           <Card className="col-span-2 flex items-center gap-3 p-4 sm:col-span-1">
             <Sparkles className="h-5 w-5 shrink-0 text-primary" />
-            <p className="text-xs text-muted-foreground">Long chats are summarised automatically so the agent remembers more while using fewer tokens.</p>
+            <p className="text-xs text-muted-foreground">
+              Long chats are summarised automatically so the agent remembers more while using fewer tokens.
+            </p>
           </Card>
         </div>
       )}
@@ -62,7 +70,11 @@ export default function LearningPage() {
           ))}
         </div>
       ) : !data?.items.length ? (
-        <EmptyState icon={Brain} title="Nothing learned yet" description="After a few messages with a customer, the agent saves what it learns here — names, preferences, interests and more." />
+        <EmptyState
+          icon={Brain}
+          title="Nothing learned yet"
+          description="After a few messages with a customer, the agent saves what it learns here — names, preferences, interests and more."
+        />
       ) : (
         <>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -73,9 +85,12 @@ export default function LearningPage() {
                   <CardHeader className="flex-row items-center gap-3">
                     <Avatar name={c.name ?? c.phone} />
                     <div className="min-w-0 flex-1">
-                      <div className="truncate font-semibold">{c.name ?? (c.phone ? `+${c.phone}` : 'Unknown')}</div>
+                      <div className="truncate font-semibold">
+                        {c.name ?? (c.phone ? `+${c.phone}` : 'Unknown')}
+                      </div>
                       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <ChannelIcon type={c.channelType} className="h-3 w-3" /> {c.messageCount} messages · {timeAgo(c.lastSeenAt)}
+                        <ChannelIcon type={c.channelType} className="h-3 w-3" /> {c.messageCount} messages ·{' '}
+                        {timeAgo(c.lastSeenAt)}
                       </div>
                     </div>
                   </CardHeader>
@@ -85,13 +100,16 @@ export default function LearningPage() {
                       <div className="flex flex-wrap gap-1.5">
                         {facts.map(([k, v]) => (
                           <span key={k} className="rounded-md bg-muted px-2 py-1 text-xs">
-                            <span className="capitalize text-muted-foreground">{k.replace(/_/g, ' ')}:</span> {String(v)}
+                            <span className="capitalize text-muted-foreground">{k.replace(/_/g, ' ')}:</span>{' '}
+                            {String(v)}
                           </span>
                         ))}
                       </div>
                     )}
                     {c.conversation?.summary && (
-                      <p className="border-l-2 border-primary/40 pl-3 text-xs text-muted-foreground">{c.conversation.summary}</p>
+                      <p className="border-l-2 border-primary/40 pl-3 text-xs text-muted-foreground">
+                        {c.conversation.summary}
+                      </p>
                     )}
                     <div className="mt-auto flex gap-2 pt-2">
                       {c.conversation && (

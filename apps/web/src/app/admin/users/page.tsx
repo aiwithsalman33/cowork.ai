@@ -60,9 +60,20 @@ export default function AdminUsers() {
       <div className="mb-4 flex flex-col gap-3 sm:flex-row">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name or email" className="pl-9" />
+          <Input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search name or email"
+            className="pl-9"
+          />
         </div>
-        <Select value={plan} onValueChange={(v) => { setPlan(v); setPage(1); }}>
+        <Select
+          value={plan}
+          onValueChange={(v) => {
+            setPlan(v);
+            setPage(1);
+          }}
+        >
           <SelectTrigger className="sm:w-40">
             <SelectValue />
           </SelectTrigger>
@@ -75,7 +86,13 @@ export default function AdminUsers() {
             ))}
           </SelectContent>
         </Select>
-        <Select value={status} onValueChange={(v) => { setStatus(v); setPage(1); }}>
+        <Select
+          value={status}
+          onValueChange={(v) => {
+            setStatus(v);
+            setPage(1);
+          }}
+        >
           <SelectTrigger className="sm:w-40">
             <SelectValue />
           </SelectTrigger>
@@ -128,7 +145,9 @@ export default function AdminUsers() {
                     </td>
                     <td className="px-4 py-3 tabular-nums">{u.channels}</td>
                     <td className="px-4 py-3 tabular-nums">{u.messages.toLocaleString('en-IN')}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{u.lastLoginAt ? timeAgo(u.lastLoginAt) : '—'}</td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {u.lastLoginAt ? timeAgo(u.lastLoginAt) : '—'}
+                    </td>
                     <td className="px-4 py-3 text-muted-foreground">{timeAgo(u.createdAt)}</td>
                     <td className="px-4 py-3 text-right">
                       <UserActionsMenu u={u} />

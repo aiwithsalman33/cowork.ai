@@ -157,12 +157,21 @@ function ThemeMenuItems() {
   );
 }
 
-function NavLinks({ items, collapsed, onNavigate }: { items: NavItem[]; collapsed: boolean; onNavigate?: () => void }) {
+function NavLinks({
+  items,
+  collapsed,
+  onNavigate,
+}: {
+  items: NavItem[];
+  collapsed: boolean;
+  onNavigate?: () => void;
+}) {
   const pathname = usePathname();
   return (
     <nav className="flex flex-col gap-0.5">
       {items.map(({ href, label, icon: Icon }) => {
-        const active = href === '/admin' ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
+        const active =
+          href === '/admin' ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
         return (
           <Tooltip key={href} content={label} disabled={!collapsed}>
             <Link
@@ -170,7 +179,9 @@ function NavLinks({ items, collapsed, onNavigate }: { items: NavItem[]; collapse
               onClick={onNavigate}
               className={cn(
                 'group flex h-10 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors',
-                active ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-accent hover:text-foreground',
+                active
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'text-muted-foreground hover:bg-accent hover:text-foreground',
                 collapsed && 'justify-center px-0',
               )}
             >
@@ -194,13 +205,17 @@ export function AppShell({ me, nav, children }: { me: MeDTO; nav: NavItem[]; chi
   useEffect(() => {
     try {
       setCollapsed(localStorage.getItem('pa_sidebar') === '1');
-    } catch {}
+    } catch {
+      /* storage unavailable (private mode) */
+    }
   }, []);
   const toggle = () => {
     setCollapsed((c) => {
       try {
         localStorage.setItem('pa_sidebar', c ? '0' : '1');
-      } catch {}
+      } catch {
+        /* storage unavailable (private mode) */
+      }
       return !c;
     });
   };
@@ -269,7 +284,13 @@ export function AppShell({ me, nav, children }: { me: MeDTO; nav: NavItem[]; chi
               className="flex h-9 w-full cursor-pointer items-center justify-center gap-2 rounded-lg text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
               aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             >
-              {collapsed ? <ChevronsRight className="h-4 w-4" /> : <><ChevronsLeft className="h-4 w-4" /> Collapse</>}
+              {collapsed ? (
+                <ChevronsRight className="h-4 w-4" />
+              ) : (
+                <>
+                  <ChevronsLeft className="h-4 w-4" /> Collapse
+                </>
+              )}
             </button>
           </div>
         </aside>
@@ -281,7 +302,12 @@ export function AppShell({ me, nav, children }: { me: MeDTO; nav: NavItem[]; chi
             <aside className="absolute inset-y-0 left-0 flex w-72 flex-col bg-sidebar shadow-xl">
               <div className="flex h-16 items-center justify-between px-4">
                 <Logo />
-                <Button variant="ghost" size="icon" onClick={() => setMobileOpen(false)} aria-label="Close menu">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setMobileOpen(false)}
+                  aria-label="Close menu"
+                >
                   <X />
                 </Button>
               </div>
@@ -294,7 +320,13 @@ export function AppShell({ me, nav, children }: { me: MeDTO; nav: NavItem[]; chi
 
         <div className="flex min-w-0 flex-1 flex-col">
           <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b bg-background/85 px-4 backdrop-blur sm:px-6">
-            <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setMobileOpen(true)} aria-label="Open menu">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="lg:hidden"
+              onClick={() => setMobileOpen(true)}
+              aria-label="Open menu"
+            >
               <Menu />
             </Button>
             <div className="lg:hidden">

@@ -1,7 +1,7 @@
 'use client';
 import { Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { KeyRound, Plug, Sparkles, Store, UserRound } from 'lucide-react';
+import { KeyRound, Plug, Sheet, Sparkles, Store, UserRound } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PageHeader } from '@/components/ui/misc';
 import { SkillsTab } from '@/components/agent/skills-tab';
@@ -9,8 +9,9 @@ import { SkillStoreTab } from '@/components/agent/skill-store-tab';
 import { ApiKeysTab } from '@/components/agent/api-keys-tab';
 import { PersonalityTab } from '@/components/agent/personality-tab';
 import { ChannelsTab } from '@/components/agent/channels-tab';
+import { SheetsTab } from '@/components/agent/sheets-tab';
 
-const TABS = ['skills', 'store', 'channels', 'keys', 'personality'] as const;
+const TABS = ['skills', 'store', 'channels', 'sheets', 'keys', 'personality'] as const;
 
 function AgentConfig() {
   const params = useSearchParams();
@@ -29,6 +30,9 @@ function AgentConfig() {
         <TabsTrigger value="channels">
           <Plug /> Channels
         </TabsTrigger>
+        <TabsTrigger value="sheets">
+          <Sheet /> Google Sheets
+        </TabsTrigger>
         <TabsTrigger value="keys">
           <KeyRound /> API Keys
         </TabsTrigger>
@@ -44,6 +48,9 @@ function AgentConfig() {
       </TabsContent>
       <TabsContent value="channels">
         <ChannelsTab />
+      </TabsContent>
+      <TabsContent value="sheets">
+        <SheetsTab />
       </TabsContent>
       <TabsContent value="keys">
         <ApiKeysTab />

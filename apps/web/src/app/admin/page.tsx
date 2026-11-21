@@ -1,21 +1,17 @@
 'use client';
-import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   Activity,
   AlertTriangle,
   Bot,
-  CheckCircle2,
   Coins,
   IndianRupee,
   MessageCircle,
   UserPlus,
   Users,
-  XCircle,
   type LucideIcon,
 } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PageHeader, Skeleton } from '@/components/ui/misc';
 import { MessagesChart, SignupsChart, TokensChart } from '@/components/admin/charts';
 import { get } from '@/lib/api';
@@ -33,7 +29,7 @@ type Overview = {
   };
   plans: { plan: string; count: number }[];
   series: { day: string; inbound: number; outbound: number; tokens: number; signups: number }[];
-  composioEnabled: boolean;
+  mailConfigured: boolean;
 };
 
 function Kpi({
@@ -55,50 +51,6 @@ function Kpi({
       </div>
       <div className="mt-2 text-2xl font-semibold tabular-nums">{value}</div>
       {hint && <div className="text-xs text-muted-foreground">{hint}</div>}
-    </Card>
-  );
-}
-
-function ComposioCheck() {
-  const [run, setRun] = useState(false);
-  const { data, isFetching, error } = useQuery({
-    queryKey: ['composio-verify'],
-    queryFn: () =>
-      get<{ results: { ok: boolean; slug: string; properties?: string[]; error?: string }[] }>(
-        '/admin/composio/verify',
-      ),
-    enabled: run,
-  });
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Verify Composio tools</CardTitle>
-        <CardDescription>
-          Fetches the live input schema of every tool the agent uses, so renamed slugs or arguments show up
-          here.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <Button variant="outline" size="sm" onClick={() => setRun(true)} loading={isFetching}>
-          Run check
-        </Button>
-        {error && <p className="text-sm text-destructive">{(error as Error).message}</p>}
-        {data?.results.map((r) => (
-          <div key={r.slug} className="flex items-start gap-2 text-sm">
-            {r.ok ? (
-              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-success" />
-            ) : (
-              <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
-            )}
-            <div>
-              <code className="text-xs">{r.slug}</code>
-              <p className="text-xs text-muted-foreground">
-                {r.ok ? `params: ${r.properties?.join(', ')}` : r.error}
-              </p>
-            </div>
-          </div>
-        ))}
-      </CardContent>
     </Card>
   );
 }
@@ -146,10 +98,10 @@ export default function AdminOverview() {
         <Kpi label="Tokens (30d)" value={formatNumber(k.tokens30d)} icon={Coins} />
         <Kpi label="New signups (7d)" value={formatNumber(k.newThisWeek)} icon={UserPlus} />
         <Kpi
-          label="Integrations"
-          value={data.composioEnabled ? 'On' : 'Off'}
+          label="Email delivery"
+          value={data.mailConfigured ? 'On' : 'Off'}
           icon={Activity}
-          hint="Composio"
+          hint="Verification email (SMTP)"
         />
       </div>
 
@@ -201,7 +153,6 @@ export default function AdminOverview() {
           </CardContent>
         </Card>
       </div>
-      {data.composioEnabled && <ComposioCheck />}
     </div>
   );
 }

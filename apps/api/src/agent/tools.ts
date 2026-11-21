@@ -2,9 +2,25 @@ import type { ToolName, Toolkit } from '@partner/shared';
 import { prisma } from '../db/client.js';
 import { logger } from '../lib/logger.js';
 import type { ToolDef } from '../llm/types.js';
-import { executeTool, isToolkitConfigured } from '../integrations/composio.js';
-import { COMPOSIO_TOOLS, extractDocText } from '../integrations/composio-tools.js';
+import {
+  appendSheetRow,
+  createCalendarEvent,
+  extractDocText,
+  readDoc,
+  readSheet,
+  searchDrive,
+  sendGmail,
+} from '../integrations/google.js';
 import { logEvent } from '../services/audit.js';
+
+export interface SheetRef {
+  id: string;
+  name: string;
+  description: string;
+  purpose: 'LEADS' | 'LOOKUP';
+  spreadsheetId: string;
+  tab: string | null;
+}
 
 export interface ToolContext {
   userId: string;
@@ -13,11 +29,10 @@ export interface ToolContext {
   contactPhone: string | null;
   channelLabel: string;
   timeZone: string;
-  /** toolkit → { connectedAccountId, settings } for CONNECTED integrations */
-  integrations: Map<
-    Toolkit,
-    { connectedAccountId: string | null; settings: Record<string, string | undefined> }
-  >;
+  /** Google services the tenant granted (gmail, googlecalendar, …) */
+  google: Set<Toolkit>;
+  googleSettings: { calendarId?: string };
+  sheets: SheetRef[];
 }
 
 export const TOOL_DEFS: Record<ToolName, ToolDef> = {
@@ -98,36 +113,50 @@ export const TOOL_DEFS: Record<ToolName, ToolDef> = {
       required: ['document_id'],
     },
   },
+  read_sheet: {
+    name: 'read_sheet',
+    description:
+      "Look up live data in one of the business's Google Sheets (see the 'Google Sheets' section of your instructions). Returns the header row plus matching rows.",
+    parameters: {
+      type: 'object',
+      properties: {
+        sheet_name: { type: 'string', description: 'Exact sheet name from your instructions' },
+        query: {
+          type: 'string',
+          description: 'Words to match in rows (e.g. a product name). Leave empty to get the first rows.',
+        },
+      },
+      required: ['sheet_name'],
+    },
+  },
 };
 
-/** Which toolkit a tool needs (null = works without any integration). */
+/** Which Google service a tool needs (null = works without Google). */
 const REQUIRES: Record<ToolName, Toolkit | null> = {
   book_appointment: null,
   capture_lead: null,
   send_email: 'gmail',
   search_drive: 'googledrive',
   read_doc: 'googledocs',
+  read_sheet: 'googlesheets',
 };
 
-export function availableTools(requested: Set<ToolName>, ctx: Pick<ToolContext, 'integrations'>): ToolName[] {
-  return [...requested].filter((t) => {
+export function availableTools(
+  requested: Set<ToolName>,
+  ctx: Pick<ToolContext, 'google' | 'sheets'>,
+): ToolName[] {
+  const tools = new Set(requested);
+  // Lookup sheets are always usable once added in Agent Config — no skill needed.
+  if (ctx.sheets.some((s) => s.purpose === 'LOOKUP')) tools.add('read_sheet');
+  return [...tools].filter((t) => {
     const need = REQUIRES[t];
-    return !need || (ctx.integrations.has(need) && isToolkitConfigured(need));
+    if (t === 'read_sheet' && !ctx.sheets.some((s) => s.purpose === 'LOOKUP')) return false;
+    return !need || ctx.google.has(need);
   });
 }
 
 const str = (v: unknown) =>
   typeof v === 'string' ? v.trim() : v === undefined || v === null ? '' : String(v);
-
-function findId(data: Record<string, unknown>): string | null {
-  const candidates = [
-    data.id,
-    (data.response_data as Record<string, unknown> | undefined)?.id,
-    (data.event as Record<string, unknown> | undefined)?.id,
-  ];
-  const found = candidates.find((c) => typeof c === 'string');
-  return (found as string | undefined) ?? null;
-}
 
 async function bookAppointment(args: Record<string, unknown>, ctx: ToolContext) {
   const start = new Date(str(args.start_time));
@@ -157,44 +186,26 @@ async function bookAppointment(args: Record<string, unknown>, ctx: ToolContext) 
   });
 
   let calendar: 'added' | 'not_connected' | 'failed' = 'not_connected';
-  const cal = ctx.integrations.get('googlecalendar');
-  if (cal && isToolkitConfigured('googlecalendar')) {
+  if (ctx.google.has('googlecalendar')) {
     try {
-      const res = await executeTool(
-        ctx.userId,
-        COMPOSIO_TOOLS.createEvent.slug,
-        COMPOSIO_TOOLS.createEvent.args({
-          startIso: start.toISOString(),
-          durationMinutes: duration,
-          title: `${service} — ${name}`,
-          description: [
-            `Booked by AI via ${ctx.channelLabel}`,
-            phone && `Phone: ${phone}`,
-            email && `Email: ${email}`,
-            str(args.notes),
-          ]
-            .filter(Boolean)
-            .join('\n'),
-          attendeeEmail: email,
-          timeZone: ctx.timeZone,
-          calendarId: cal.settings.calendarId,
-        }),
-        cal.connectedAccountId,
-      );
-      if (res.ok) {
-        calendar = 'added';
-        const eventId = findId(res.data);
-        if (eventId)
-          await prisma.appointment.update({ where: { id: appt.id }, data: { googleEventId: eventId } });
-      } else {
-        calendar = 'failed';
-        await logEvent(
-          ctx.userId,
-          'WARN',
-          'tool.calendar_failed',
-          `Google Calendar: ${res.error ?? 'unknown error'}`,
-        );
-      }
+      const ev = await createCalendarEvent(ctx.userId, {
+        calendarId: ctx.googleSettings.calendarId,
+        title: `${service} — ${name}`,
+        description: [
+          `Booked by AI via ${ctx.channelLabel}`,
+          phone && `Phone: ${phone}`,
+          email && `Email: ${email}`,
+          str(args.notes),
+        ]
+          .filter(Boolean)
+          .join('\n'),
+        start,
+        end,
+        timeZone: ctx.timeZone,
+        attendeeEmail: email,
+      });
+      calendar = 'added';
+      await prisma.appointment.update({ where: { id: appt.id }, data: { googleEventId: ev.id } });
     } catch (err) {
       calendar = 'failed';
       await logEvent(
@@ -226,96 +237,78 @@ async function captureLead(args: Record<string, unknown>, ctx: ToolContext) {
       notes: str(args.notes) || null,
     },
   });
-  let sheet: 'added' | 'not_connected' | 'no_sheet' | 'failed' = 'not_connected';
-  const gs = ctx.integrations.get('googlesheets');
-  if (gs && isToolkitConfigured('googlesheets')) {
-    if (!gs.settings.sheetId) sheet = 'no_sheet';
-    else {
-      try {
-        const res = await executeTool(
-          ctx.userId,
-          COMPOSIO_TOOLS.appendRow.slug,
-          COMPOSIO_TOOLS.appendRow.args({
-            spreadsheetId: gs.settings.sheetId,
-            values: [
-              new Date().toLocaleString('en-IN', { timeZone: ctx.timeZone }),
-              lead.name,
-              lead.phone ?? '',
-              lead.email ?? '',
-              lead.interest ?? '',
-              lead.notes ?? '',
-              ctx.channelLabel,
-            ],
-          }),
-          gs.connectedAccountId,
-        );
-        sheet = res.ok ? 'added' : 'failed';
-        if (res.ok) await prisma.lead.update({ where: { id: lead.id }, data: { syncedToSheet: true } });
-        else
-          await logEvent(
-            ctx.userId,
-            'WARN',
-            'tool.sheets_failed',
-            `Google Sheets: ${res.error ?? 'unknown error'}`,
-          );
-      } catch (err) {
-        sheet = 'failed';
-        await logEvent(ctx.userId, 'WARN', 'tool.sheets_failed', `Google Sheets: ${(err as Error).message}`);
-      }
+  const leadSheet = ctx.sheets.find((s) => s.purpose === 'LEADS');
+  let sheet: 'added' | 'no_sheet' | 'failed' = 'no_sheet';
+  if (leadSheet && ctx.google.has('googlesheets')) {
+    try {
+      await appendSheetRow(ctx.userId, leadSheet.spreadsheetId, leadSheet.tab, [
+        new Date().toLocaleString('en-IN', { timeZone: ctx.timeZone }),
+        lead.name,
+        lead.phone ?? '',
+        lead.email ?? '',
+        lead.interest ?? '',
+        lead.notes ?? '',
+        ctx.channelLabel,
+      ]);
+      sheet = 'added';
+      await prisma.lead.update({ where: { id: lead.id }, data: { syncedToSheet: true } });
+    } catch (err) {
+      sheet = 'failed';
+      await logEvent(
+        ctx.userId,
+        'WARN',
+        'tool.sheets_failed',
+        `Google Sheets (${leadSheet.name}): ${(err as Error).message}`,
+      );
     }
   }
-  return { ok: true, lead_id: lead.id, google_sheets: sheet };
+  return { ok: true, lead_id: lead.id, google_sheet: sheet };
 }
 
 async function sendEmail(args: Record<string, unknown>, ctx: ToolContext) {
   const to = str(args.to);
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) return { ok: false, error: 'Invalid email address' };
-  const gm = ctx.integrations.get('gmail');
-  if (!gm) return { ok: false, error: 'Gmail is not connected' };
-  const res = await executeTool(
-    ctx.userId,
-    COMPOSIO_TOOLS.sendEmail.slug,
-    COMPOSIO_TOOLS.sendEmail.args({
-      to,
-      subject: str(args.subject).slice(0, 200),
-      body: str(args.body).slice(0, 5000),
-    }),
-    gm.connectedAccountId,
-  );
-  return res.ok ? { ok: true, sent_to: to } : { ok: false, error: res.error ?? 'Email failed' };
+  await sendGmail(ctx.userId, to, str(args.subject).slice(0, 200), str(args.body).slice(0, 5000));
+  return { ok: true, sent_to: to };
 }
 
-async function searchDrive(args: Record<string, unknown>, ctx: ToolContext) {
-  const gd = ctx.integrations.get('googledrive');
-  if (!gd) return { ok: false, error: 'Google Drive is not connected' };
-  const res = await executeTool(
-    ctx.userId,
-    COMPOSIO_TOOLS.searchDrive.slug,
-    COMPOSIO_TOOLS.searchDrive.args({ query: str(args.query).slice(0, 100) }),
-    gd.connectedAccountId,
-  );
-  if (!res.ok) return { ok: false, error: res.error ?? 'Drive search failed' };
-  const d = res.data as Record<string, unknown>;
-  const files = (d.files ?? (d.response_data as Record<string, unknown> | undefined)?.files ?? []) as {
-    id?: string;
-    name?: string;
-    mimeType?: string;
-  }[];
-  return { ok: true, files: files.slice(0, 5).map((f) => ({ id: f.id, name: f.name, type: f.mimeType })) };
+async function driveSearch(args: Record<string, unknown>, ctx: ToolContext) {
+  const files = await searchDrive(ctx.userId, str(args.query).slice(0, 100));
+  return { ok: true, files: files.map((f) => ({ id: f.id, name: f.name, type: f.mimeType })) };
 }
 
-async function readDoc(args: Record<string, unknown>, ctx: ToolContext) {
-  const gdoc = ctx.integrations.get('googledocs');
-  if (!gdoc) return { ok: false, error: 'Google Docs is not connected' };
-  const res = await executeTool(
-    ctx.userId,
-    COMPOSIO_TOOLS.readDoc.slug,
-    COMPOSIO_TOOLS.readDoc.args({ documentId: str(args.document_id) }),
-    gdoc.connectedAccountId,
-  );
-  if (!res.ok) return { ok: false, error: res.error ?? 'Could not read document' };
-  const text = extractDocText(res.data);
+async function docRead(args: Record<string, unknown>, ctx: ToolContext) {
+  const text = extractDocText(await readDoc(ctx.userId, str(args.document_id)));
   return { ok: true, text: text || '(document is empty or not a Google Doc)' };
+}
+
+/** Returns header + up to 25 rows containing every query word (case-insensitive). */
+export function filterRows(rows: string[][], query: string, limit = 25) {
+  const [header = [], ...data] = rows;
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  const matches = words.length
+    ? data.filter((r) => {
+        const line = r.join(' ').toLowerCase();
+        return words.every((w) => line.includes(w));
+      })
+    : data;
+  return { header, rows: matches.slice(0, limit), total_matches: matches.length };
+}
+
+async function sheetRead(args: Record<string, unknown>, ctx: ToolContext) {
+  const wanted = str(args.sheet_name).toLowerCase();
+  const sheet = ctx.sheets.find((s) => s.purpose === 'LOOKUP' && s.name.toLowerCase() === wanted);
+  if (!sheet) {
+    return {
+      ok: false,
+      error: `Unknown sheet. Available: ${ctx.sheets
+        .filter((s) => s.purpose === 'LOOKUP')
+        .map((s) => s.name)
+        .join(', ')}`,
+    };
+  }
+  const rows = await readSheet(ctx.userId, sheet.spreadsheetId, sheet.tab, 1000);
+  return { ok: true, sheet: sheet.name, ...filterRows(rows, str(args.query)) };
 }
 
 const EXECUTORS: Record<
@@ -325,8 +318,9 @@ const EXECUTORS: Record<
   book_appointment: bookAppointment,
   capture_lead: captureLead,
   send_email: sendEmail,
-  search_drive: searchDrive,
-  read_doc: readDoc,
+  search_drive: driveSearch,
+  read_doc: docRead,
+  read_sheet: sheetRead,
 };
 
 export async function runTool(

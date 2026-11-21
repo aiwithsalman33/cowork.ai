@@ -89,6 +89,7 @@ model User {
   id                     String     @id @default(cuid())
   email                  String     @unique
   passwordHash           String
+  emailVerifiedAt        DateTime?
   name                   String
   role                   Role       @default(USER)
   status                 UserStatus @default(ACTIVE)
@@ -115,7 +116,9 @@ model User {
   messages            Message[]
   appointments        Appointment[]
   leads               Lead[]
-  integrations        Integration[]
+  googleConnection    GoogleConnection?
+  agentSheets         AgentSheet[]
+  emailTokens         EmailToken[]
   integrationRequests IntegrationRequest[]
   schedules           Schedule[]
   eventLogs           EventLog[]
@@ -346,20 +349,78 @@ model Lead {
   @@index([userId, createdAt])
 }
 
-model Integration {
-  id                 String            @id @default(cuid())
-  userId             String
-  toolkit            String
-  connectedAccountId String?
-  status             IntegrationStatus @default(PENDING)
-  settings           Json              @default("{}")
-  connectedAt        DateTime?
-  createdAt          DateTime          @default(now())
-  updatedAt          DateTime          @updatedAt
+model GoogleConnection {
+  id                    String            @id @default(cuid())
+  userId                String            @unique
+  /// encrypted { clientId, clientSecret } from the tenant's own Google Cloud Console OAuth client
+  encryptedCredentials  String?
+  clientIdHint          String?
+  /// encrypted OAuth refresh token
+  encryptedRefreshToken String?
+  email                 String?
+  scopes                String[]          @default([])
+  status                IntegrationStatus @default(DISCONNECTED)
+  settings              Json              @default("{}")
+  lastError             String?
+  connectedAt           DateTime?
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum SheetPurpose {
+  LEADS
+  LOOKUP
+}
+
+model AgentSheet {
+  id            String       @id @default(cuid())
+  userId        String
+  spreadsheetId String
+  tab           String?
+  name          String
+  description   String       @default("")
+  purpose       SheetPurpose
+  title         String       @default("")
+  createdAt     DateTime     @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, toolkit])
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+enum EmailTokenType {
+  VERIFY_EMAIL
+  RESET_PASSWORD
+}
+
+model EmailToken {
+  id        String         @id @default(cuid())
+  userId    String
+  type      EmailTokenType
+  tokenHash String         @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime       @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
+}
+
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String
+  email     String?
+  business  String?
+  message   String
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
 }
 
 model IntegrationRequest {

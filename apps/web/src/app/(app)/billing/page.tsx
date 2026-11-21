@@ -1,13 +1,13 @@
 'use client';
 import { useQuery } from '@tanstack/react-query';
-import { AlertTriangle, Check, CreditCard, Crown, ShieldCheck } from 'lucide-react';
-import type { PlanDef, PlanId } from '@partner/shared';
+import { AlertTriangle, Check, CreditCard, Crown, MessageCircle, ShieldCheck } from 'lucide-react';
+import { BRAND, whatsappLink, type PlanDef, type PlanId } from '@partner/shared';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { PageHeader, Progress, Skeleton } from '@/components/ui/misc';
 import { get, post } from '@/lib/api';
-import { useAction } from '@/lib/hooks';
+import { useAction, useMe } from '@/lib/hooks';
 import { cn, formatDateTime } from '@/lib/utils';
 
 type Usage = { used: number; limit: number | null };
@@ -23,6 +23,7 @@ type BillingRes = {
     limits: { channels: number; whatsappSessions: number; messagesPerMonth: number; skills: number | null };
   })[];
   razorpayConfigured: boolean;
+  billingEnabled: boolean;
   history: { id: string; message: string; createdAt: string; level: string }[];
 };
 
@@ -43,6 +44,7 @@ function UsageRow({ label, u }: { label: string; u: Usage }) {
 }
 
 export default function BillingPage() {
+  const { data: me } = useMe();
   const { data, isLoading } = useQuery({ queryKey: ['billing'], queryFn: () => get<BillingRes>('/billing') });
   const checkout = useAction(
     (plan: 'STARTER' | 'GROWTH') => post<{ url: string }>('/billing/checkout', { plan }),
@@ -173,6 +175,18 @@ export default function BillingPage() {
                       : 'Trial used'
                     : 'Included at signup'}
                 </Button>
+              ) : !data.billingEnabled ? (
+                <Button className="mt-6" variant={highlight ? 'default' : 'outline'} asChild>
+                  <a
+                    href={whatsappLink(
+                      `Hi! I'd like to upgrade my ${BRAND.name} account (${me?.email ?? ''}) to the ${p.name} plan.`,
+                    )}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <MessageCircle /> {isCurrent ? 'Current plan' : `Get ${p.name} — contact us`}
+                  </a>
+                </Button>
               ) : (
                 <Button
                   className="mt-6"
@@ -193,11 +207,30 @@ export default function BillingPage() {
           );
         })}
       </div>
-      <p className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
-        <ShieldCheck className="h-3.5 w-3.5" /> Payments are processed securely by Razorpay (UPI, cards,
-        netbanking). GST invoices are emailed by Razorpay.
-        {!data.razorpayConfigured && ' Payments are not configured on this server yet.'}
-      </p>
+      {data.billingEnabled ? (
+        <p className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
+          <ShieldCheck className="h-3.5 w-3.5" /> Payments are processed securely by Razorpay (UPI, cards,
+          netbanking). GST invoices are emailed by Razorpay.
+        </p>
+      ) : (
+        <p className="mt-4 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+          <ShieldCheck className="h-4 w-4" /> Online payments are coming soon. To upgrade today, WhatsApp us
+          at{' '}
+          <a
+            className="font-medium text-primary hover:underline"
+            href={whatsappLink(`Hi! I'd like to upgrade my ${BRAND.name} account.`)}
+            target="_blank"
+            rel="noreferrer"
+          >
+            {BRAND.phoneDisplay}
+          </a>{' '}
+          or email{' '}
+          <a className="font-medium text-primary hover:underline" href={`mailto:${BRAND.email}`}>
+            {BRAND.email}
+          </a>
+          .
+        </p>
+      )}
 
       {data.history.length > 0 && (
         <Card className="mt-8">

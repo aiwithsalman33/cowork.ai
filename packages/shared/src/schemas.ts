@@ -17,6 +17,13 @@ export const loginSchema = z.object({
 });
 export type LoginInput = z.infer<typeof loginSchema>;
 
+export const verifyEmailSchema = z.object({ token: z.string().min(20).max(200) });
+export const emailOnlySchema = z.object({ email: z.string().trim().toLowerCase().email() });
+export const resetPasswordSchema = z.object({
+  token: z.string().min(20).max(200),
+  password: z.string().min(8, 'At least 8 characters').max(200),
+});
+
 export const changePasswordSchema = z.object({
   currentPassword: z.string().min(1),
   newPassword: z.string().min(8).max(200),
@@ -84,6 +91,7 @@ export const TOOL_NAMES = [
   'send_email',
   'search_drive',
   'read_doc',
+  'read_sheet',
 ] as const;
 export type ToolName = (typeof TOOL_NAMES)[number];
 
@@ -163,10 +171,42 @@ export const integrationRequestSchema = z.object({
   useCase: z.string().trim().min(5).max(1000),
 });
 
-export const integrationSettingsSchema = z.object({
-  sheetId: z.string().trim().max(200).optional(),
+export const googleCredentialsSchema = z.object({
+  clientId: z
+    .string()
+    .trim()
+    .regex(/^[\w-]+\.apps\.googleusercontent\.com$/, 'Client ID should end with .apps.googleusercontent.com'),
+  clientSecret: z.string().trim().min(10).max(200),
+});
+
+export const googleConnectSchema = z.object({
+  services: z.array(z.enum(TOOLKITS)).min(1, 'Pick at least one Google service'),
+});
+
+export const googleSettingsSchema = z.object({
   calendarId: z.string().trim().max(200).optional(),
 });
+
+export const agentSheetSchema = z.object({
+  sheet: z.string().trim().min(10, 'Paste the Google Sheet link').max(500),
+  name: z.string().trim().min(2).max(60),
+  description: z.string().trim().max(500).default(''),
+  purpose: z.enum(['LEADS', 'LOOKUP']),
+  tab: z.string().trim().max(100).optional(),
+});
+export type AgentSheetInput = z.infer<typeof agentSheetSchema>;
+
+export const contactSchema = z.object({
+  name: z.string().trim().min(2).max(80),
+  phone: z
+    .string()
+    .trim()
+    .regex(/^\+?[\d\s-]{7,20}$/, 'Enter a valid phone number'),
+  email: z.string().trim().email().max(200).optional().or(z.literal('')),
+  business: z.string().trim().max(120).optional(),
+  message: z.string().trim().min(5).max(2000),
+});
+export type ContactInput = z.infer<typeof contactSchema>;
 
 // ---------- Billing ----------
 export const checkoutSchema = z.object({ plan: z.enum(['STARTER', 'GROWTH']) });
@@ -190,6 +230,7 @@ export const adminUserUpdateSchema = z.object({
     .max(24 * 90)
     .optional(),
   role: z.enum(['USER', 'ADMIN']).optional(),
+  verifyEmail: z.literal(true).optional(),
 });
 
 export const featureFlagSchema = z.object({

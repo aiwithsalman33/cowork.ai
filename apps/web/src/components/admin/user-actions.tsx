@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
-import { Ban, Clock, LogIn, MoreHorizontal, ShieldCheck, Trash2 } from 'lucide-react';
+import { Ban, Clock, LogIn, MailCheck, MoreHorizontal, ShieldCheck, Trash2 } from 'lucide-react';
 import { PLAN_IDS, type PlanId } from '@partner/shared';
 import { Button } from '@/components/ui/button';
 import {
@@ -24,7 +24,13 @@ import {
 import { del, patch, post } from '@/lib/api';
 import { useAction } from '@/lib/hooks';
 
-type Row = { id: string; email: string; status: 'ACTIVE' | 'SUSPENDED'; role: 'USER' | 'ADMIN' };
+type Row = {
+  id: string;
+  email: string;
+  status: 'ACTIVE' | 'SUSPENDED';
+  role: 'USER' | 'ADMIN';
+  emailVerified?: boolean;
+};
 
 export function useUserActions(onDone?: () => void) {
   const qc = useQueryClient();
@@ -32,8 +38,16 @@ export function useUserActions(onDone?: () => void) {
   const inv = [['admin-users'], ['admin-user']];
   return {
     update: useAction(
-      ({ id, ...body }: { id: string; plan?: PlanId; status?: string; extendTrialHours?: number }) =>
-        patch(`/admin/users/${id}`, body),
+      ({
+        id,
+        ...body
+      }: {
+        id: string;
+        plan?: PlanId;
+        status?: string;
+        extendTrialHours?: number;
+        verifyEmail?: true;
+      }) => patch(`/admin/users/${id}`, body),
       {
         success: 'User updated',
         invalidate: inv,
@@ -58,7 +72,7 @@ export function UserActionsMenu({
   u,
   onDeleted,
 }: {
-  u: Pick<Row, 'id' | 'email' | 'status' | 'role'>;
+  u: Pick<Row, 'id' | 'email' | 'status' | 'role' | 'emailVerified'>;
   onDeleted?: () => void;
 }) {
   const actions = useUserActions(onDeleted);
@@ -75,6 +89,11 @@ export function UserActionsMenu({
           {u.role !== 'ADMIN' && (
             <DropdownMenuItem onClick={() => actions.impersonate.mutate(u.id)}>
               <LogIn /> Login as user
+            </DropdownMenuItem>
+          )}
+          {u.emailVerified === false && (
+            <DropdownMenuItem onClick={() => actions.update.mutate({ id: u.id, verifyEmail: true })}>
+              <MailCheck /> Mark email verified
             </DropdownMenuItem>
           )}
           <DropdownMenuItem onClick={() => actions.update.mutate({ id: u.id, extendTrialHours: 24 })}>

@@ -27,6 +27,7 @@ const TOOL_LABEL: Record<string, string> = {
   send_email: 'Sends email',
   search_drive: 'Searches Drive',
   read_doc: 'Reads Docs',
+  read_sheet: 'Reads Sheets',
 };
 
 export function SkillCard({

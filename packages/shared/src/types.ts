@@ -55,12 +55,29 @@ export interface ApiKeyDTO {
   updatedAt: string;
 }
 
-export interface IntegrationDTO {
-  toolkit: Toolkit;
+export interface GoogleStatusDTO {
+  credentialsSaved: boolean;
+  clientIdHint: string | null;
+  connected: boolean;
+  email: string | null;
   status: 'CONNECTED' | 'PENDING' | 'DISCONNECTED' | 'ERROR';
+  services: Toolkit[];
+  lastError: string | null;
   connectedAt: string | null;
-  configured: boolean;
-  settings: { sheetId?: string; calendarId?: string };
+  redirectUri: string;
+  settings: { calendarId?: string };
+}
+
+export interface AgentSheetDTO {
+  id: string;
+  spreadsheetId: string;
+  tab: string | null;
+  name: string;
+  description: string;
+  purpose: 'LEADS' | 'LOOKUP';
+  title: string;
+  url: string;
+  createdAt: string;
 }
 
 export interface ConversationDTO {

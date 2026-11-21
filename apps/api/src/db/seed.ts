@@ -14,7 +14,12 @@ const DEFAULT_FLAGS = [
     description: 'Allow connecting WhatsApp by scanning a QR code (Baileys)',
     enabled: true,
   },
-  { key: 'composio_integrations', description: 'Google integrations via Composio', enabled: true },
+  {
+    key: 'google_integrations',
+    description:
+      'Google integrations (Gmail, Calendar, Sheets, Drive, Docs) with the tenant’s own Google Cloud OAuth client',
+    enabled: true,
+  },
 ];
 
 /** Idempotent: safe to run on every deploy. */
@@ -34,6 +39,7 @@ export async function seed() {
       },
     });
   }
+  await prisma.featureFlag.deleteMany({ where: { key: 'composio_integrations' } });
   for (const f of DEFAULT_FLAGS) {
     await prisma.featureFlag.upsert({
       where: { key: f.key },
@@ -52,6 +58,7 @@ export async function seed() {
           email,
           name: 'Platform Admin',
           role: 'ADMIN',
+          emailVerifiedAt: new Date(),
           plan: 'GROWTH',
           passwordHash: await hashPassword(password),
           currentPeriodEnd: new Date('2099-01-01'),
@@ -60,7 +67,10 @@ export async function seed() {
       });
       console.log(`Created admin user ${email}`);
     } else if (existing.role !== 'ADMIN') {
-      await prisma.user.update({ where: { id: existing.id }, data: { role: 'ADMIN' } });
+      await prisma.user.update({
+        where: { id: existing.id },
+        data: { role: 'ADMIN', emailVerifiedAt: existing.emailVerifiedAt ?? new Date() },
+      });
       console.log(`Promoted ${email} to ADMIN`);
     }
   }

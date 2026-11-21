@@ -27,11 +27,14 @@ export function Field({
     React.isValidElement<{ id?: string }>(child) &&
     typeof child.type !== 'string' &&
     ['Input', 'Textarea'].includes((child.type as { displayName?: string }).displayName ?? '');
-  const id = htmlFor ?? (isInput ? ((child as React.ReactElement<{ id?: string }>).props.id ?? autoId) : undefined);
+  const id =
+    htmlFor ?? (isInput ? ((child as React.ReactElement<{ id?: string }>).props.id ?? autoId) : undefined);
   return (
     <div className="space-y-1.5">
       <Label htmlFor={id}>{label}</Label>
-      {isInput && !htmlFor ? React.cloneElement(child as React.ReactElement<{ id?: string }>, { id }) : children}
+      {isInput && !htmlFor
+        ? React.cloneElement(child as React.ReactElement<{ id?: string }>, { id })
+        : children}
       {error ? (
         <p className="text-xs text-destructive">{error}</p>
       ) : hint ? (

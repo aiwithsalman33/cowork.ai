@@ -1,110 +1,143 @@
-# partner.ai
+# CoworkAI
 
-Multi-tenant SaaS where business owners create an AI agent, teach it their business, bring their own AI
-key, and connect it to **WhatsApp** (official Cloud API or QR) and **Telegram**.
+**Your AI co-worker for WhatsApp & Telegram** — https://coworkai.axxeler.in
 
-- **apps/api**: Fastify 5 + TypeScript + Prisma/Postgres, pg-boss queue, Baileys, Composio, Razorpay
-- **apps/web**: Next.js 16 (App Router) + Tailwind v4 + shadcn-style UI + TanStack Query
-- **packages/shared**: zod schemas, plan limits, AI provider catalogue (used by both)
+Multi-tenant SaaS where business owners create an AI agent, teach it their business, bring their own AI key,
+connect Google (Sheets, Calendar, Gmail, Drive, Docs) with **their own Google Cloud credentials**, and connect it to
+**WhatsApp** (official Cloud API or QR) and **Telegram**.
 
-See [PLAN.md](PLAN.md) for the architecture, data model and assumptions.
+| Folder            | What                                                                                       |
+| ----------------- | ------------------------------------------------------------------------------------------ |
+| `apps/api`        | Fastify 5 + TypeScript + Prisma/Postgres, pg-boss queue, Baileys, Google OAuth, Nodemailer |
+| `apps/web`        | Next.js 16 (App Router) + Tailwind v4 + shadcn-style UI + TanStack Query                   |
+| `packages/shared` | zod schemas, plan limits, brand/contact constants, AI provider catalogue                   |
+| `docker/`         | Caddyfile (production reverse proxy on **:8080**)                                          |
+
+Package manager: **npm workspaces** (Node ≥ 22.22).
+
+Contact: aiwithsalman33@gmail.com · +91 81480 35472
 
 ---
 
-## Quick start (local)
+## Local development
 
-Requirements: Node ≥ 22.22, pnpm 10, Docker.
-
-```bash
-pnpm install
-cp .env.example .env            # then fill JWT_SECRET and ENCRYPTION_KEY (commands are in the file)
-docker compose up -d db         # Postgres on localhost:5433
-pnpm --filter @partner/shared build
-pnpm --filter @partner/api prisma:deploy   # or prisma:migrate in development
-pnpm dev:api                    # http://localhost:4000  (seeds skills + admin on boot)
-pnpm dev:web                    # http://localhost:3000
-```
-
-Sign up at http://localhost:3000/signup (24-hour trial starts immediately), or log in with
-`ADMIN_EMAIL` / `ADMIN_PASSWORD` to reach `/admin`.
-
-### Everything in Docker
+### Option A — everything in Docker (hot reload)
 
 ```bash
-docker compose up -d --build    # db + api + web, all with health checks
+cp .env.example .env          # fill JWT_SECRET + ENCRYPTION_KEY (commands are in the file)
+docker compose up --build     # db + api (tsx watch) + web (next dev)
 ```
 
-> On some Docker Desktop versions `docker compose build` asks for an extra BuildKit
-> `fs.read` entitlement. If you see “additional privileges requested”, build with plain Docker instead:
-> `docker build -f apps/api/Dockerfile -t partner-ai-api . && docker build -f apps/web/Dockerfile -t partner-ai-web .`
-> then run `docker compose up -d --no-build`.
+- Web: http://localhost:3000 · API: http://localhost:4000 · Postgres: localhost:5433
+- Uses `docker-compose.yml` + `Dockerfile.dev`. Source is bind-mounted, so edits reload automatically.
+
+### Option B — Node on your machine, database in Docker
+
+```bash
+npm install
+cp .env.example .env
+docker compose up -d db
+npm run build:shared
+npm run db:deploy             # apply migrations
+npm run dev:api               # http://localhost:4000 (seeds 40 skills + admin on boot)
+npm run dev:web               # http://localhost:3000
+```
+
+Without SMTP settings in development, verification and reset emails are **printed in the API log**, so you can
+click the link from there.
 
 ## Tests
 
 ```bash
 docker compose up -d db
-pnpm test                       # Vitest: auth, tenant isolation, plan limits, prompt composition,
-                                # webhook pipeline, tool calling, Boss Mode, billing, admin (uses DB partner_test)
-docker compose up -d --build    # E2E needs the full stack
-ADMIN_EMAIL=… ADMIN_PASSWORD=… pnpm test:e2e     # Playwright
-pnpm lint && pnpm typecheck
+npm test                      # Vitest (uses database partner_test on localhost:5433)
+npm run lint && npm run typecheck
+ADMIN_EMAIL=… ADMIN_PASSWORD=… E2E_BASE_URL=http://localhost:8080 npm run test:e2e   # Playwright against a running stack
 ```
 
----
-
-## Deploying on a VPS with Dokploy
-
-Dokploy runs Docker Compose apps behind Traefik with automatic HTTPS.
-
-1. **Point DNS** at the VPS: `app.example.com` (dashboard) and `api.example.com` (webhooks).
-2. In Dokploy: **Create Project → Add Service → Compose**. Choose *Git* as the source, select this
-   repository and branch, and keep the compose path as `./docker-compose.yml`.
-3. **Environment** tab: paste `.env.example` and fill it in. At minimum:
-   - `POSTGRES_PASSWORD`: a long random string
-   - `JWT_SECRET`, `ENCRYPTION_KEY`: generate with the commands in `.env.example`.
-     **Back up `ENCRYPTION_KEY`.** Losing it makes every stored API key and channel token unreadable.
-   - `WEB_ORIGIN=https://app.example.com`, `PUBLIC_API_URL=https://api.example.com`
-   - `ADMIN_EMAIL`, `ADMIN_PASSWORD`: the first admin is created on boot
-   - Keep containers off the public host ports so traffic only enters through Traefik:
-     `DB_PORT_PUBLISH=127.0.0.1:5433`, `API_PORT_PUBLISH=127.0.0.1:4000`, `WEB_PORT_PUBLISH=127.0.0.1:3000`.
-     Dokploy's Domains feature attaches the services to its Traefik network itself. Verify this against your
-     Dokploy version's Compose docs: older versions need `dokploy-network` declared as an external network.
-4. **Domains** tab:
-   - `app.example.com` → service **web**, port **3000**, HTTPS on
-   - `api.example.com` → service **api**, port **4000**, HTTPS on (Telegram, Meta and Razorpay webhooks go here)
-5. **Deploy**. On start the api runs `prisma migrate deploy`, seeds the 40 skills and feature flags, creates the
-   admin, and restores WhatsApp QR sessions from the `wa_sessions` volume.
-6. Health checks: `GET /health/ready` (api) and `GET /api/health` (web). Dokploy waits for them.
-
-**Proxy / IP settings:** `TRUST_PROXY=2` (default) trusts Traefik plus the Next.js rewrite hop, so rate limits key
-on the real client IP. If you put Cloudflare in front, use `3`.
-
-**Scaling note:** run **one** api replica. Baileys keeps a live WebSocket per WhatsApp QR session and two
-processes must never share a session folder. The queue (pg-boss) is safe across replicas, but the QR sessions are not.
-
-**Backups:** back up the `pgdata` volume (or `pg_dump`) and the `wa_sessions` volume.
-
-### Third-party setup
-
-| Service | What to do |
-|---|---|
-| **Telegram** | Nothing server-side. Users paste a @BotFather token, and the api calls `setWebhook` with a secret token. `PUBLIC_API_URL` must be public HTTPS. |
-| **WhatsApp Cloud API** | Each tenant creates a Meta app, adds WhatsApp, and pastes their Phone number ID, permanent access token and app secret. The UI then shows a per-channel Callback URL + Verify token to paste into Meta → WhatsApp → Configuration. They must subscribe to `messages`. |
-| **WhatsApp QR (Baileys)** | Works out of the box. It is unofficial and numbers can be banned, and the UI says so. Disable it globally with `BAILEYS_ENABLED=false` or the `whatsapp_qr` feature flag. |
-| **Composio** (Google apps) | Create a Composio project, then create one **Composio-managed** auth config each for Gmail, Google Calendar, Google Sheets, Google Drive and Google Docs, and put the ids in `COMPOSIO_AUTH_CONFIG_*`. No Google Cloud Console needed. Then open **Admin → Overview → Verify Composio tools** to confirm tool slugs and arguments against the live schemas. |
-| **Razorpay** | Dashboard → Subscriptions → Plans: create a ₹999/month (Starter) and a ₹2,999/month (Growth) plan and set `RAZORPAY_PLAN_*`. Dashboard → Webhooks: URL `https://api.example.com/webhooks/razorpay`, set a secret (`RAZORPAY_WEBHOOK_SECRET`), and enable the `subscription.*` events. |
+> Windows tip: run Vitest from a path with an upper-case drive letter (`D:\…`). A lower-case `d:` path makes Vitest
+> load twice and every test file fails with "failed to find the runner".
 
 ---
+
+## Production (coworkai.axxeler.in)
+
+The production stack is `docker-compose.prod.yml`: **db + api + web + Caddy**. Only Caddy is published, on **port 8080**:
+
+```
+Internet ──HTTPS──▶ TLS proxy (Dokploy/Traefik, Cloudflare, nginx…) ──▶ :8080 Caddy ─┬─ /api/*, /webhooks/* ─▶ api:4000
+                                                                                    └─ everything else     ─▶ web:3000
+```
+
+```bash
+cp .env.example .env.production   # fill it in (see below)
+docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
+```
+
+Required in `.env.production`:
+
+- `APP_URL=https://coworkai.axxeler.in`
+- `POSTGRES_PASSWORD`, `JWT_SECRET`, `ENCRYPTION_KEY`. **Back up `ENCRYPTION_KEY`.** It decrypts every stored key and token.
+- `ADMIN_EMAIL`, `ADMIN_PASSWORD`: the first admin is created on boot
+- `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`: needed for signup verification emails (see Gmail below)
+
+### Deploying with Dokploy
+
+1. DNS: an `A` record for `coworkai.axxeler.in` pointing at the server.
+2. Dokploy → **Create Service → Compose** → Git repo `aiwithsalman33/cowork.ai`, branch `main`, compose path
+   `./docker-compose.prod.yml`.
+3. **Environment**: paste your `.env.production` values.
+4. **Domains**: `coworkai.axxeler.in` → service **caddy**, port **8080**, HTTPS on.
+5. Deploy. The api runs `prisma migrate deploy`, seeds skills and flags, creates the admin, and restores WhatsApp QR
+   sessions from the `wa_sessions` volume.
+
+Health: `GET /health/ready` (api via Caddy) and `GET /web-health` (web via Caddy).
+Run **one** api replica: Baileys QR sessions must not be shared between processes.
+
+> If `docker compose build` asks for an extra BuildKit `fs.read` privilege (seen with Docker Desktop on Windows),
+> build with plain Docker and then start without building:
+> `docker build -f apps/api/Dockerfile -t coworkai-api . && docker build -f apps/web/Dockerfile -t coworkai-web .`
+> then `docker compose -f docker-compose.prod.yml --env-file .env.production up -d --no-build`.
+
+### Gmail SMTP for verification emails
+
+1. Turn on 2-Step Verification on the Gmail account that will send emails.
+2. Create an **App Password** at https://myaccount.google.com/apppasswords.
+3. Set `SMTP_USER=<that gmail>`, `SMTP_PASS=<16-character app password>`, `MAIL_FROM="CoworkAI <that gmail>"`.
+
+---
+
+## How the main flows work
+
+**Signup → verify → trial.** Signup creates the account and emails a verification link (valid 24 h). The account
+can't log in until it's verified. Verifying starts the 24-hour trial and signs the user in. "Resend" and
+"Forgot password" are built in. Admins can also "Mark email verified" in Admin → Users.
+
+**Google with the tenant's own credentials.** Each business creates an OAuth client in Google Cloud Console (Web
+application), adds the redirect URI shown on the Integrations page
+(`https://coworkai.axxeler.in/api/integrations/google/callback`), and pastes the Client ID and Secret. They pick
+services (Sheets, Calendar, Gmail, Drive, Docs) and click Connect. Refresh tokens are stored encrypted. The OAuth
+`state` is a signed 10-minute token bound to the tenant. Google apps left in "Testing" mode expire tokens after 7
+days, and the UI tells users to publish the app.
+
+**Sheets in the agent.** Agent Config → Google Sheets: add a _lookup_ sheet (price list, stock, menu). The agent gets
+a `read_sheet` tool and reads live rows. Add a _leads_ sheet and every captured lead is appended as a row.
+
+**Payments are on hold.** `BILLING_ENABLED=false` (default). Upgrade buttons open WhatsApp to +91 81480 35472, and
+admins change plans manually in Admin → Users. The Razorpay code stays in place: set the `RAZORPAY_*` values and
+`BILLING_ENABLED=true` when you're ready.
+
+**Landing page contact form.** Opens WhatsApp to 8148035472 with the enquiry pre-filled, and stores a copy in
+Admin → Contact Messages.
 
 ## Security summary
 
-- Secrets (AI keys, bot tokens, Cloud API credentials) are encrypted with AES-256-GCM and never returned to the client.
-  Only the last 4 characters are shown. Logs redact auth headers, cookies, signatures and secret fields.
-- httpOnly cookie sessions: 15-minute JWT plus 30-day rotating refresh tokens with reuse detection. Double-submit
-  CSRF token, SameSite=Lax, and CORS locked to `WEB_ORIGIN`.
-- Every tenant query goes through `tenantDb(userId)` (a Prisma extension that forces `userId`). Tests prove
-  cross-tenant reads, updates and deletes fail.
-- Webhooks are verified: Telegram secret token, Meta `X-Hub-Signature-256`, Razorpay `X-Razorpay-Signature` (all on
-  the raw body, constant-time compare). There are rate limits on auth, webhooks and globally.
-- Every admin action (plan changes, impersonation, suspensions, deletions, skill and flag edits) is written to the
-  audit log.
+- AES-256-GCM for AI keys, bot tokens, Google client secrets and refresh tokens. They are never returned to the browser.
+- httpOnly cookie sessions: 15-minute JWT plus rotating refresh tokens with reuse detection, double-submit CSRF, and
+  SameSite=Lax.
+- Every tenant query is forced through `tenantDb(userId)`. Isolation is covered by tests.
+- Webhooks are verified: Telegram secret token, Meta `X-Hub-Signature-256`, Razorpay signature. Auth, email and
+  webhook routes are rate-limited.
+- Email verification and reset tokens are single-use and stored hashed. Resend and forgot-password never reveal
+  whether an account exists.
+- Admin actions are written to the audit log.

@@ -53,11 +53,11 @@ const sections = [
   },
   {
     icon: Plug,
-    title: '6. Connect Google apps (optional)',
+    title: '6. Connect Google with your own Cloud credentials (optional)',
     body: [
-      'Google Calendar: appointments booked by the agent are added to your calendar.',
-      'Google Sheets: captured leads are appended as rows. Choose the sheet after connecting.',
-      'Gmail sends confirmation emails. Drive & Docs let the agent look up your documents.',
+      'In Google Cloud Console create a project, enable the Sheets / Calendar / Gmail / Drive / Docs APIs, set up the OAuth consent screen (publish it so access doesn’t expire after 7 days) and create an OAuth client of type Web application.',
+      'Add the redirect URI shown on the Integrations page, then paste the Client ID and Client secret there and click Connect Google account.',
+      'Agent Config → Google Sheets: add a sheet the agent reads (price list, stock, menu) and a sheet where it logs leads. Appointments go to Google Calendar automatically.',
     ],
     link: { href: '/integrations', label: 'Open Integrations' },
   },

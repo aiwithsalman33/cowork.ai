@@ -22,7 +22,7 @@ export function Logo({ className, collapsed }: { className?: string; collapsed?:
       </span>
       {!collapsed && (
         <span>
-          partner<span className="text-primary">.ai</span>
+          Cowork<span className="text-primary">AI</span>
         </span>
       )}
     </Link>

@@ -21,6 +21,7 @@ type Row = {
   businessName: string;
   role: 'USER' | 'ADMIN';
   status: 'ACTIVE' | 'SUSPENDED';
+  emailVerified: boolean;
   plan: PlanId;
   planActive: boolean;
   trialEndsAt: string | null;
@@ -140,6 +141,7 @@ export default function AdminUsers() {
                       <div className="flex flex-wrap gap-1">
                         <Badge variant={u.planActive ? 'success' : 'secondary'}>{u.plan}</Badge>
                         {u.status === 'SUSPENDED' && <Badge variant="destructive">Suspended</Badge>}
+                        {!u.emailVerified && <Badge variant="warning">Unverified</Badge>}
                         {u.role === 'ADMIN' && <Badge>Admin</Badge>}
                       </div>
                     </td>

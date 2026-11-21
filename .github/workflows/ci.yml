@@ -20,14 +20,13 @@ jobs:
           --health-cmd "pg_isready -U partner" --health-interval 5s --health-timeout 5s --health-retries 20
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @partner/shared build
-      - run: pnpm --filter @partner/api exec prisma generate
-      - run: pnpm lint
-      - run: pnpm typecheck
-      - run: pnpm test
+          cache: npm
+      - run: npm ci
+      - run: npm run build:shared
+      - run: cd apps/api && npx prisma generate
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test

@@ -17,17 +17,17 @@
     "seed": "tsx --env-file-if-exists=../../.env src/db/seed.ts"
   },
   "dependencies": {
-    "@composio/core": "^0.31.0",
     "@fastify/cookie": "^11.1.5",
     "@fastify/cors": "^11.4.3",
     "@fastify/helmet": "^13.2.0",
     "@fastify/rate-limit": "^11.3.0",
     "@node-rs/argon2": "^2.0.2",
-    "@partner/shared": "workspace:*",
+    "@partner/shared": "*",
     "@prisma/client": "6.19.3",
     "baileys": "7.0.0-rc14",
     "fastify": "^5.12.8",
     "jose": "^6.1.0",
+    "nodemailer": "^10.6.1",
     "pg-boss": "^12.38.2",
     "pino": "^10.1.0",
     "prisma": "6.19.3",
@@ -37,6 +37,7 @@
   },
   "devDependencies": {
     "@types/node": "^24.9.0",
+    "@types/nodemailer": "^8.0.2",
     "@types/qrcode": "^1.5.5",
     "pino-pretty": "^13.1.2",
     "tsx": "^4.20.6",

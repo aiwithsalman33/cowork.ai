@@ -29,6 +29,8 @@ export interface PromptContext {
   skills: PromptSkill[];
   memory?: PromptMemory;
   availableTools?: string[];
+  /** lookup sheets the agent may query with read_sheet */
+  sheets?: { name: string; description: string }[];
   channel?: string;
   now?: Date;
   timeZone?: string;
@@ -85,6 +87,15 @@ export function composeSystemPrompt(ctx: PromptContext): string {
   if (ctx.availableTools?.length) {
     parts.push(
       `## Tools\nYou can call these tools when needed: ${ctx.availableTools.join(', ')}. Only claim an action succeeded (booking, email, etc.) after the tool confirms it.`,
+    );
+  }
+
+  if (ctx.sheets?.length) {
+    const list = ctx.sheets
+      .map((s) => `- "${s.name}"${s.description ? `: ${s.description}` : ''}`)
+      .join('\n');
+    parts.push(
+      `## Google Sheets\nUse read_sheet to look up live data (prices, stock, schedules…) before answering questions these sheets cover:\n${list}`,
     );
   }
 

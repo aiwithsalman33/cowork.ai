@@ -9,6 +9,8 @@ const envSchema = z.object({
   PORT: z.coerce.number().int().default(4000),
   HOST: z.string().default('0.0.0.0'),
   LOG_LEVEL: z.string().default('info'),
+  /** login/signup attempts per IP per minute */
+  AUTH_RATE_LIMIT_PER_MIN: z.coerce.number().int().min(1).default(10),
   DATABASE_URL: z.string().min(1),
   JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
   ENCRYPTION_KEY: z.string().regex(/^[0-9a-fA-F]{64}$/, 'ENCRYPTION_KEY must be 64 hex chars (32 bytes)'),
@@ -28,12 +30,16 @@ const envSchema = z.object({
   WA_SESSIONS_DIR: z.string().default('./data/wa-sessions'),
   WA_GRAPH_VERSION: z.string().default('v21.0'),
 
-  COMPOSIO_API_KEY: z.string().optional(),
-  COMPOSIO_AUTH_CONFIG_GMAIL: z.string().optional(),
-  COMPOSIO_AUTH_CONFIG_GOOGLECALENDAR: z.string().optional(),
-  COMPOSIO_AUTH_CONFIG_GOOGLESHEETS: z.string().optional(),
-  COMPOSIO_AUTH_CONFIG_GOOGLEDRIVE: z.string().optional(),
-  COMPOSIO_AUTH_CONFIG_GOOGLEDOCS: z.string().optional(),
+  // Outgoing email (verification + password reset). Gmail: smtp.gmail.com:465 with an App Password.
+  SMTP_HOST: z.string().default('smtp.gmail.com'),
+  SMTP_PORT: z.coerce.number().int().default(465),
+  SMTP_SECURE: bool.default(true),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
+  MAIL_FROM: z.string().optional(),
+
+  // Online payments are on hold until Razorpay is set up.
+  BILLING_ENABLED: bool.default(false),
 
   RAZORPAY_KEY_ID: z.string().optional(),
   RAZORPAY_KEY_SECRET: z.string().optional(),

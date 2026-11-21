@@ -1,4 +1,5 @@
 import { Bot, CalendarCheck, MessageCircle, Sparkles } from 'lucide-react';
+import { BRAND } from '@partner/shared';
 import { Logo } from '@/components/brand';
 
 const points = [
@@ -12,7 +13,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
   return (
     <div className="grid min-h-dvh lg:grid-cols-[1.05fr_1fr]">
       <aside className="hero-gradient relative hidden overflow-hidden p-10 text-white lg:flex lg:flex-col lg:justify-between">
-        <div className="[&_a]:text-white [&_span.text-primary]:text-white/70">
+        <div className="[&_a]:text-white [&_span.text-primary]:text-white/70 [&_span.bg-primary]:bg-white/15">
           <Logo />
         </div>
         <div className="relative z-10 max-w-md">
@@ -33,7 +34,9 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             ))}
           </ul>
         </div>
-        <p className="text-xs text-white/50">© {new Date().getFullYear()} partner.ai</p>
+        <p className="text-xs text-white/50">
+          © {new Date().getFullYear()} CoworkAI · {BRAND.email}
+        </p>
         <div className="pointer-events-none absolute -right-24 -top-24 h-96 w-96 rounded-full bg-white/5 blur-2xl" />
         <div className="pointer-events-none absolute -bottom-32 right-10 h-80 w-80 rounded-full bg-white/5 blur-2xl" />
       </aside>

@@ -70,6 +70,7 @@ export const ADMIN_NAV: NavItem[] = [
   { href: '/admin/users', label: 'Users', icon: LayoutDashboard },
   { href: '/admin/skills', label: 'Skill Library', icon: Bot },
   { href: '/admin/flags', label: 'Feature Flags', icon: Shield },
+  { href: '/admin/contacts', label: 'Contact Messages', icon: MessagesSquare },
   { href: '/admin/requests', label: 'Integration Requests', icon: Plug },
   { href: '/admin/audit', label: 'Audit Log', icon: ScrollText },
 ];

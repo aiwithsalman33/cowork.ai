@@ -1,5 +1,6 @@
 import type { Prisma } from '@prisma/client';
-import { TOOL_NAMES, type ToolName, type Toolkit } from '@partner/shared';
+import { TOOL_NAMES, type ToolName } from '@partner/shared';
+import { loadGoogleState } from '../integrations/google.js';
 import { prisma } from '../db/client.js';
 import { complete, type ChatMessage, type ToolDef } from '../llm/index.js';
 import type { ResolvedModel } from './keys.js';
@@ -23,30 +24,30 @@ interface PromptOptions {
   conversationSummary?: string;
 }
 
-async function loadIntegrations(userId: string): Promise<ToolContext['integrations']> {
-  const rows = await prisma.integration.findMany({ where: { userId, status: 'CONNECTED' } });
-  return new Map(
-    rows.map((r) => [
-      r.toolkit as Toolkit,
-      {
-        connectedAccountId: r.connectedAccountId,
-        settings: (r.settings ?? {}) as Record<string, string | undefined>,
-      },
-    ]),
-  );
+async function loadGoogle(userId: string) {
+  const [state, sheets] = await Promise.all([
+    loadGoogleState(userId),
+    prisma.agentSheet.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } }),
+  ]);
+  // Sheets only work while Google is connected with Sheets access.
+  return {
+    google: state.services,
+    googleSettings: state.settings,
+    sheets: state.services.has('googlesheets') ? sheets : [],
+  };
 }
 
 /** Builds the system prompt + tool list for a tenant (and optionally a specific contact). */
 export async function buildAgentPrompt(userId: string, opts: PromptOptions) {
-  const [agent, userSkills, integrations] = await Promise.all([
+  const [agent, userSkills, g] = await Promise.all([
     prisma.agent.findUniqueOrThrow({ where: { userId } }),
     prisma.userSkill.findMany({ where: { userId, enabled: true }, include: { skill: true } }),
-    loadIntegrations(userId),
+    loadGoogle(userId),
   ]);
   const requested = new Set<ToolName>();
   for (const us of userSkills)
     for (const t of us.skill.tools) if (TOOL_NAMES.includes(t as ToolName)) requested.add(t as ToolName);
-  const toolNames = availableTools(requested, { integrations });
+  const toolNames = availableTools(requested, g);
   const tools: ToolDef[] = toolNames.map((t) => TOOL_DEFS[t]);
 
   const profile = (opts.contact?.profile ?? {}) as Record<string, unknown>;
@@ -55,6 +56,7 @@ export async function buildAgentPrompt(userId: string, opts: PromptOptions) {
     agent,
     skills: userSkills.map((us) => ({ name: us.skill.name, promptFragment: us.skill.promptFragment })),
     availableTools: toolNames,
+    sheets: toolNames.includes('read_sheet') ? g.sheets.filter((s) => s.purpose === 'LOOKUP') : [],
     channel: opts.channel,
     timeZone: TIME_ZONE,
     memory: opts.contact
@@ -66,7 +68,7 @@ export async function buildAgentPrompt(userId: string, opts: PromptOptions) {
         }
       : undefined,
   });
-  return { system, tools, integrations, agent };
+  return { system, tools, g, agent };
 }
 
 export interface AgentRunResult {
@@ -90,7 +92,7 @@ export async function runAgent(params: {
     where: { id: params.conversationId },
     include: { contact: true },
   });
-  const { system, tools, integrations } = await buildAgentPrompt(params.userId, {
+  const { system, tools, g } = await buildAgentPrompt(params.userId, {
     channel: params.channelLabel,
     contact: conversation.contact,
     conversationSummary: conversation.summary,
@@ -130,7 +132,9 @@ export async function runAgent(params: {
     contactPhone: conversation.contact.phone,
     channelLabel: params.channelLabel,
     timeZone: TIME_ZONE,
-    integrations,
+    google: g.google,
+    googleSettings: g.googleSettings,
+    sheets: g.sheets,
   };
 
   const usage = { input: 0, output: 0 };

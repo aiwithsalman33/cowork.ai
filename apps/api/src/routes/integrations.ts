@@ -2,164 +2,295 @@ import type { FastifyInstance } from 'fastify';
 import type { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import {
-  TOOLKITS,
+  agentSheetSchema,
+  googleConnectSchema,
+  googleCredentialsSchema,
+  googleSettingsSchema,
   integrationRequestSchema,
-  integrationSettingsSchema,
-  type IntegrationDTO,
-  type Toolkit,
+  type AgentSheetDTO,
+  type GoogleStatusDTO,
 } from '@partner/shared';
 import { env } from '../config.js';
+import { prisma } from '../db/client.js';
 import { authenticate, user } from '../plugins/auth.js';
 import { parse } from '../lib/validate.js';
-import { badRequest, notFound } from '../lib/errors.js';
-import {
-  composioEnabled,
-  disconnect,
-  findActiveAccount,
-  getConnectionStatus,
-  isToolkitConfigured,
-  startConnection,
-} from '../integrations/composio.js';
+import { badRequest, conflict, notFound } from '../lib/errors.js';
+import { decrypt, decryptJson, encryptJson } from '../lib/crypto.js';
 import { logEvent } from '../services/audit.js';
-import { tenantDb } from '../db/tenant.js';
 import { isFlagEnabled } from '../services/flags.js';
+import {
+  buildAuthUrl,
+  cacheAccessToken,
+  clearTokenCache,
+  encryptRefreshToken,
+  exchangeCode,
+  GoogleError,
+  readSheet,
+  redirectUri,
+  revokeToken,
+  servicesFromScopes,
+  sheetMeta,
+  signState,
+  spreadsheetIdFrom,
+  verifyState,
+  type GoogleCredentials,
+} from '../integrations/google.js';
 
-const toolkitParam = z.object({ toolkit: z.enum(TOOLKITS) });
+const idParam = z.object({ id: z.string().min(1) });
+
+function sheetDTO(s: {
+  id: string;
+  spreadsheetId: string;
+  tab: string | null;
+  name: string;
+  description: string;
+  purpose: 'LEADS' | 'LOOKUP';
+  title: string;
+  createdAt: Date;
+}): AgentSheetDTO {
+  return {
+    ...s,
+    url: `https://docs.google.com/spreadsheets/d/${s.spreadsheetId}`,
+    createdAt: s.createdAt.toISOString(),
+  };
+}
 
 export async function integrationRoutes(app: FastifyInstance) {
-  app.addHook('preHandler', authenticate);
-
-  /** Moves PENDING rows to CONNECTED once Composio reports the account ACTIVE. */
-  async function sync(
-    userId: string,
-    row: { id: string; toolkit: string; status: string; connectedAccountId: string | null },
-  ) {
-    if (row.status !== 'PENDING' || !composioEnabled()) return row.status;
-    let accountId = row.connectedAccountId;
-    let status = accountId ? await getConnectionStatus(accountId) : null;
-    if (status !== 'ACTIVE') {
-      const found = await findActiveAccount(userId, row.toolkit as Toolkit).catch(() => null);
-      if (found) {
-        accountId = found;
-        status = 'ACTIVE';
-      }
-    }
-    if (status === 'ACTIVE') {
-      await tenantDb(userId).integration.update({
-        where: { id: row.id },
-        data: { status: 'CONNECTED', connectedAccountId: accountId, connectedAt: new Date() },
-      });
-      await logEvent(userId, 'INFO', 'integration.connected', `${row.toolkit} connected`);
-      return 'CONNECTED';
-    }
-    if (status === 'FAILED' || status === 'EXPIRED') {
-      await tenantDb(userId).integration.update({ where: { id: row.id }, data: { status: 'ERROR' } });
-      return 'ERROR';
-    }
-    return 'PENDING';
-  }
-
-  app.get('/integrations', async (req): Promise<{ integrations: IntegrationDTO[]; enabled: boolean }> => {
-    const u = user(req);
-    const rows = await req.db.integration.findMany();
-    const out: IntegrationDTO[] = [];
-    for (const toolkit of TOOLKITS) {
-      const row = rows.find((r) => r.toolkit === toolkit);
-      const status = row ? await sync(u.id, row) : 'DISCONNECTED';
-      out.push({
-        toolkit,
-        status: status as IntegrationDTO['status'],
-        connectedAt: row?.connectedAt?.toISOString() ?? null,
-        configured: isToolkitConfigured(toolkit),
-        settings: (row?.settings ?? {}) as IntegrationDTO['settings'],
-      });
-    }
-    return {
-      integrations: out,
-      enabled: composioEnabled() && (await isFlagEnabled('composio_integrations', u.id)),
-    };
-  });
-
-  app.post(
-    '/integrations/:toolkit/connect',
-    { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } },
-    async (req) => {
-      const { toolkit } = parse(toolkitParam, req.params);
-      const u = user(req);
-      if (!isToolkitConfigured(toolkit))
-        throw badRequest('This integration is not configured on the server yet.');
-      const callbackUrl = `${env.WEB_ORIGIN}/integrations?toolkit=${toolkit}`;
-      let conn: Awaited<ReturnType<typeof startConnection>>;
-      try {
-        conn = await startConnection(u.id, toolkit, callbackUrl);
-      } catch (err) {
-        req.log.error({ err: (err as Error).message }, 'composio connect failed');
-        throw badRequest('Could not start the connection with Composio. Try again in a minute.');
-      }
-      if (!conn.redirectUrl) throw badRequest('Composio did not return a redirect URL');
-      const existing = await req.db.integration.findFirst({ where: { toolkit } });
-      if (existing) {
-        await req.db.integration.update({
-          where: { id: existing.id },
-          data: { status: 'PENDING', connectedAccountId: conn.connectedAccountId },
-        });
-      } else {
-        await req.db.integration.create({
-          data: { toolkit, status: 'PENDING', connectedAccountId: conn.connectedAccountId } as never,
-        });
-      }
-      return { redirectUrl: conn.redirectUrl };
-    },
-  );
-
-  app.post('/integrations/:toolkit/sync', async (req) => {
-    const { toolkit } = parse(toolkitParam, req.params);
-    const row = await req.db.integration.findFirst({ where: { toolkit } });
-    if (!row) throw notFound('Not connected');
-    return { status: await sync(user(req).id, row) };
-  });
-
-  app.put('/integrations/:toolkit/settings', async (req) => {
-    const { toolkit } = parse(toolkitParam, req.params);
-    const settings = parse(integrationSettingsSchema, req.body);
-    const row = await req.db.integration.findFirst({ where: { toolkit } });
-    if (!row) throw notFound('Connect this integration first');
-    // Accept a full Google Sheets URL and keep only the spreadsheet id.
-    const sheetId = settings.sheetId?.match(/\/d\/([a-zA-Z0-9-_]+)/)?.[1] ?? settings.sheetId;
-    await req.db.integration.update({
-      where: { id: row.id },
-      data: {
-        settings: {
-          ...(row.settings as object),
-          ...settings,
-          ...(sheetId ? { sheetId } : {}),
-        } as Prisma.InputJsonValue,
-      },
-    });
-    return { ok: true };
-  });
-
-  app.delete('/integrations/:toolkit', async (req) => {
-    const { toolkit } = parse(toolkitParam, req.params);
-    const row = await req.db.integration.findFirst({ where: { toolkit } });
-    if (!row) return { ok: true };
-    if (row.connectedAccountId && composioEnabled()) {
-      await disconnect(row.connectedAccountId).catch((err) =>
-        req.log.warn({ err: (err as Error).message }, 'composio delete failed'),
+  /**
+   * OAuth redirect target (browser navigation from Google). Not cookie-authenticated on purpose:
+   * the access cookie may expire while the user is on Google's consent screen. The signed `state`
+   * (10-minute JWT bound to the tenant) proves who started the flow.
+   */
+  app.get('/integrations/google/callback', async (req, reply) => {
+    const q = parse(
+      z.object({ code: z.string().optional(), state: z.string().optional(), error: z.string().optional() }),
+      req.query,
+    );
+    const back = (status: string, reason?: string) =>
+      reply.redirect(
+        `${env.WEB_ORIGIN}/integrations?google=${status}${reason ? `&reason=${encodeURIComponent(reason)}` : ''}`,
+      );
+    const userId = q.state ? await verifyState(q.state) : null;
+    if (!userId) return back('error', 'The connection request expired. Please try again.');
+    if (q.error || !q.code) {
+      return back(
+        'error',
+        q.error === 'access_denied' ? 'Access was not granted.' : (q.error ?? 'No code returned'),
       );
     }
-    await req.db.integration.delete({ where: { id: row.id } });
-    await logEvent(user(req).id, 'INFO', 'integration.disconnected', `${toolkit} disconnected`);
-    return { ok: true };
+
+    const conn = await prisma.googleConnection.findUnique({ where: { userId } });
+    const creds = decryptJson<GoogleCredentials>(conn?.encryptedCredentials);
+    if (!conn || !creds) return back('error', 'Save your Google Cloud credentials first.');
+    try {
+      const t = await exchangeCode(creds, q.code);
+      const refreshToken =
+        t.refreshToken ?? (conn.encryptedRefreshToken ? decrypt(conn.encryptedRefreshToken) : null);
+      if (!refreshToken) {
+        return back(
+          'error',
+          'Google did not return a refresh token. Remove the app from your Google account permissions and connect again.',
+        );
+      }
+      await prisma.googleConnection.update({
+        where: { userId },
+        data: {
+          encryptedRefreshToken: encryptRefreshToken(refreshToken),
+          scopes: t.scopes,
+          email: t.email,
+          status: 'CONNECTED',
+          lastError: null,
+          connectedAt: new Date(),
+        },
+      });
+      cacheAccessToken(userId, t.accessToken, t.expiresIn);
+      await logEvent(
+        userId,
+        'INFO',
+        'google.connected',
+        `Google account ${t.email ?? ''} connected (${servicesFromScopes(t.scopes).join(', ')})`,
+      );
+      return back('connected');
+    } catch (err) {
+      const msg = err instanceof GoogleError ? err.message : 'Could not complete the Google connection';
+      await prisma.googleConnection.update({ where: { userId }, data: { status: 'ERROR', lastError: msg } });
+      await logEvent(userId, 'ERROR', 'google.connect_failed', `Google connection failed: ${msg}`);
+      return back('error', msg);
+    }
   });
 
-  app.post(
-    '/integration-requests',
-    { config: { rateLimit: { max: 5, timeWindow: '1 minute' } } },
-    async (req, reply) => {
-      const input = parse(integrationRequestSchema, req.body);
-      await req.db.integrationRequest.create({ data: input as never });
-      return reply.code(201).send({ ok: true });
-    },
-  );
+  await app.register(async (secured) => {
+    secured.addHook('preHandler', authenticate);
+
+    secured.get('/integrations/google', async (req): Promise<GoogleStatusDTO & { enabled: boolean }> => {
+      const conn = await req.db.googleConnection.findFirst();
+      const connected = conn?.status === 'CONNECTED';
+      return {
+        enabled: await isFlagEnabled('google_integrations', user(req).id),
+        credentialsSaved: !!conn?.encryptedCredentials,
+        clientIdHint: conn?.clientIdHint ?? null,
+        connected,
+        email: conn?.email ?? null,
+        status: conn?.status ?? 'DISCONNECTED',
+        services: connected ? servicesFromScopes(conn.scopes) : [],
+        lastError: conn?.lastError ?? null,
+        connectedAt: conn?.connectedAt?.toISOString() ?? null,
+        redirectUri: redirectUri(),
+        settings: (conn?.settings ?? {}) as GoogleStatusDTO['settings'],
+      };
+    });
+
+    secured.put('/integrations/google/credentials', async (req) => {
+      const input = parse(googleCredentialsSchema, req.body);
+      const u = user(req);
+      const existing = await req.db.googleConnection.findFirst();
+      const data = {
+        encryptedCredentials: encryptJson(input),
+        clientIdHint: `${input.clientId.slice(0, 12)}…`,
+      };
+      if (existing) {
+        const changedClient =
+          decryptJson<GoogleCredentials>(existing.encryptedCredentials)?.clientId !== input.clientId;
+        // A refresh token belongs to one OAuth client; switching clients requires reconnecting.
+        await req.db.googleConnection.update({
+          where: { id: existing.id },
+          data: {
+            ...data,
+            ...(changedClient
+              ? { encryptedRefreshToken: null, status: 'DISCONNECTED' as const, scopes: [], email: null }
+              : {}),
+          },
+        });
+        if (changedClient) clearTokenCache(u.id);
+      } else {
+        await req.db.googleConnection.create({ data: data as never });
+      }
+      await logEvent(u.id, 'INFO', 'google.credentials_saved', 'Google Cloud OAuth credentials saved');
+      return { ok: true };
+    });
+
+    secured.post('/integrations/google/connect', async (req) => {
+      const { services } = parse(googleConnectSchema, req.body);
+      const u = user(req);
+      if (!(await isFlagEnabled('google_integrations', u.id)))
+        throw badRequest('Google integrations are disabled.');
+      const conn = await req.db.googleConnection.findFirst();
+      const creds = decryptJson<GoogleCredentials>(conn?.encryptedCredentials);
+      if (!conn || !creds) throw badRequest('Save your Google Cloud Client ID and Secret first.');
+      if (conn.status !== 'CONNECTED') {
+        await req.db.googleConnection.update({ where: { id: conn.id }, data: { status: 'PENDING' } });
+      }
+      return { url: buildAuthUrl(creds, await signState(u.id), services) };
+    });
+
+    secured.put('/integrations/google/settings', async (req) => {
+      const settings = parse(googleSettingsSchema, req.body);
+      const conn = await req.db.googleConnection.findFirst();
+      if (!conn) throw notFound('Connect Google first');
+      await req.db.googleConnection.update({
+        where: { id: conn.id },
+        data: { settings: { ...(conn.settings as object), ...settings } as Prisma.InputJsonValue },
+      });
+      return { ok: true };
+    });
+
+    /** Disconnect: revoke the token at Google but keep the saved Cloud credentials. */
+    secured.delete('/integrations/google', async (req) => {
+      const u = user(req);
+      const conn = await req.db.googleConnection.findFirst();
+      if (!conn) return { ok: true };
+      if (conn.encryptedRefreshToken) await revokeToken(decrypt(conn.encryptedRefreshToken));
+      await req.db.googleConnection.update({
+        where: { id: conn.id },
+        data: {
+          encryptedRefreshToken: null,
+          status: 'DISCONNECTED',
+          scopes: [],
+          email: null,
+          connectedAt: null,
+        },
+      });
+      clearTokenCache(u.id);
+      await logEvent(u.id, 'INFO', 'google.disconnected', 'Google account disconnected');
+      return { ok: true };
+    });
+
+    secured.delete('/integrations/google/credentials', async (req) => {
+      const u = user(req);
+      const conn = await req.db.googleConnection.findFirst();
+      if (conn?.encryptedRefreshToken) await revokeToken(decrypt(conn.encryptedRefreshToken));
+      await req.db.googleConnection.deleteMany({});
+      clearTokenCache(u.id);
+      return { ok: true };
+    });
+
+    // ---------------- Agent Google Sheets ----------------
+    secured.get('/sheets', async (req) => {
+      const sheets = await req.db.agentSheet.findMany({ orderBy: { createdAt: 'asc' } });
+      return { sheets: sheets.map(sheetDTO) };
+    });
+
+    secured.post('/sheets', async (req, reply) => {
+      const input = parse(agentSheetSchema, req.body);
+      const u = user(req);
+      const conn = await req.db.googleConnection.findFirst();
+      if (conn?.status !== 'CONNECTED' || !servicesFromScopes(conn.scopes).includes('googlesheets')) {
+        throw badRequest('Connect Google with Sheets access first (Integrations page).');
+      }
+      const spreadsheetId = spreadsheetIdFrom(input.sheet);
+      if (!spreadsheetId) throw badRequest('That does not look like a Google Sheets link.');
+      if ((await req.db.agentSheet.count()) >= 20) throw badRequest('You can add up to 20 sheets.');
+      if (await req.db.agentSheet.findFirst({ where: { name: input.name } })) {
+        throw conflict('A sheet with this name already exists');
+      }
+      let meta: Awaited<ReturnType<typeof sheetMeta>>;
+      try {
+        meta = await sheetMeta(u.id, spreadsheetId);
+      } catch (err) {
+        throw badRequest(`Could not open this sheet: ${(err as Error).message}`);
+      }
+      if (input.tab && !meta.tabs.includes(input.tab)) {
+        throw badRequest(`Tab "${input.tab}" not found. Tabs: ${meta.tabs.join(', ')}`);
+      }
+      const sheet = await req.db.agentSheet.create({
+        data: {
+          spreadsheetId,
+          tab: input.tab || null,
+          name: input.name,
+          description: input.description,
+          purpose: input.purpose,
+          title: meta.title,
+        } as never,
+      });
+      return reply.code(201).send({ sheet: sheetDTO(sheet), tabs: meta.tabs });
+    });
+
+    secured.get('/sheets/:id/preview', async (req) => {
+      const { id } = parse(idParam, req.params);
+      const sheet = await req.db.agentSheet.findFirst({ where: { id } });
+      if (!sheet) throw notFound('Sheet not found');
+      try {
+        return { rows: await readSheet(user(req).id, sheet.spreadsheetId, sheet.tab, 8) };
+      } catch (err) {
+        throw badRequest(`Could not read the sheet: ${(err as Error).message}`);
+      }
+    });
+
+    secured.delete('/sheets/:id', async (req) => {
+      const { id } = parse(idParam, req.params);
+      const res = await req.db.agentSheet.deleteMany({ where: { id } });
+      if (!res.count) throw notFound('Sheet not found');
+      return { ok: true };
+    });
+
+    secured.post(
+      '/integration-requests',
+      { config: { rateLimit: { max: 5, timeWindow: '1 minute' } } },
+      async (req, reply) => {
+        const input = parse(integrationRequestSchema, req.body);
+        await req.db.integrationRequest.create({ data: input as never });
+        return reply.code(201).send({ ok: true });
+      },
+    );
+  });
 }

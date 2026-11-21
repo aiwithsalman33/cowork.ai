@@ -30,6 +30,7 @@ type Detail = {
     currentPeriodEnd: string | null;
     createdAt: string;
     lastLoginAt: string | null;
+    emailVerified: boolean;
   };
   agent: {
     name: string;
@@ -47,7 +48,8 @@ type Detail = {
     lastError: string | null;
   }[];
   apiKeys: { provider: string; model: string; last4: string }[];
-  integrations: { toolkit: string; status: string }[];
+  google: { email: string | null; status: string; services: string[] } | null;
+  sheets: { name: string; purpose: string }[];
   usage: { monthMessages: number; totalMessages: number; contacts: number; skills: number; tokens: number };
   errors: Log[];
   logs: Log[];
@@ -118,13 +120,16 @@ export default function TenantDetail({ params }: { params: Promise<{ id: string 
             <span>{data.agent?.model ? `${data.agent.provider} / ${data.agent.model}` : 'No key'}</span>
             <span className="text-muted-foreground">Agent</span>
             <span>{data.agent?.isActive ? 'Active' : 'Paused'}</span>
-            <span className="text-muted-foreground">Integrations</span>
+            <span className="text-muted-foreground">Email verified</span>
+            <span>{data.user.emailVerified ? 'Yes' : 'No'}</span>
+            <span className="text-muted-foreground">Google</span>
             <span>
-              {data.integrations
-                .filter((i) => i.status === 'CONNECTED')
-                .map((i) => i.toolkit)
-                .join(', ') || '—'}
+              {data.google?.status === 'CONNECTED'
+                ? `${data.google.email ?? ''} (${data.google.services.join(', ')})`
+                : (data.google?.status?.toLowerCase() ?? '—')}
             </span>
+            <span className="text-muted-foreground">Sheets</span>
+            <span>{data.sheets.map((s) => s.name).join(', ') || '—'}</span>
           </CardContent>
         </Card>
         <Card>

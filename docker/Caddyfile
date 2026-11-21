@@ -1,0 +1,43 @@
+# CoworkAI — production reverse proxy (HTTP on :8080).
+# TLS for coworkai.axxeler.in is terminated in front of this (Dokploy/Traefik or another proxy)
+# and forwarded to port 8080. To let Caddy handle HTTPS itself, replace ":8080" with the domain.
+{
+	admin off
+	servers {
+		# trust X-Forwarded-* from the proxy in front (private networks only)
+		trusted_proxies static private_ranges
+	}
+}
+
+:8080 {
+	encode zstd gzip
+
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+
+	# API, auth, Google OAuth callback and provider webhooks go straight to the API
+	@api path /api/* /webhooks/* /health /health/ready
+	handle @api {
+		reverse_proxy api:4000 {
+			header_up X-Real-IP {remote_host}
+		}
+	}
+
+	# The web app's own health route lives under /api, so expose it separately for monitoring
+	handle /web-health {
+		rewrite * /api/health
+		reverse_proxy web:3000
+	}
+
+	handle {
+		reverse_proxy web:3000
+	}
+
+	log {
+		output stdout
+		format console
+	}
+}

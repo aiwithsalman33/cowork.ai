@@ -1,87 +1,86 @@
-name: partner-ai
+# CoworkAI — LOCAL development stack with hot reload.
+#
+#   docker compose up --build        → web http://localhost:3000 · api http://localhost:4000
+#
+# Source is bind-mounted; node_modules live in a named volume inside the containers.
+# For production use docker-compose.prod.yml (Caddy on :8080).
+name: coworkai-dev
+
+x-dev: &dev
+  build:
+    context: .
+    dockerfile: Dockerfile.dev
+  image: coworkai-dev:latest
+  volumes:
+    - .:/app
+    - node_modules:/app/node_modules
+    - wa_sessions:/data/wa-sessions
+  env_file:
+    - path: .env
+      required: false
+  environment:
+    NODE_ENV: development
+    DATABASE_URL: postgresql://partner:partner@db:5432/partner?schema=public
+    WEB_ORIGIN: http://localhost:3000
+    PUBLIC_API_URL: http://localhost:4000
+    WA_SESSIONS_DIR: /data/wa-sessions
+    API_INTERNAL_URL: http://api:4000
+    # file watching over Windows/macOS bind mounts
+    WATCHPACK_POLLING: 'true'
+    CHOKIDAR_USEPOLLING: 'true'
 
 services:
   db:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-partner}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-partner}
-      POSTGRES_DB: ${POSTGRES_DB:-partner}
+      POSTGRES_USER: partner
+      POSTGRES_PASSWORD: partner
+      POSTGRES_DB: partner
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
-      - '${DB_PORT_PUBLISH:-127.0.0.1:5433}:5432'
+      - '127.0.0.1:5433:5432'
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+      test: ['CMD-SHELL', 'pg_isready -U partner -d partner']
       interval: 5s
       timeout: 5s
       retries: 20
 
   api:
-    build:
-      context: .
-      dockerfile: apps/api/Dockerfile
-    restart: unless-stopped
+    <<: *dev
     depends_on:
       db:
         condition: service_healthy
-    env_file:
-      - path: .env
-        required: false
-    environment:
-      NODE_ENV: production
-      PORT: 4000
-      DATABASE_URL: postgresql://${POSTGRES_USER:-partner}:${POSTGRES_PASSWORD:-partner}@db:5432/${POSTGRES_DB:-partner}?schema=public
-      WA_SESSIONS_DIR: /data/wa-sessions
-    volumes:
-      - wa_sessions:/data/wa-sessions
+    command: >
+      sh -c "npm run build -w @partner/shared &&
+             cd apps/api && npx prisma generate && npx prisma migrate deploy &&
+             npx tsx watch src/index.ts"
     ports:
-      - '${API_PORT_PUBLISH:-4000}:4000'
+      - '4000:4000'
     healthcheck:
       test:
         [
           'CMD',
           'node',
           '-e',
-          "fetch('http://127.0.0.1:4000/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+          "fetch('http://127.0.0.1:4000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
         ]
-      interval: 15s
+      interval: 10s
       timeout: 5s
-      start_period: 40s
-      retries: 5
-    stop_grace_period: 30s
+      start_period: 120s
+      retries: 10
 
   web:
-    build:
-      context: .
-      dockerfile: apps/web/Dockerfile
-      args:
-        API_INTERNAL_URL: ${API_INTERNAL_URL:-http://api:4000}
-    restart: unless-stopped
+    <<: *dev
     depends_on:
       api:
         condition: service_healthy
-    environment:
-      NODE_ENV: production
-      PORT: 3000
-      HOSTNAME: 0.0.0.0
-      API_INTERNAL_URL: http://api:4000
+    command: sh -c "npm run build -w @partner/shared && npm run dev -w @partner/web"
     ports:
-      - '${WEB_PORT_PUBLISH:-3000}:3000'
-    healthcheck:
-      test:
-        [
-          'CMD',
-          'node',
-          '-e',
-          "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
-        ]
-      interval: 15s
-      timeout: 5s
-      start_period: 30s
-      retries: 5
+      - '3000:3000'
 
 volumes:
   pgdata:
+  node_modules:
   wa_sessions:

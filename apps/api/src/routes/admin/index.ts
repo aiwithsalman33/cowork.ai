@@ -19,8 +19,8 @@ import { isPlanActive, messagesThisMonth } from '../../services/plan.js';
 import { invalidateFlags } from '../../services/flags.js';
 import { toMeDTO } from '../../services/me.js';
 import { logoutSession } from '../../channels/baileys.js';
-import { composioEnabled, describeTool } from '../../integrations/composio.js';
-import { ALL_COMPOSIO_SLUGS } from '../../integrations/composio-tools.js';
+import { servicesFromScopes } from '../../integrations/google.js';
+import { mailConfigured } from '../../lib/mailer.js';
 
 const idParam = z.object({ id: z.string().min(1) });
 
@@ -128,7 +128,7 @@ export async function adminRoutes(app: FastifyInstance) {
         tokens: Number(msgMap.get(d)?.tokens ?? 0),
         signups: signupMap.get(d) ?? 0,
       })),
-      composioEnabled: composioEnabled(),
+      mailConfigured: mailConfigured(),
     };
   });
 
@@ -168,6 +168,7 @@ export async function adminRoutes(app: FastifyInstance) {
         businessName: u.agent?.businessName ?? '',
         role: u.role,
         status: u.status,
+        emailVerified: !!u.emailVerifiedAt,
         plan: u.plan,
         planActive: isPlanActive(u),
         trialEndsAt: u.trialEndsAt,
@@ -191,7 +192,8 @@ export async function adminRoutes(app: FastifyInstance) {
         agent: true,
         channels: true,
         apiKeys: { select: { provider: true, model: true, last4: true, updatedAt: true } },
-        integrations: { select: { toolkit: true, status: true, connectedAt: true } },
+        googleConnection: { select: { email: true, status: true, scopes: true, connectedAt: true } },
+        agentSheets: { select: { name: true, purpose: true } },
       },
     });
     if (!u) throw notFound('User not found');
@@ -222,6 +224,7 @@ export async function adminRoutes(app: FastifyInstance) {
         razorpaySubscriptionId: u.razorpaySubscriptionId,
         currentPeriodEnd: u.currentPeriodEnd,
         bossNumbers: u.bossNumbers,
+        emailVerified: !!u.emailVerifiedAt,
         createdAt: u.createdAt,
         lastLoginAt: u.lastLoginAt,
       },
@@ -244,7 +247,14 @@ export async function adminRoutes(app: FastifyInstance) {
         createdAt: c.createdAt,
       })),
       apiKeys: u.apiKeys,
-      integrations: u.integrations,
+      google: u.googleConnection
+        ? {
+            email: u.googleConnection.email,
+            status: u.googleConnection.status,
+            services: servicesFromScopes(u.googleConnection.scopes),
+          }
+        : null,
+      sheets: u.agentSheets,
       usage: {
         monthMessages,
         totalMessages,
@@ -275,6 +285,10 @@ export async function adminRoutes(app: FastifyInstance) {
       // manual plan grant by admin: 30 days of access unless a live subscription manages it
       else if (!target.razorpaySubscriptionId || target.subscriptionStatus !== 'active')
         data.currentPeriodEnd = new Date(Date.now() + 30 * 86400_000);
+    }
+    if (input.verifyEmail && !target.emailVerifiedAt) {
+      data.emailVerifiedAt = new Date();
+      if (!target.trialEndsAt) data.trialEndsAt = new Date(Date.now() + 24 * 3600_000);
     }
     if (input.extendTrialHours) {
       const base = target.trialEndsAt && target.trialEndsAt > new Date() ? target.trialEndsAt : new Date();
@@ -449,19 +463,17 @@ export async function adminRoutes(app: FastifyInstance) {
     return { ok: true };
   });
 
-  // ---------------- Diagnostics ----------------
-  /** Fetches each Composio tool's live schema so slug/argument drift is visible. */
-  app.get('/composio/verify', async () => {
-    if (!composioEnabled()) throw badRequest('COMPOSIO_API_KEY is not set');
-    const results = await Promise.all(
-      ALL_COMPOSIO_SLUGS.map(async (slug) => {
-        try {
-          return { ok: true, ...(await describeTool(slug)) };
-        } catch (err) {
-          return { ok: false, slug, error: (err as Error).message };
-        }
+  // ---------------- Contact form (landing page) ----------------
+  app.get('/contact-messages', async (req) => {
+    const { page, pageSize } = parse(paginationSchema, req.query);
+    const [items, total] = await Promise.all([
+      prisma.contactMessage.findMany({
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
       }),
-    );
-    return { results };
+      prisma.contactMessage.count(),
+    ]);
+    return { items, total, page, pageSize };
   });
 }

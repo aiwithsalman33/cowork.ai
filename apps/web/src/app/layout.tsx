@@ -12,8 +12,16 @@ const display = Fraunces({
 });
 
 export const metadata: Metadata = {
-  title: { default: 'partner.ai — AI agent for WhatsApp & Telegram', template: '%s · partner.ai' },
-  description: 'Create an AI agent for your business and connect it to WhatsApp and Telegram in minutes.',
+  title: { default: 'CoworkAI — Your AI co-worker for WhatsApp & Telegram', template: '%s · CoworkAI' },
+  metadataBase: new URL('https://coworkai.axxeler.in'),
+  description:
+    'CoworkAI answers your customers on WhatsApp and Telegram 24×7 — books appointments, captures leads and knows your business. Made in India.',
+  openGraph: {
+    title: 'CoworkAI',
+    description: 'Your AI co-worker for WhatsApp & Telegram',
+    url: 'https://coworkai.axxeler.in',
+    siteName: 'CoworkAI',
+  },
 };
 
 export const viewport: Viewport = {

@@ -6,6 +6,7 @@ import { badRequest } from '../lib/errors.js';
 import { isPlanActive, limitsFor, messagesThisMonth } from '../services/plan.js';
 import { audit } from '../services/audit.js';
 import { sha256 } from '../lib/crypto.js';
+import { env } from '../config.js';
 import {
   cancelSubscription,
   createCheckout,
@@ -45,6 +46,7 @@ export async function billingRoutes(app: FastifyInstance) {
         limits: { ...p.limits, skills: Number.isFinite(p.limits.skills) ? p.limits.skills : null },
       })),
       razorpayConfigured: razorpayConfigured(),
+      billingEnabled: env.BILLING_ENABLED && razorpayConfigured(),
       history: events,
     };
   });
@@ -56,7 +58,9 @@ export async function billingRoutes(app: FastifyInstance) {
       const { plan } = parse(checkoutSchema, req.body);
       const u = user(req);
       if (req.auth?.impersonatorId) throw badRequest('Admins cannot start checkout while impersonating');
-      if (!razorpayConfigured()) throw badRequest('Payments are not configured yet. Please contact support.');
+      if (!env.BILLING_ENABLED || !razorpayConfigured()) {
+        throw badRequest('Online payments are coming soon. Please contact us to upgrade your plan.');
+      }
       if (u.plan === plan && isPlanActive(u) && u.subscriptionStatus === 'active')
         throw badRequest(`You are already on ${PLANS[plan].name}`);
       try {

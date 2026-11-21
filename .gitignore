@@ -13,3 +13,4 @@ apps/web/test-results/
 apps/web/playwright-report/
 .turbo/
 *.tsbuildinfo
+.env.production

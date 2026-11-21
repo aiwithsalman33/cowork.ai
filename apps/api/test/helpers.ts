@@ -2,6 +2,7 @@ import type { FastifyInstance, LightMyRequestResponse } from 'fastify';
 import { buildApp } from '../src/app.js';
 import { prisma } from '../src/db/client.js';
 import { seed } from '../src/db/seed.js';
+import { testOutbox } from '../src/lib/mailer.js';
 
 let appPromise: Promise<FastifyInstance> | null = null;
 
@@ -44,9 +45,30 @@ export async function signup(
     payload: { name: overrides.name ?? 'Test User', email, password: overrides.password ?? 'password123' },
   });
   if (res.statusCode !== 201) throw new Error(`signup failed ${res.statusCode}: ${res.body}`);
-  const cookies = cookiesFrom(res);
-  return { cookies, csrf: cookies.pa_csrf!, userId: res.json().user.id, email };
+  const verified = await app.inject({
+    method: 'POST',
+    url: '/api/auth/verify-email',
+    remoteAddress: randomIp(),
+    payload: { token: lastEmailToken(email) },
+  });
+  if (verified.statusCode !== 200) throw new Error(`verify failed ${verified.statusCode}: ${verified.body}`);
+  const cookies = cookiesFrom(verified);
+  return { cookies, csrf: cookies.pa_csrf!, userId: verified.json().user.id, email };
 }
+
+export function randomIp() {
+  return `10.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250)}`;
+}
+
+/** Extracts the token from the most recent verification/reset email sent to `email` (test outbox). */
+export function lastEmailToken(email: string): string {
+  const mail = [...testOutbox].reverse().find((m) => m.to === email);
+  const token = mail?.text.match(/token=([^\s&]+)/)?.[1];
+  if (!token) throw new Error(`no email with token found for ${email}`);
+  return decodeURIComponent(token);
+}
+
+export { testOutbox };
 
 /** Authenticated request helper (cookie session + CSRF header, exactly like the web app). */
 export async function call(

@@ -101,12 +101,31 @@ All phases (a)–(j) are implemented and committed. 46 API tests pass (Vitest), 
 main flows. Lint and typecheck are clean, and `docker compose up` brings up db + api + web with healthy checks.
 
 Additional notes discovered while building:
-* `prisma migrate reset` is blocked by Prisma's AI-agent guard. Tests therefore use `migrate deploy` against a
+
+- `prisma migrate reset` is blocked by Prisma's AI-agent guard. Tests therefore use `migrate deploy` against a
   dedicated `partner_test` database, with unique users per test (no destructive resets).
-* Docker Desktop's BuildKit may ask for an `fs.read` entitlement under `docker compose build`. Plain `docker build`
+- Docker Desktop's BuildKit may ask for an `fs.read` entitlement under `docker compose build`. Plain `docker build`
   works (README has the commands). Dokploy builds on Linux and is not affected as far as we know.
-* Dokploy network wiring for Compose domains differs between versions. Check the current Dokploy docs.
-* Memory upkeep LLM calls are stored as `SYSTEM` messages (`[memory] …`) so token usage stays accounted.
+- Dokploy network wiring for Compose domains differs between versions. Check the current Dokploy docs.
+- Memory upkeep LLM calls are stored as `SYSTEM` messages (`[memory] …`) so token usage stays accounted.
   They are hidden from the inbox and excluded from message counts.
-* When customers send several messages quickly, only the newest one is answered (with all of them in context).
+- When customers send several messages quickly, only the newest one is answered (with all of them in context).
   The others are marked `SKIPPED: merged_into_newer_message`.
+
+## Update (2026-11-22): CoworkAI release changes
+
+* **Brand:** CoworkAI at https://coworkai.axxeler.in (name and contact details live in `packages/shared/src/brand.ts`).
+* **npm workspaces** replace pnpm. Install scripts are approved explicitly in `package.json → allowScripts` (npm 12).
+* **Composio removed.** Google integrations now use each tenant's own Google Cloud OAuth client (Client ID +
+  Secret, encrypted) and call the Gmail, Calendar, Sheets, Drive and Docs REST APIs directly. Agent Config has a
+  new **Google Sheets** tab: lookup sheets give the agent a `read_sheet` tool, and a leads sheet receives every
+  captured lead.
+* **Email verification:** signup → verification email (SMTP / Gmail App Password) → verify → 24-hour trial starts and
+  the user is signed in. Login is blocked until verified. Includes resend, forgot password and reset password.
+  Admins can mark accounts verified.
+* **Payments on hold:** `BILLING_ENABLED=false`. Upgrade buttons open WhatsApp (+91 81480 35472). The Razorpay code is kept.
+* **Landing page** redesigned with a contact form (WhatsApp + stored in Admin → Contact Messages).
+* **Docker:** `docker-compose.yml` + `Dockerfile.dev` for local hot reload. `docker-compose.prod.yml` runs
+  db + api + web + **Caddy on :8080** (`docker/Caddyfile`).
+* Verified: 58 API tests and 15 Playwright tests (against the production stack via Caddy :8080, including a real
+  SMTP round-trip through Mailpit).

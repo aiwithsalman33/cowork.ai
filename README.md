@@ -1,6 +1,6 @@
 # CoworkAI
 
-**Your AI co-worker for WhatsApp & Telegram** — https://coworkai.axxeler.in
+**Your AI co-worker for WhatsApp & Telegram** — https://coworkai.zenautomations.in
 
 Multi-tenant SaaS where business owners create an AI agent, teach it their business, bring their own AI key,
 connect Google (Sheets, Calendar, Gmail, Drive, Docs) with **their own Google Cloud credentials**, and connect it to
@@ -90,12 +90,12 @@ The first build takes about 8–15 minutes on 1 vCPU. In Dokploy, raise the buil
 
 ### Deploying with Dokploy
 
-1. DNS: an `A` record for `coworkai.axxeler.in` pointing at the VPS.
+1. DNS: an `A` record for `coworkai.zenautomations.in` pointing at the VPS.
 2. Dokploy → **Create Service → Compose** → repo `aiwithsalman33/cowork.ai`, branch `main`, compose path
    **`./docker-compose.prod.yml`**.
-3. **Environment**: `APP_URL=https://coworkai.axxeler.in`, `POSTGRES_PASSWORD`, `JWT_SECRET`, `ENCRYPTION_KEY`,
+3. **Environment**: `APP_URL=https://coworkai.zenautomations.in`, `POSTGRES_PASSWORD`, `JWT_SECRET`, `ENCRYPTION_KEY`,
    `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`.
-4. **Domains**: `coworkai.axxeler.in` → service **caddy**, port **8080**, HTTPS on.
+4. **Domains**: `coworkai.zenautomations.in` → service **caddy**, port **8080**, HTTPS on.
 5. Deploy. On start the app runs migrations, seeds skills and flags, and creates the admin. The database starts
    empty otherwise, with no demo data.
 
@@ -117,7 +117,7 @@ can't log in until it's verified. Verifying starts the 24-hour trial and signs t
 
 **Google with the tenant's own credentials.** Each business creates an OAuth client in Google Cloud Console (Web
 application), adds the redirect URI shown on the Integrations page
-(`https://coworkai.axxeler.in/api/integrations/google/callback`), and pastes the Client ID and Secret. They pick
+(`https://coworkai.zenautomations.in/api/integrations/google/callback`), and pastes the Client ID and Secret. They pick
 services (Sheets, Calendar, Gmail, Drive, Docs) and click Connect. Refresh tokens are stored encrypted. The OAuth
 `state` is a signed 10-minute token bound to the tenant. Google apps left in "Testing" mode expire tokens after 7
 days, and the UI tells users to publish the app.

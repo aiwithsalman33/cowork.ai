@@ -43,7 +43,7 @@ export async function assertCanAddChannel(user: Pick<User, 'id' | 'plan'>, type:
     }[type];
     throw paymentRequired(
       user.plan === 'TRIAL'
-        ? `The free trial includes Telegram only. Contact the admin to activate a plan for ${label}.`
+        ? `The free trial includes Telegram only. Purchase a plan to use ${label}.`
         : `${label} is not included in the ${PLANS[user.plan].name} plan. Upgrade to Growth to use it.`,
     );
   }

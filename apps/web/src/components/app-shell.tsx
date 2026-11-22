@@ -106,15 +106,15 @@ function TrialBanner({ me }: { me: MeDTO }) {
       <span>
         {expired
           ? me.plan === 'TRIAL'
-            ? 'Your 7-day free trial has ended — contact the admin to activate Starter (₹499) or Growth (₹999).'
-            : 'Your plan is inactive — contact the admin to activate it again.'
+            ? 'Your 7-day free trial has ended — purchase Starter (₹499) or Growth (₹999) to keep your agent replying.'
+            : 'Your plan has expired — renew it to keep your agent replying.'
           : `Free trial (Telegram only) · ${left} left.`}
       </span>
       <Link
         href="/billing"
         className="rounded-md bg-white px-3 py-1 text-xs font-semibold text-primary shadow-sm transition hover:bg-white/90"
       >
-        {expired ? 'Contact admin' : 'See plans'}
+        {expired ? 'Purchase plan' : 'See plans'}
       </Link>
     </div>
   );

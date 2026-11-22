@@ -13,13 +13,13 @@ const display = Space_Grotesk({
 
 export const metadata: Metadata = {
   title: { default: 'CoWork AI — Your AI co-worker for WhatsApp & Telegram', template: '%s · CoWork AI' },
-  metadataBase: new URL('https://coworkai.axxeler.in'),
+  metadataBase: new URL('https://coworkai.zenautomations.in'),
   description:
     'CoWork AI answers your customers on WhatsApp and Telegram 24×7 — books appointments, captures leads and knows your business. Made in India.',
   openGraph: {
     title: 'CoWork AI',
     description: 'Your AI co-worker for WhatsApp & Telegram',
-    url: 'https://coworkai.axxeler.in',
+    url: 'https://coworkai.zenautomations.in',
     siteName: 'CoWork AI',
   },
 };

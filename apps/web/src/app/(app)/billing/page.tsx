@@ -77,7 +77,7 @@ export default function BillingPage() {
               {data.plan === 'TRIAL' ? 'Your 7-day free trial has ended.' : 'Your plan is not active.'}{' '}
               {data.billingEnabled
                 ? 'Choose a plan below to turn it back on instantly.'
-                : 'Contact the admin with the button below to activate Starter (₹499/month) or Growth (₹999/month).'}
+                : 'Purchase Starter (₹499/month) or Growth (₹999/month) below to turn it back on.'}
             </p>
           </div>
         </div>

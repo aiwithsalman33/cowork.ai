@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { PLANS } from '@cowork/shared';
 import { hmacSha256Hex } from '../src/lib/crypto.js';
 import { isPlanActive } from '../src/services/plan.js';
-import { call, cookiesFrom, getApp, lastEmailToken, prisma, signup, testOutbox } from './helpers.js';
+import { call, cookiesFrom, getApp, prisma, signup, testOutbox } from './helpers.js';
 
 const SECRET = 'rzp_test_webhook_secret';
 
@@ -242,14 +242,14 @@ describe('admin approval (payments on hold)', () => {
       remoteAddress: '10.77.1.1',
       payload: { name: 'Pending Person', email, password: 'password123' },
     });
-    const verify = await app.inject({
+    const login = await app.inject({
       method: 'POST',
-      url: '/api/auth/verify-email',
+      url: '/api/auth/login',
       remoteAddress: '10.77.1.2',
-      payload: { token: lastEmailToken(email) },
+      payload: { email, password: 'password123' },
     });
-    const userCookies = cookiesFrom(verify);
-    // verification auto-starts the trial; simulate an account the admin put back on hold
+    const userCookies = cookiesFrom(login);
+    // signup auto-starts the trial; simulate an account the admin put back on hold
     await prisma.user.update({ where: { email }, data: { approvedAt: null, trialEndsAt: null } });
     // admin was notified (ADMIN_EMAIL is not set in tests, so only check the user flow)
     const pending = await call(admin, 'GET', '/api/admin/users?status=PENDING&pageSize=100');

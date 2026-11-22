@@ -63,6 +63,7 @@ function LoginForm() {
             type="email"
             autoComplete="email"
             required
+            defaultValue={params.get('email') ?? ''}
             placeholder="you@business.com"
           />
         </Field>

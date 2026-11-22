@@ -2,7 +2,7 @@
 export const BRAND = {
   name: 'CoWork AI',
   tagline: 'Your AI co-worker for WhatsApp & Telegram',
-  url: 'https://coworkai.axxeler.in',
+  url: 'https://coworkai.zenautomations.in',
   email: 'aiwithsalman33@gmail.com',
   phone: '8148035472',
   phoneDisplay: '+91 81480 35472',

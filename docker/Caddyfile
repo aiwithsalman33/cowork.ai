@@ -1,5 +1,5 @@
 # CoworkAI — production reverse proxy (HTTP on :8080).
-# TLS for coworkai.axxeler.in is terminated in front of this (Dokploy/Traefik or another proxy)
+# TLS for coworkai.zenautomations.in is terminated in front of this (Dokploy/Traefik or another proxy)
 # and forwarded to port 8080. To let Caddy handle HTTPS itself, replace ":8080" with the domain.
 {
 	admin off

@@ -67,7 +67,7 @@ export async function templateRoutes(app: FastifyInstance) {
   async function cloudChannel(req: FastifyRequest, id: string) {
     const u = user(req);
     if (!PLANS[u.plan].limits.templates) {
-      throw paymentRequired('WhatsApp templates are part of the Growth plan. Contact the admin to upgrade.');
+      throw paymentRequired('WhatsApp templates are part of the Growth plan. Upgrade to Growth to use them.');
     }
     const channel = await req.db.channel.findFirst({ where: { id, type: 'WHATSAPP_CLOUD' } });
     if (!channel) throw notFound('WhatsApp Business API channel not found');

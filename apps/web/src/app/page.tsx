@@ -187,7 +187,7 @@ const faqs = [
   ],
   [
     'How do I get access?',
-    'Sign up and verify your email. Our team approves new accounts personally (usually within hours) and your free trial starts then.',
+    'Sign up and sign in right away — your 7-day free trial starts instantly. After the trial, pick Starter (₹499) or Growth (₹999).',
   ],
 ];
 

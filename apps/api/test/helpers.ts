@@ -45,16 +45,15 @@ export async function signup(
     payload: { name: overrides.name ?? 'Test User', email, password: overrides.password ?? 'password123' },
   });
   if (res.statusCode !== 201) throw new Error(`signup failed ${res.statusCode}: ${res.body}`);
-  const verified = await app.inject({
+  const login = await app.inject({
     method: 'POST',
-    url: '/api/auth/verify-email',
+    url: '/api/auth/login',
     remoteAddress: randomIp(),
-    payload: { token: lastEmailToken(email) },
+    payload: { email, password: overrides.password ?? 'password123' },
   });
-  if (verified.statusCode !== 200) throw new Error(`verify failed ${verified.statusCode}: ${verified.body}`);
-  await approve(email);
-  const cookies = cookiesFrom(verified);
-  return { cookies, csrf: cookies.pa_csrf!, userId: verified.json().user.id, email };
+  if (login.statusCode !== 200) throw new Error(`login failed ${login.statusCode}: ${login.body}`);
+  const cookies = cookiesFrom(login);
+  return { cookies, csrf: cookies.pa_csrf!, userId: login.json().user.id, email };
 }
 
 /** What an admin's "Approve" does: grant access and start the 24h trial. */

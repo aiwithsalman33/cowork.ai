@@ -1,4 +1,4 @@
-# CoWork AI — PRODUCTION (https://coworkai.axxeler.in)
+# CoWork AI — PRODUCTION (https://coworkai.zenautomations.in)
 # Sized for a 1 vCPU / 2 GB VPS: one app container (API + web), Postgres tuned for low memory,
 # and Caddy on port 8080 (point Dokploy / your TLS proxy at :8080).
 #
@@ -40,8 +40,8 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-cowork}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-cowork}?schema=public&connection_limit=8
       JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:?set ENCRYPTION_KEY}
-      WEB_ORIGIN: ${APP_URL:-https://coworkai.axxeler.in}
-      PUBLIC_API_URL: ${APP_URL:-https://coworkai.axxeler.in}
+      WEB_ORIGIN: ${APP_URL:-https://coworkai.zenautomations.in}
+      PUBLIC_API_URL: ${APP_URL:-https://coworkai.zenautomations.in}
       API_INTERNAL_URL: http://127.0.0.1:4000
       COOKIE_SECURE: ${COOKIE_SECURE:-true}
       # client → TLS proxy → Caddy → app

@@ -114,7 +114,7 @@ Additional notes discovered while building:
 
 ## Update (2026-11-22): CoworkAI release changes
 
-- **Brand:** CoworkAI at https://coworkai.axxeler.in (name and contact details live in `packages/shared/src/brand.ts`).
+- **Brand:** CoworkAI at https://coworkai.zenautomations.in (name and contact details live in `packages/shared/src/brand.ts`).
 - **npm workspaces** replace pnpm. Install scripts are approved explicitly in `package.json → allowScripts` (npm 12).
 - **Composio removed.** Google integrations now use each tenant's own Google Cloud OAuth client (Client ID +
   Secret, encrypted) and call the Gmail, Calendar, Sheets, Drive and Docs REST APIs directly. Agent Config has a

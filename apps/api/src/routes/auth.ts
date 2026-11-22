@@ -56,40 +56,44 @@ function mailError(err: unknown): never {
 }
 
 export async function authRoutes(app: FastifyInstance) {
-  /** Creates an unverified account and emails a verification link. No session until verified. */
+  /**
+   * Creates the account ready to use: no email verification, the 7-day free trial starts now.
+   * The user then signs in with the email and password they chose.
+   */
   app.post('/signup', { config: authLimit }, async (req, reply) => {
     const input = parse(signupSchema, req.body);
     const exists = await prisma.user.findUnique({ where: { email: input.email } });
-    if (exists?.emailVerifiedAt) throw conflict('An account with this email already exists');
-
-    let created;
-    if (exists) {
-      // Unverified account signing up again: refresh details and re-send the link.
-      created = await prisma.user.update({
-        where: { id: exists.id },
-        data: { name: input.name, passwordHash: await hashPassword(input.password) },
-      });
-    } else {
-      const defaultSkills = await prisma.skill.findMany({
-        where: { slug: { in: DEFAULT_SKILL_SLUGS }, isPublic: true },
-        select: { id: true },
-      });
-      created = await prisma.user.create({
-        data: {
-          email: input.email,
-          name: input.name,
-          passwordHash: await hashPassword(input.password),
-          agent: { create: { businessName: input.businessName ?? '', name: 'Assistant' } },
-          userSkills: { create: defaultSkills.map((s) => ({ skillId: s.id, enabled: true })) },
-        },
-      });
+    if (exists) throw conflict('An account with this email already exists. Sign in instead.');
+    const defaultSkills = await prisma.skill.findMany({
+      where: { slug: { in: DEFAULT_SKILL_SLUGS }, isPublic: true },
+      select: { id: true },
+    });
+    const now = new Date();
+    const created = await prisma.user.create({
+      data: {
+        email: input.email,
+        name: input.name,
+        passwordHash: await hashPassword(input.password),
+        emailVerifiedAt: now,
+        approvedAt: now,
+        plan: 'TRIAL',
+        trialEndsAt: new Date(now.getTime() + TRIAL_HOURS * 3600_000),
+        agent: { create: { businessName: input.businessName ?? '', name: 'Assistant' } },
+        userSkills: { create: defaultSkills.map((s) => ({ skillId: s.id, enabled: true })) },
+      },
+    });
+    await logEvent(created.id, 'INFO', 'account.created', 'Account created — 7-day free trial started');
+    if (env.ADMIN_EMAIL) {
+      // best effort: never block signup on the admin notification
+      await sendMail(
+        newSignupAdminEmail(
+          env.ADMIN_EMAIL,
+          { name: created.name, email: created.email, businessName: input.businessName },
+          `${env.WEB_ORIGIN}/admin/users`,
+        ),
+      ).catch((err) => logger.warn({ err: (err as Error).message }, 'admin signup notification failed'));
     }
-    try {
-      await sendVerification(created);
-    } catch (err) {
-      mailError(err);
-    }
-    return reply.code(201).send({ needsVerification: true, email: created.email });
+    return reply.code(201).send({ created: true, email: created.email });
   });
 
   /**
@@ -158,13 +162,6 @@ export async function authRoutes(app: FastifyInstance) {
     }
     const ok = await verifyPassword(found.passwordHash, input.password);
     if (!ok) throw unauthorized('Invalid email or password');
-    if (!found.emailVerifiedAt) {
-      throw new HttpError(
-        403,
-        'Please verify your email first. Check your inbox for the link.',
-        'EMAIL_NOT_VERIFIED',
-      );
-    }
     if (found.status === 'SUSPENDED') throw forbidden('Your account is suspended. Contact support.');
     const updated = await prisma.user.update({ where: { id: found.id }, data: { lastLoginAt: new Date() } });
     await issueSession(req, reply, updated);

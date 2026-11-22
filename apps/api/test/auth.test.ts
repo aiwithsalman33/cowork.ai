@@ -1,14 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  call,
-  cookiesFrom,
-  getApp,
-  lastEmailToken,
-  prisma,
-  randomIp,
-  signup,
-  testOutbox,
-} from './helpers.js';
+import { call, cookiesFrom, getApp, lastEmailToken, prisma, randomIp, signup } from './helpers.js';
 
 const uniq = () => `u${Date.now()}_${Math.floor(Math.random() * 1e6)}@test.dev`;
 
@@ -27,84 +18,34 @@ async function post(url: string, payload: object) {
   return app.inject({ method: 'POST', url, remoteAddress: randomIp(), payload });
 }
 
-describe('signup + email verification', () => {
-  it('signup sends a verification email and creates no session', async () => {
+describe('signup', () => {
+  it('signup creates a ready account with a 7-day trial, then the user signs in', async () => {
+    const app = await getApp();
     const email = uniq();
     const res = await rawSignup(email);
     expect(res.statusCode).toBe(201);
-    expect(res.json()).toEqual({ needsVerification: true, email });
+    expect(res.json()).toEqual({ created: true, email });
     expect(res.cookies.find((c) => c.name === 'pa_at')).toBeUndefined();
-
-    const mail = testOutbox.find((m) => m.to === email);
-    expect(mail?.subject).toMatch(/verify your email/i);
-    expect(mail?.text).toContain('/verify-email?token=');
-
-    const u = await prisma.user.findUniqueOrThrow({ where: { email } });
-    expect(u.emailVerifiedAt).toBeNull();
-    expect(u.trialEndsAt).toBeNull();
-  });
-
-  it('login is blocked until the email is verified', async () => {
-    const email = uniq();
-    await rawSignup(email);
-    const res = await post('/api/auth/login', { email, password: 'password123' });
-    expect(res.statusCode).toBe(403);
-    expect(res.json().code).toBe('EMAIL_NOT_VERIFIED');
-  });
-
-  it('verifying signs the user in and starts the 7-day trial right away', async () => {
-    const app = await getApp();
-    const email = uniq();
-    await rawSignup(email);
-    const res = await post('/api/auth/verify-email', { token: lastEmailToken(email) });
-    expect(res.statusCode).toBe(200);
-    expect(res.json().user).toMatchObject({ approved: true, planActive: true, plan: 'TRIAL' });
-    const cookies = cookiesFrom(res);
-    const u = await prisma.user.findUniqueOrThrow({ where: { email } });
-    expect(u.approvedAt).not.toBeNull();
-    expect(u.trialEndsAt).not.toBeNull();
-
-    const dash = await app.inject({ method: 'GET', url: '/api/dashboard', cookies });
-    expect(dash.statusCode).toBe(200);
-  });
-
-  it('verification starts the 7-day trial, and the link works only once', async () => {
-    const email = uniq();
-    await rawSignup(email);
-    const token = lastEmailToken(email);
-    const res = await post('/api/auth/verify-email', { token });
-    expect(res.statusCode).toBe(200);
-    const byName = Object.fromEntries(res.cookies.map((c) => [c.name, c]));
-    expect(byName.pa_at?.httpOnly).toBe(true);
-    expect(byName.pa_rt?.httpOnly).toBe(true);
-    expect(byName.pa_rt?.path).toBe('/api/auth');
-    expect(byName.pa_csrf?.httpOnly).toBeFalsy();
 
     const u = await prisma.user.findUniqueOrThrow({ where: { email } });
     expect(u.emailVerifiedAt).not.toBeNull();
+    expect(u.approvedAt).not.toBeNull();
+    expect(u.plan).toBe('TRIAL');
     const hours = (u.trialEndsAt!.getTime() - Date.now()) / 3_600_000;
     expect(hours).toBeGreaterThan(7 * 24 - 0.1);
     expect(hours).toBeLessThanOrEqual(7 * 24);
     expect(await prisma.userSkill.count({ where: { userId: u.id, enabled: true } })).toBeGreaterThan(0);
 
-    expect((await post('/api/auth/verify-email', { token })).statusCode).toBe(400);
-    expect((await post('/api/auth/login', { email, password: 'password123' })).statusCode).toBe(200);
-  });
-
-  it('resend-verification never reveals whether an email exists', async () => {
-    const before = testOutbox.length;
-    const res = await post('/api/auth/resend-verification', { email: uniq() });
-    expect(res.statusCode).toBe(200);
-    expect(testOutbox.length).toBe(before);
-
-    const email = uniq();
-    await rawSignup(email);
-    const first = lastEmailToken(email);
-    await post('/api/auth/resend-verification', { email });
-    const second = lastEmailToken(email);
-    expect(second).not.toBe(first);
-    // the older link is invalidated
-    expect((await post('/api/auth/verify-email', { token: first })).statusCode).toBe(400);
+    const login = await post('/api/auth/login', { email, password: 'password123' });
+    expect(login.statusCode).toBe(200);
+    expect(login.json().user).toMatchObject({ approved: true, planActive: true, plan: 'TRIAL' });
+    const byName = Object.fromEntries(login.cookies.map((c) => [c.name, c]));
+    expect(byName.pa_at?.httpOnly).toBe(true);
+    expect(byName.pa_rt?.httpOnly).toBe(true);
+    expect(byName.pa_rt?.path).toBe('/api/auth');
+    expect(byName.pa_csrf?.httpOnly).toBeFalsy();
+    const dash = await app.inject({ method: 'GET', url: '/api/dashboard', cookies: cookiesFrom(login) });
+    expect(dash.statusCode).toBe(200);
   });
 
   it('password reset works with the emailed link', async () => {

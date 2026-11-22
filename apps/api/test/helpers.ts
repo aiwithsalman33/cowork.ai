@@ -52,8 +52,17 @@ export async function signup(
     payload: { token: lastEmailToken(email) },
   });
   if (verified.statusCode !== 200) throw new Error(`verify failed ${verified.statusCode}: ${verified.body}`);
+  await approve(email);
   const cookies = cookiesFrom(verified);
   return { cookies, csrf: cookies.pa_csrf!, userId: verified.json().user.id, email };
+}
+
+/** What an admin's "Approve" does: grant access and start the 24h trial. */
+export async function approve(email: string) {
+  await prisma.user.update({
+    where: { email },
+    data: { approvedAt: new Date(), trialEndsAt: new Date(Date.now() + 24 * 3600_000) },
+  });
 }
 
 export function randomIp() {

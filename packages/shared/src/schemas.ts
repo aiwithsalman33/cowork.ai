@@ -215,7 +215,7 @@ export const checkoutSchema = z.object({ plan: z.enum(['STARTER', 'GROWTH']) });
 export const adminUserQuerySchema = z.object({
   q: z.string().trim().max(200).optional(),
   plan: z.enum(PLAN_IDS).optional(),
-  status: z.enum(['ACTIVE', 'SUSPENDED']).optional(),
+  status: z.enum(['ACTIVE', 'SUSPENDED', 'PENDING']).optional(),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(5).max(100).default(20),
 });
@@ -231,6 +231,7 @@ export const adminUserUpdateSchema = z.object({
     .optional(),
   role: z.enum(['USER', 'ADMIN']).optional(),
   verifyEmail: z.literal(true).optional(),
+  approve: z.literal(true).optional(),
 });
 
 export const featureFlagSchema = z.object({

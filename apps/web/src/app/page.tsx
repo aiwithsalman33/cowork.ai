@@ -1,182 +1,218 @@
 import Link from 'next/link';
 import {
   ArrowRight,
-  BookOpen,
-  Bot,
   BrainCircuit,
-  CalendarCheck,
-  Check,
-  ChevronDown,
+  CheckCircle2,
   Clock,
-  KeyRound,
+  Flag,
+  IndianRupee,
   Languages,
   Mail,
-  MapPin,
   MessageCircle,
   Phone,
+  Plus,
   ShieldCheck,
   Sheet,
   Sparkles,
-  UserPlus,
+  X,
   Zap,
   type LucideIcon,
 } from 'lucide-react';
 import { BRAND, PLANS, formatLimit, whatsappLink } from '@partner/shared';
 import { Logo } from '@/components/brand';
 import { Button } from '@/components/ui/button';
-import { ChannelIcon } from '@/components/channel-badge';
 import { LandingNav } from '@/components/landing/nav';
 import { ContactForm } from '@/components/landing/contact-form';
 
-const features: { icon: LucideIcon; title: string; text: string }[] = [
+const stats = [
+  ['40+', 'AI skills'],
+  ['7', 'AI providers'],
+  ['15 min', 'setup time'],
+  ['24/7', 'availability'],
+];
+
+const without = [
+  'Phone keeps buzzing at 10 PM with “are you open tomorrow?”',
+  'Hours every day typing the same price and timing answers',
+  'Customer asks on Sunday, you reply Monday — they already bought elsewhere',
+  'Leads scattered across chats, nobody follows up',
+  'Auto-replies that sound like a robot and answer nothing',
+];
+const withUs = [
+  'Replies in seconds, any hour, in the customer’s language',
+  'Answers prices, timings and stock straight from your Google Sheet',
+  'Books appointments into Google Calendar automatically',
+  'Every lead saved to your sheet with name, phone and need',
+  'You take over the chat anytime with one tap',
+];
+
+const pillars: { icon: LucideIcon; title: string; text: string }[] = [
+  {
+    icon: Zap,
+    title: 'Live in minutes',
+    text: 'Pick your skills, add your business details, connect WhatsApp or Telegram — done.',
+  },
   {
     icon: MessageCircle,
-    title: 'WhatsApp & Telegram',
-    text: 'Official WhatsApp Business API or quick QR connect, plus Telegram bots — one agent, every chat.',
-  },
-  {
-    icon: BookOpen,
-    title: 'Knows your business',
-    text: 'Paste your details, products and FAQs. Edits apply to the very next message.',
-  },
-  {
-    icon: Sheet,
-    title: 'Live Google Sheets',
-    text: 'Reads your price list or stock sheet in real time, and logs every lead as a new row.',
-  },
-  {
-    icon: CalendarCheck,
-    title: 'Books appointments',
-    text: 'Confirms date, time and phone, then drops the booking into your Google Calendar.',
-  },
-  {
-    icon: Sparkles,
-    title: '40+ ready skills',
-    text: 'FAQ bot, lead capture, orders, complaints, refunds — or describe a new skill and AI builds it.',
+    title: 'One brain, every chat',
+    text: 'WhatsApp Business API, WhatsApp QR and Telegram, all from one dashboard.',
   },
   {
     icon: BrainCircuit,
     title: 'Remembers customers',
-    text: 'Names, preferences and past chats, so returning customers never repeat themselves.',
+    text: 'Names, preferences and past orders — returning customers never repeat themselves.',
   },
   {
-    icon: Languages,
-    title: 'Speaks their language',
-    text: 'English, Hindi, Hinglish, Tamil, Telugu, Kannada and more — it replies the way they write.',
+    icon: Sheet,
+    title: 'Reads your Google Sheets',
+    text: 'Live price lists and stock, and every lead logged as a new row.',
   },
-  {
-    icon: Zap,
-    title: 'Boss Mode',
-    text: 'Text your agent from your phone: “closed Monday for Diwali” — and it updates itself.',
-  },
-  {
-    icon: KeyRound,
-    title: 'Your AI, your key',
-    text: 'OpenAI, Claude, Gemini, Groq, DeepSeek, Mistral or OpenRouter. Pay the provider directly.',
-  },
+];
+
+const providers = [
+  { name: 'OpenAI', models: 'GPT-4.1, GPT-5', color: 'bg-neutral-900' },
+  { name: 'Anthropic', models: 'Claude Haiku, Sonnet', color: 'bg-[#c96442]' },
+  { name: 'Google', models: 'Gemini Flash, Pro', color: 'bg-[#4285f4]' },
+  { name: 'Groq', models: 'Llama 3.3 (fast)', color: 'bg-[#f55036]' },
+  { name: 'OpenRouter', models: '200+ models', color: 'bg-[#6467f2]' },
+  { name: 'DeepSeek', models: 'DeepSeek Chat', color: 'bg-[#4d6bfe]' },
+  { name: 'Mistral', models: 'Small, Large', color: 'bg-[#fa520f]' },
 ];
 
 const industries = [
-  'Clinics',
-  'Salons & spas',
-  'Restaurants',
-  'Real estate',
-  'Coaching & tuition',
-  'Gyms',
-  'Sweet shops',
-  'Travel agents',
-  'E-commerce',
-  'Retail stores',
-];
-
-const steps = [
   {
-    n: '01',
-    title: 'Teach it your business',
-    text: 'Add your hours, services, prices and FAQs — or connect a Google Sheet.',
+    emoji: '🍛',
+    name: 'Restaurant & Cloud Kitchen',
+    tint: 'from-orange-50 to-white border-orange-200 dark:from-orange-950/40 dark:to-card dark:border-orange-900/50',
+    pains: ['Orders missed during rush hour', 'Same menu questions all day'],
+    gains: ['Takes orders on WhatsApp 24/7', 'Menu & prices from your sheet'],
+    chat: [
+      ['me', 'Paneer butter masala available tonight?'],
+      ['ai', 'Yes! Paneer Butter Masala is ₹260, ready in 25 mins. Want garlic naan with it?'],
+      ['me', '2 naan, deliver to Anna Nagar'],
+      ['ai', 'Done ✅ ₹340 total, arriving by 8:15 PM. Your name please?'],
+    ],
   },
   {
-    n: '02',
-    title: 'Connect WhatsApp or Telegram',
-    text: 'Use the official WhatsApp Business API, scan a QR, or paste a Telegram bot token.',
+    emoji: '💇',
+    name: 'Salon & Spa',
+    tint: 'from-pink-50 to-white border-pink-200 dark:from-pink-950/40 dark:to-card dark:border-pink-900/50',
+    pains: ['Calls while you’re with a client', 'Double bookings'],
+    gains: ['Books slots in Google Calendar', 'Reminds clients automatically'],
+    chat: [
+      ['me', 'Hair spa this Saturday evening?'],
+      ['ai', 'Saturday we have 5:00 PM or 6:30 PM. Which suits you?'],
+      ['me', '6:30 please'],
+      ['ai', 'Booked ✨ Hair spa, Sat 6:30 PM (₹1,200). See you!'],
+    ],
   },
   {
-    n: '03',
-    title: 'Watch it work 24×7',
-    text: 'It answers, books, captures leads and hands over to you when needed.',
+    emoji: '🩺',
+    name: 'Clinic & Diagnostics',
+    tint: 'from-sky-50 to-white border-sky-200 dark:from-sky-950/40 dark:to-card dark:border-sky-900/50',
+    pains: ['Reception lines always busy', 'Repeated timing & fee questions'],
+    gains: ['Books consultations 24/7', 'Shares doctor timings & fees'],
+    chat: [
+      ['me', 'Is Dr. Meena available tomorrow?'],
+      ['ai', 'Dr. Meena has 11:00 AM and 4:30 PM free. Consultation is ₹500. Book one?'],
+      ['me', '4:30 for my father'],
+      ['ai', 'Confirmed for 4:30 PM ✅ Please share the patient’s name and age.'],
+    ],
+  },
+  {
+    emoji: '🏠',
+    name: 'Real Estate',
+    tint: 'from-amber-50 to-white border-amber-200 dark:from-amber-950/40 dark:to-card dark:border-amber-900/50',
+    pains: ['Leads enquire and vanish', 'Site visits planned on paper'],
+    gains: ['Qualifies budget & location', 'Books site visits, logs leads'],
+    chat: [
+      ['me', 'Looking for 2BHK near OMR under 70L'],
+      ['ai', 'We have 3 options on OMR from ₹58L to ₹68L. Want a site visit this weekend?'],
+      ['me', 'Sunday morning'],
+      ['ai', 'Site visit fixed for Sunday 11 AM 🏡 I’ve shared your details with our agent.'],
+    ],
+  },
+  {
+    emoji: '🎓',
+    name: 'Coaching & Tuition',
+    tint: 'from-violet-50 to-white border-violet-200 dark:from-violet-950/40 dark:to-card dark:border-violet-900/50',
+    pains: ['Parents asking fees again and again', 'Demo classes not followed up'],
+    gains: ['Shares batches & fees instantly', 'Books free demo classes'],
+    chat: [
+      ['me', 'Class 10 maths batch timings?'],
+      ['ai', 'Weekday batch 6–7:30 PM, weekend 10 AM–12 PM. Fee ₹2,500/month. Free demo?'],
+      ['me', 'Yes, Saturday'],
+      ['ai', 'Demo booked for Saturday 10 AM 📚 We’ll remind you a day before.'],
+    ],
+  },
+  {
+    emoji: '🛍️',
+    name: 'Retail & E-commerce',
+    tint: 'from-emerald-50 to-white border-emerald-200 dark:from-emerald-950/40 dark:to-card dark:border-emerald-900/50',
+    pains: ['“Is this in stock?” all day', 'COD and delivery questions'],
+    gains: ['Live stock from Google Sheets', 'Captures orders as leads'],
+    chat: [
+      ['me', 'Blue kurti size M in stock?'],
+      ['ai', 'Yes! 4 left in M, ₹899 with free delivery above ₹999. COD available.'],
+      ['me', 'Book 1, Coimbatore'],
+      ['ai', 'Order noted 🛍️ We’ll confirm on this number within an hour.'],
+    ],
   },
 ];
 
 const faqs = [
-  {
-    q: 'Do I need technical skills?',
-    a: 'No. If you can fill a form, you can set up CoworkAI. Most businesses are live in under 15 minutes.',
-  },
-  {
-    q: 'Which WhatsApp option should I choose?',
-    a: 'We recommend the official WhatsApp Business API — no ban risk and best for business. The QR option is quicker but unofficial, and numbers can be banned, so use a spare number for it.',
-  },
-  {
-    q: 'What does the AI cost?',
-    a: 'You bring your own AI key (OpenAI, Gemini, Claude, Groq…) and pay the provider directly. Cheap models cost a few paise per conversation.',
-  },
-  {
-    q: 'How does Google Sheets work?',
-    a: 'You connect Google with your own Google Cloud credentials, then pick sheets: one the agent reads (price list, stock, menu) and one where it logs leads.',
-  },
-  {
-    q: 'Is my data safe?',
-    a: 'API keys and tokens are encrypted (AES-256). Your Google connection uses your own OAuth app, and you can disconnect any time.',
-  },
-  {
-    q: 'What happens after the free trial?',
-    a: 'Your agent pauses after 24 hours. Choose a plan to keep it replying — contact us on WhatsApp and we’ll upgrade you right away.',
-  },
+  [
+    'Will my customers know it’s an AI?',
+    'Only if you want them to. You choose its name, tone and language — most customers simply get fast, helpful answers.',
+  ],
+  [
+    'Can it reply in Tamil, Hindi or Hinglish?',
+    'Yes. It replies in the language and script the customer uses — English, Hindi, Hinglish, Tamil, Telugu, Kannada, Malayalam and more.',
+  ],
+  [
+    'What if the AI doesn’t know an answer?',
+    'It only uses what you give it (knowledge base and sheets). If it doesn’t know, it says the team will get back and saves the request for you.',
+  ],
+  [
+    'Will WhatsApp ban my number?',
+    'Not with the official WhatsApp Business API, which we recommend. The QR option is unofficial and can get numbers banned — use a spare number for it.',
+  ],
+  [
+    'How does Google Sheets work?',
+    'You connect Google with your own Google Cloud credentials, then pick a sheet the agent reads (prices, stock) and a sheet where it saves leads.',
+  ],
+  [
+    'What does the AI cost me?',
+    'You bring your own AI key and pay the provider directly — budget models cost a few paise per chat. We never add a markup.',
+  ],
+  [
+    'How do I get access?',
+    'Sign up and verify your email. Our team approves new accounts personally (usually within hours) and your free trial starts then.',
+  ],
 ];
 
-function PhoneMockup() {
-  const chat: { me?: boolean; text: string }[] = [
-    { me: true, text: 'Hi! Kaju katli 500g ka price kya hai?' },
-    { text: 'Namaste! 😊 Kaju Katli 500g is ₹450 — 12 boxes in stock today. Shall I keep one for you?' },
-    { me: true, text: 'Haan, 2 boxes. Pickup at 6pm' },
-    { text: 'Done ✅ 2 × Kaju Katli 500g (₹900), pickup today 6:00 PM. Your name please?' },
-  ];
+function Bubble({ me, children }: { me?: boolean; children: React.ReactNode }) {
   return (
-    <div className="relative mx-auto w-full max-w-[340px]">
-      <div className="rounded-[2.5rem] border-[10px] border-neutral-900 bg-neutral-900 shadow-2xl shadow-primary/20">
-        <div className="overflow-hidden rounded-[1.8rem] bg-[#efe7dd] dark:bg-[#0b141a]">
-          <div className="flex items-center gap-3 bg-[#075e54] px-4 py-3 text-white">
-            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/20">
-              <Bot className="h-5 w-5" />
-            </span>
-            <div>
-              <div className="text-sm font-semibold">Kumar Sweets</div>
-              <div className="text-[11px] text-white/75">AI assistant · online</div>
-            </div>
-          </div>
-          <div className="space-y-2 px-3 py-4 text-[13px] leading-snug">
-            {chat.map((m, i) => (
-              <div key={i} className={m.me ? 'flex justify-end' : 'flex'}>
-                <p
-                  className={
-                    m.me
-                      ? 'max-w-[80%] rounded-lg rounded-tr-none bg-[#d9fdd3] px-3 py-2 text-neutral-900 shadow-sm dark:bg-[#005c4b] dark:text-white'
-                      : 'max-w-[85%] rounded-lg rounded-tl-none bg-white px-3 py-2 text-neutral-900 shadow-sm dark:bg-[#202c33] dark:text-white'
-                  }
-                >
-                  {m.text}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-      <div className="absolute -left-36 top-6 hidden rounded-xl border bg-card px-3 py-2 text-xs shadow-lg xl:flex xl:items-center xl:gap-2">
-        <Sheet className="h-4 w-4 text-green-600" /> Read “Price list” sheet
-      </div>
-      <div className="absolute -right-32 -bottom-3 hidden rounded-xl border bg-card px-3 py-2 text-xs shadow-lg xl:flex xl:items-center xl:gap-2">
-        <UserPlus className="h-4 w-4 text-primary" /> Order saved to “Leads”
-      </div>
+    <div className={me ? 'flex justify-end' : 'flex'}>
+      <p
+        className={
+          me
+            ? 'max-w-[85%] rounded-xl rounded-br-sm bg-primary px-3 py-2 text-[13px] font-medium text-primary-foreground'
+            : 'max-w-[90%] rounded-xl rounded-bl-sm border bg-card px-3 py-2 text-[13px] shadow-sm'
+        }
+      >
+        {children}
+      </p>
+    </div>
+  );
+}
+
+function SectionTitle({ title, sub, pill }: { title: string; sub?: string; pill?: React.ReactNode }) {
+  return (
+    <div className="mx-auto max-w-2xl text-center">
+      {pill}
+      <h2 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">{title}</h2>
+      {sub && <p className="mt-3 text-base text-muted-foreground sm:text-lg">{sub}</p>}
     </div>
   );
 }
@@ -186,227 +222,303 @@ export default function Home() {
     <div className="min-h-dvh overflow-x-hidden">
       <LandingNav />
 
-      {/* Hero */}
-      <section className="relative">
-        <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[620px] bg-[radial-gradient(60%_60%_at_70%_20%,var(--primary-soft),transparent)]" />
-        <div className="mx-auto grid max-w-6xl items-center gap-12 px-4 pb-20 pt-10 sm:px-6 lg:grid-cols-[1.1fr_1fr] lg:pt-16">
-          <div>
-            <span className="inline-flex items-center gap-2 rounded-full border bg-card px-3 py-1 text-xs font-medium text-muted-foreground shadow-sm">
-              <span className="h-1.5 w-1.5 rounded-full bg-success" /> AI co-workers for Indian businesses
-            </span>
-            <h1 className="mt-6 font-display text-4xl font-semibold leading-[1.08] tracking-tight sm:text-5xl lg:text-6xl">
-              Never miss a customer on <span className="text-primary">WhatsApp</span> again
-            </h1>
-            <p className="mt-5 max-w-xl text-lg text-muted-foreground">
-              {BRAND.name} answers enquiries, quotes prices from your Google Sheet, books appointments and
-              captures leads — 24×7, in your customer’s language.
-            </p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Button size="lg" asChild>
-                <Link href="/signup">
-                  Start 24-hour free trial <ArrowRight />
-                </Link>
-              </Button>
-              <Button size="lg" variant="outline" asChild>
-                <a
-                  href={whatsappLink(`Hi! I'd like a demo of ${BRAND.name}.`)}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  <MessageCircle /> Book a demo
-                </a>
-              </Button>
-            </div>
-            <ul className="mt-8 grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
-              {['Live in 15 minutes', 'No coding needed', 'Works with your own AI key', 'Cancel anytime'].map(
-                (t) => (
-                  <li key={t} className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-primary" /> {t}
-                  </li>
-                ),
-              )}
-            </ul>
-          </div>
-          <PhoneMockup />
-        </div>
-      </section>
-
-      {/* Stats */}
-      <section className="border-y bg-card/70">
-        <div className="mx-auto grid max-w-6xl grid-cols-2 gap-6 px-4 py-10 text-center sm:px-6 md:grid-cols-4">
-          {[
-            ['24×7', 'always available'],
-            ['< 5 sec', 'average reply time'],
-            ['40+', 'ready-made skills'],
-            ['10+', 'Indian languages'],
-          ].map(([v, l]) => (
-            <div key={l}>
-              <div className="font-display text-3xl font-semibold text-primary sm:text-4xl">{v}</div>
-              <div className="mt-1 text-sm text-muted-foreground">{l}</div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Industries */}
-      <section className="mx-auto max-w-6xl px-4 py-14 text-center sm:px-6">
-        <p className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
-          Built for businesses like yours
+      {/* ───────── Hero ───────── */}
+      <section className="mx-auto max-w-6xl px-4 pb-10 pt-12 text-center sm:px-6 sm:pt-20">
+        <span className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[#e8711c] to-[#c2410c] px-4 py-1.5 text-xs font-semibold text-white shadow-lg shadow-orange-500/25 sm:text-sm">
+          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
+          Early access open · 24-hour free trial · Made in India
+        </span>
+        <h1 className="mx-auto mt-8 max-w-4xl font-display text-5xl font-bold leading-[1.02] tracking-tight sm:text-7xl">
+          Your Next Co-Worker
+          <span className="block text-primary">Runs on AI.</span>
+        </h1>
+        <p className="mt-6 font-display text-2xl font-semibold text-muted-foreground sm:text-4xl">
+          Replies in seconds. Never takes a day off.
         </p>
-        <div className="mt-5 flex flex-wrap justify-center gap-2">
-          {industries.map((i) => (
-            <span key={i} className="rounded-full border bg-card px-4 py-1.5 text-sm">
-              {i}
+        <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
+          Small businesses lose customers to slow WhatsApp replies. {BRAND.name} answers every enquiry, quotes
+          from your Google Sheet, books appointments and saves leads — in Tamil, Hindi or English, day and
+          night.
+        </p>
+        <div className="mt-6 flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm font-medium text-primary">
+          {['15-minute setup', 'No credit card', 'Your own AI key'].map((t) => (
+            <span key={t} className="flex items-center gap-1.5">
+              <CheckCircle2 className="h-4 w-4" /> {t}
             </span>
           ))}
         </div>
+        <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
+          <Button size="lg" className="h-13 rounded-xl px-7 text-base shadow-lg shadow-primary/25" asChild>
+            <Link href="/signup">
+              Create Your AI Co-Worker <ArrowRight />
+            </Link>
+          </Button>
+          <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+            <Clock className="h-4 w-4" /> Takes less time than a chai break
+          </span>
+        </div>
+
+        <div className="mt-16 border-t pt-10">
+          <div className="flex flex-wrap items-end justify-center gap-x-12 gap-y-6">
+            {stats.map(([v, l]) => (
+              <div key={l} className="flex items-baseline gap-2">
+                <span className="font-display text-4xl font-bold">{v}</span>
+                <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                  {l}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
       </section>
 
-      {/* Features */}
-      <section id="features" className="scroll-mt-20 bg-card/50 py-20">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <div className="mx-auto max-w-2xl text-center">
-            <h2 className="font-display text-3xl font-semibold sm:text-4xl">
-              Everything a great front-desk does
-            </h2>
-            <p className="mt-3 text-muted-foreground">
-              Without the salary, sick days or missed messages at 11 PM.
+      {/* ───────── Sound familiar ───────── */}
+      <section className="border-y bg-card py-20">
+        <div className="mx-auto max-w-5xl px-4 sm:px-6">
+          <SectionTitle
+            title="Sound familiar?"
+            sub="Every busy business owner knows these. Here’s what changes."
+          />
+          <div className="mt-12 grid gap-5 md:grid-cols-2">
+            <div className="rounded-2xl border border-red-200 bg-red-50/70 p-7 dark:border-red-900/50 dark:bg-red-950/20">
+              <p className="text-xs font-bold uppercase tracking-wider text-red-600">Without {BRAND.name}</p>
+              <ul className="mt-5 space-y-4">
+                {without.map((t) => (
+                  <li key={t} className="flex gap-3 text-[15px]">
+                    <X className="mt-0.5 h-4 w-4 shrink-0 text-red-500" /> {t}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-7 dark:border-emerald-900/50 dark:bg-emerald-950/20">
+              <p className="text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                With {BRAND.name}
+              </p>
+              <ul className="mt-5 space-y-4">
+                {withUs.map((t) => (
+                  <li key={t} className="flex gap-3 text-[15px]">
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" /> {t}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+          <div className="mt-10 text-center">
+            <Button size="lg" className="rounded-xl" asChild>
+              <Link href="/signup">
+                Stop losing customers tonight <ArrowRight />
+              </Link>
+            </Button>
+            <p className="mt-3 text-xs text-muted-foreground">
+              Free 24-hour trial · No credit card · Cancel anytime
             </p>
           </div>
-          <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {features.map(({ icon: Icon, title, text }) => (
+        </div>
+      </section>
+
+      {/* ───────── Pillars ───────── */}
+      <section id="features" className="scroll-mt-20 py-20">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <SectionTitle
+            title="Your AI co-worker comes ready to work"
+            sub="No prompts to write. Toggle the skills you need and go live."
+          />
+          <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {pillars.map(({ icon: Icon, title, text }) => (
               <div
                 key={title}
-                className="rounded-2xl border bg-card p-6 transition-shadow hover:shadow-lg hover:shadow-primary/5"
+                className="rounded-2xl border bg-card p-6 shadow-sm transition-shadow hover:shadow-md"
               >
-                <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-primary-soft text-primary">
+                <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-soft text-primary">
                   <Icon className="h-5 w-5" />
-                </div>
-                <h3 className="font-semibold">{title}</h3>
-                <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{text}</p>
+                </span>
+                <h3 className="mt-5 font-display text-lg font-semibold">{title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{text}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* How it works */}
-      <section id="how" className="mx-auto max-w-6xl scroll-mt-20 px-4 py-20 sm:px-6">
-        <div className="mx-auto max-w-2xl text-center">
-          <h2 className="font-display text-3xl font-semibold sm:text-4xl">Live in three simple steps</h2>
-        </div>
-        <div className="mt-12 grid gap-6 md:grid-cols-3">
-          {steps.map((s) => (
-            <div key={s.n} className="relative rounded-2xl border bg-card p-6">
-              <div className="font-display text-4xl font-semibold text-primary/25">{s.n}</div>
-              <h3 className="mt-2 font-semibold">{s.title}</h3>
-              <p className="mt-1.5 text-sm text-muted-foreground">{s.text}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Google Sheets + channels */}
-      <section className="mx-auto grid max-w-6xl gap-6 px-4 pb-20 sm:px-6 lg:grid-cols-2">
-        <div className="hero-gradient relative overflow-hidden rounded-3xl p-8 text-white">
-          <Sheet className="h-8 w-8" />
-          <h3 className="mt-4 font-display text-2xl font-semibold">Your Google Sheet becomes its brain</h3>
-          <p className="mt-2 text-white/80">
-            Update a price in your sheet and the agent quotes the new price instantly. Every lead it captures
-            lands as a new row — no copy-paste.
-          </p>
-          <ul className="mt-5 space-y-2 text-sm text-white/90">
-            {[
-              'Price lists, menus, stock, timings',
-              'Leads & orders logged automatically',
-              'Connect with your own Google Cloud app',
-            ].map((t) => (
-              <li key={t} className="flex items-center gap-2">
-                <Check className="h-4 w-4" /> {t}
-              </li>
-            ))}
-          </ul>
-          <div className="pointer-events-none absolute -bottom-16 -right-16 h-64 w-64 rounded-full bg-white/10 blur-2xl" />
-        </div>
-        <div className="grid gap-4">
-          {[
-            {
-              type: 'WHATSAPP_CLOUD' as const,
-              title: 'WhatsApp Business API',
-              text: 'Official, ban-safe, green-tick ready. Recommended.',
-              color: 'bg-green-500/15 text-green-600',
-            },
-            {
-              type: 'WHATSAPP_QR' as const,
-              title: 'WhatsApp QR',
-              text: 'Link your existing number in seconds (unofficial — use a spare number).',
-              color: 'bg-green-500/15 text-green-600',
-            },
-            {
-              type: 'TELEGRAM' as const,
-              title: 'Telegram',
-              text: 'Create a bot with @BotFather and paste the token.',
-              color: 'bg-sky-500/15 text-sky-600',
-            },
-          ].map((c) => (
-            <div key={c.title} className="flex items-start gap-4 rounded-2xl border bg-card p-5">
-              <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${c.color}`}>
-                <ChannelIcon type={c.type} className="h-5 w-5" />
-              </span>
-              <div>
-                <h4 className="font-semibold">{c.title}</h4>
-                <p className="mt-0.5 text-sm text-muted-foreground">{c.text}</p>
+      {/* ───────── Providers ───────── */}
+      <section className="border-y bg-card py-20">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <SectionTitle
+            title="Bring your own AI. We support them all."
+            sub="Use your own API key from any major provider. You control the model, the cost and the data."
+          />
+          <div className="mt-12 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
+            {providers.map((p) => (
+              <div
+                key={p.name}
+                className="flex flex-col items-center rounded-2xl border bg-background p-5 text-center"
+              >
+                <span
+                  className={`flex h-11 w-11 items-center justify-center rounded-xl font-display text-lg font-bold text-white ${p.color}`}
+                >
+                  {p.name[0]}
+                </span>
+                <div className="mt-3 text-sm font-semibold">{p.name}</div>
+                <div className="mt-0.5 text-xs text-muted-foreground">{p.models}</div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
+          <p className="mt-8 text-center text-sm text-muted-foreground">
+            No API key yet?{' '}
+            <span className="font-medium text-primary">Groq and Google Gemini offer free tiers</span> —
+            perfect to start.
+          </p>
         </div>
       </section>
 
-      {/* Pricing */}
-      <section id="pricing" className="scroll-mt-20 border-y bg-card/50 py-20">
+      {/* ───────── Use cases ───────── */}
+      <section id="use-cases" className="scroll-mt-20 py-20">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6">
+          <SectionTitle
+            title="See it working for YOUR business"
+            sub="Real problems, real conversations. Find your industry."
+          />
+          <div className="mt-12 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+            {industries.map((ind) => (
+              <div
+                key={ind.name}
+                className={`overflow-hidden rounded-2xl border bg-gradient-to-b ${ind.tint}`}
+              >
+                <div className="p-6">
+                  <h3 className="flex items-center gap-2.5 font-display text-lg font-semibold">
+                    <span className="text-2xl">{ind.emoji}</span> {ind.name}
+                  </h3>
+                  <ul className="mt-4 space-y-1.5 text-sm">
+                    {ind.pains.map((p) => (
+                      <li
+                        key={p}
+                        className="flex items-center gap-2 text-muted-foreground line-through decoration-red-400/70"
+                      >
+                        <X className="h-3.5 w-3.5 shrink-0 text-red-500" /> {p}
+                      </li>
+                    ))}
+                    {ind.gains.map((g) => (
+                      <li key={g} className="flex items-center gap-2 font-medium">
+                        <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-600" /> {g}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="space-y-2 border-t bg-background/70 p-4">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                    Live demo
+                  </p>
+                  {ind.chat.map(([who, text], i) => (
+                    <Bubble key={i} me={who === 'me'}>
+                      {text}
+                    </Bubble>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ───────── Made in India ───────── */}
+      <section className="border-y border-amber-200/70 bg-amber-50/60 py-20 dark:border-amber-900/40 dark:bg-amber-950/10">
         <div className="mx-auto max-w-5xl px-4 sm:px-6">
-          <h2 className="text-center font-display text-3xl font-semibold sm:text-4xl">Simple pricing in ₹</h2>
-          <p className="mt-2 text-center text-muted-foreground">
-            Start free for 24 hours. Upgrade when you’re ready.
-          </p>
+          <SectionTitle
+            pill={
+              <span className="mb-5 inline-flex items-center gap-2 rounded-full border border-amber-300 bg-card px-4 py-1 text-sm font-semibold text-amber-800 dark:border-amber-800 dark:text-amber-300">
+                <Flag className="h-3.5 w-3.5" /> Built in India · for Indian businesses
+              </span>
+            }
+            title="Indian SaaS, Indian pricing"
+          />
           <div className="mt-10 grid gap-5 md:grid-cols-3">
+            {[
+              {
+                icon: IndianRupee,
+                title: 'No AI markup. Ever.',
+                text: 'Bring your own OpenAI, Claude or Gemini key and pay the provider directly. We don’t take a cut.',
+              },
+              {
+                icon: Languages,
+                title: 'Speaks your customers’ language',
+                text: 'Tamil, Hindi, Telugu, Kannada, English — even Tanglish and Hinglish. It replies the way they type.',
+              },
+              {
+                icon: ShieldCheck,
+                title: 'Your data stays yours',
+                text: 'Keys encrypted with AES-256. Google connected through your own OAuth app. Disconnect anytime.',
+              },
+            ].map(({ icon: Icon, title, text }) => (
+              <div
+                key={title}
+                className="rounded-2xl border border-amber-200 bg-card p-6 text-center dark:border-amber-900/50"
+              >
+                <Icon className="mx-auto h-7 w-7 text-primary" />
+                <h3 className="mt-3 font-semibold">{title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{text}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ───────── Pricing ───────── */}
+      <section id="pricing" className="scroll-mt-20 py-20">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <SectionTitle
+            pill={
+              <span className="mb-5 inline-flex items-center gap-2 rounded-full bg-primary-soft px-4 py-1 text-sm font-semibold text-primary">
+                <Sparkles className="h-3.5 w-3.5" /> Early access pricing
+              </span>
+            }
+            title="Create your 24/7 AI co-worker"
+            sub="Costs less than what you spend on chai every month."
+          />
+          <div className="mx-auto mt-12 grid max-w-5xl gap-5 md:grid-cols-3">
             {Object.values(PLANS).map((p) => {
               const popular = p.id === 'STARTER';
               return (
                 <div
                   key={p.id}
-                  className={`relative flex flex-col rounded-2xl border bg-card p-6 ${popular ? 'border-primary shadow-xl shadow-primary/10 ring-2 ring-primary/20' : ''}`}
+                  className={`relative flex flex-col rounded-2xl border bg-card p-7 ${popular ? 'border-2 border-primary shadow-xl shadow-primary/10' : ''}`}
                 >
-                  {popular && (
-                    <span className="absolute -top-3 left-6 rounded-full bg-primary px-3 py-0.5 text-xs font-semibold text-primary-foreground">
-                      Most popular
+                  {(p.id === 'TRIAL' || popular) && (
+                    <span
+                      className={`absolute -top-px right-6 rounded-b-lg px-3 py-1 text-[11px] font-bold uppercase text-white ${popular ? 'bg-primary' : 'bg-emerald-600'}`}
+                    >
+                      {popular ? 'Most popular' : 'Start free'}
                     </span>
                   )}
-                  <h3 className="font-semibold">{p.name}</h3>
+                  <h3 className="font-display text-xl font-bold">{p.name}</h3>
                   <p className="mt-1 text-sm text-muted-foreground">{p.tagline}</p>
-                  <p className="mt-5 font-display text-4xl font-semibold">
-                    {p.priceInr === 0 ? 'Free' : `₹${p.priceInr.toLocaleString('en-IN')}`}
-                    {p.priceInr > 0 && (
-                      <span className="text-base font-normal text-muted-foreground">/month</span>
-                    )}
+                  <p className="mt-6 flex items-baseline gap-1.5">
+                    <span className="font-display text-5xl font-bold">
+                      {p.priceInr === 0 ? 'Free' : `₹${p.priceInr.toLocaleString('en-IN')}`}
+                    </span>
+                    <span className="text-sm text-muted-foreground">
+                      {p.priceInr === 0 ? 'for 24 hours' : '/month'}
+                    </span>
                   </p>
-                  <ul className="mt-5 flex-1 space-y-2 text-sm">
+                  <ul className="mt-6 flex-1 space-y-2.5 text-sm">
                     <li className="flex gap-2">
-                      <Check className="h-4 w-4 shrink-0 text-primary" />{' '}
+                      <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />{' '}
                       {formatLimit(p.limits.messagesPerMonth)} AI replies
                     </li>
                     {p.features.map((f) => (
                       <li key={f} className="flex gap-2">
-                        <Check className="h-4 w-4 shrink-0 text-primary" /> {f}
+                        <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" /> {f}
                       </li>
                     ))}
                   </ul>
-                  {p.id === 'TRIAL' ? (
-                    <Button className="mt-6 w-full" variant="outline" asChild>
+                  <Button
+                    className="mt-7 w-full rounded-xl"
+                    size="lg"
+                    variant={popular ? 'default' : 'outline'}
+                    asChild
+                  >
+                    {p.id === 'TRIAL' ? (
                       <Link href="/signup">Start free trial</Link>
-                    </Button>
-                  ) : (
-                    <Button className="mt-6 w-full" variant={popular ? 'default' : 'outline'} asChild>
+                    ) : (
                       <a
                         href={whatsappLink(`Hi! I'm interested in the ${BRAND.name} ${p.name} plan.`)}
                         target="_blank"
@@ -414,193 +526,159 @@ export default function Home() {
                       >
                         Get {p.name}
                       </a>
-                    </Button>
-                  )}
+                    )}
+                  </Button>
                 </div>
               );
             })}
           </div>
+          <p className="mt-6 text-center text-sm text-muted-foreground">
+            New accounts are approved by our team — usually within a few hours.
+          </p>
         </div>
       </section>
 
-      {/* FAQ */}
-      <section id="faq" className="mx-auto max-w-3xl scroll-mt-20 px-4 py-20 sm:px-6">
-        <h2 className="text-center font-display text-3xl font-semibold sm:text-4xl">Questions, answered</h2>
-        <div className="mt-10 divide-y rounded-2xl border bg-card">
-          {faqs.map((f) => (
-            <details key={f.q} className="group px-5 py-4">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-medium">
-                {f.q}
-                <ChevronDown className="h-4 w-4 shrink-0 transition-transform group-open:rotate-180" />
-              </summary>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{f.a}</p>
-            </details>
-          ))}
+      {/* ───────── FAQ ───────── */}
+      <section id="faq" className="scroll-mt-20 border-y bg-card py-20">
+        <div className="mx-auto max-w-3xl px-4 sm:px-6">
+          <SectionTitle
+            title="The questions every business owner asks us"
+            sub="Straight answers. No fluff."
+          />
+          <div className="mt-10 space-y-3">
+            {faqs.map(([q, a]) => (
+              <details key={q} className="group rounded-2xl border bg-background px-5 py-4 open:shadow-sm">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-medium">
+                  {q}
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-muted-foreground transition-transform group-open:rotate-45">
+                    <Plus className="h-3.5 w-3.5" />
+                  </span>
+                </summary>
+                <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{a}</p>
+              </details>
+            ))}
+          </div>
+          <p className="mt-8 text-center text-sm text-muted-foreground">
+            Still have questions? Email{' '}
+            <a
+              href={`mailto:${BRAND.email}`}
+              className="font-medium text-primary underline underline-offset-2"
+            >
+              {BRAND.email}
+            </a>{' '}
+            or WhatsApp {BRAND.phoneDisplay}.
+          </p>
         </div>
       </section>
 
-      {/* Contact */}
-      <section id="contact" className="scroll-mt-20 bg-card/50 py-20">
+      {/* ───────── Contact ───────── */}
+      <section id="contact" className="scroll-mt-20 py-20">
         <div className="mx-auto grid max-w-6xl gap-10 px-4 sm:px-6 lg:grid-cols-[1fr_1.3fr]">
           <div>
-            <h2 className="font-display text-3xl font-semibold sm:text-4xl">Let’s talk</h2>
+            <h2 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">Let’s talk</h2>
             <p className="mt-3 text-muted-foreground">
-              Want a demo, help with setup, or a custom plan? Send us a message — it comes straight to our
-              WhatsApp.
+              Want a demo, setup help or a custom plan? Send a message — it lands straight in our WhatsApp.
             </p>
-            <div className="mt-8 space-y-4">
-              <a
-                href={whatsappLink(`Hi ${BRAND.name} team!`)}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center gap-4 rounded-xl border bg-card p-4 transition-colors hover:border-primary/40"
-              >
-                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-green-500/15 text-green-600">
-                  <MessageCircle className="h-5 w-5" />
-                </span>
-                <div>
-                  <div className="text-xs text-muted-foreground">WhatsApp</div>
-                  <div className="font-medium">{BRAND.phoneDisplay}</div>
-                </div>
-              </a>
-              <a
-                href={`tel:+91${BRAND.phone}`}
-                className="flex items-center gap-4 rounded-xl border bg-card p-4 transition-colors hover:border-primary/40"
-              >
-                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary-soft text-primary">
-                  <Phone className="h-5 w-5" />
-                </span>
-                <div>
-                  <div className="text-xs text-muted-foreground">Call us</div>
-                  <div className="font-medium">{BRAND.phoneDisplay}</div>
-                </div>
-              </a>
-              <a
-                href={`mailto:${BRAND.email}`}
-                className="flex items-center gap-4 rounded-xl border bg-card p-4 transition-colors hover:border-primary/40"
-              >
-                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary-soft text-primary">
-                  <Mail className="h-5 w-5" />
-                </span>
-                <div>
-                  <div className="text-xs text-muted-foreground">Email</div>
-                  <div className="font-medium">{BRAND.email}</div>
-                </div>
-              </a>
+            <div className="mt-8 space-y-3">
+              {[
+                {
+                  icon: MessageCircle,
+                  label: 'WhatsApp',
+                  value: BRAND.phoneDisplay,
+                  href: whatsappLink(`Hi ${BRAND.name} team!`),
+                },
+                { icon: Phone, label: 'Call us', value: BRAND.phoneDisplay, href: `tel:+91${BRAND.phone}` },
+                { icon: Mail, label: 'Email', value: BRAND.email, href: `mailto:${BRAND.email}` },
+              ].map(({ icon: Icon, label, value, href }) => (
+                <a
+                  key={label}
+                  href={href}
+                  target={href.startsWith('http') ? '_blank' : undefined}
+                  rel="noreferrer"
+                  className="flex items-center gap-4 rounded-2xl border bg-card p-4 transition-colors hover:border-primary/40"
+                >
+                  <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary-soft text-primary">
+                    <Icon className="h-5 w-5" />
+                  </span>
+                  <div>
+                    <div className="text-xs text-muted-foreground">{label}</div>
+                    <div className="font-medium">{value}</div>
+                  </div>
+                </a>
+              ))}
             </div>
           </div>
           <ContactForm />
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
-        <div className="hero-gradient relative overflow-hidden rounded-3xl px-6 py-14 text-center text-white sm:px-12">
-          <h2 className="mx-auto max-w-2xl font-display text-3xl font-semibold sm:text-4xl">
-            Give your business an AI co-worker today
-          </h2>
-          <p className="mx-auto mt-3 max-w-xl text-white/80">
-            24 hours free. Set up in minutes. No credit card.
-          </p>
-          <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <Button size="lg" className="bg-white text-primary hover:bg-white/90" asChild>
-              <Link href="/signup">
-                Start free trial <ArrowRight />
-              </Link>
-            </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              className="border-white/40 bg-transparent text-white hover:bg-white/10 hover:text-white"
-              asChild
-            >
-              <a
-                href={whatsappLink(`Hi! I'd like a demo of ${BRAND.name}.`)}
-                target="_blank"
-                rel="noreferrer"
-              >
-                Talk to us
-              </a>
-            </Button>
-          </div>
-        </div>
+      {/* ───────── CTA band ───────── */}
+      <section className="bg-primary px-4 py-20 text-center text-primary-foreground dark:bg-[#4a1d0b] dark:text-white">
+        <h2 className="mx-auto max-w-3xl font-display text-4xl font-bold leading-tight tracking-tight sm:text-5xl">
+          Your competitors already reply in seconds.
+        </h2>
+        <p className="mx-auto mt-4 max-w-xl text-lg opacity-80">
+          While you read this, their customers are getting answers. Yours can too — tonight.
+        </p>
+        <Button
+          size="lg"
+          className="mt-9 h-13 rounded-xl bg-white px-8 text-base text-primary hover:bg-white/90 dark:text-[#4a1d0b]"
+          asChild
+        >
+          <Link href="/signup">
+            Get your AI co-worker <ArrowRight />
+          </Link>
+        </Button>
+        <p className="mt-4 text-sm opacity-70">24-hour free trial · No credit card · Approved within hours</p>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t">
-        <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 sm:px-6 md:grid-cols-4">
-          <div className="md:col-span-2">
-            <Logo />
-            <p className="mt-3 max-w-sm text-sm text-muted-foreground">
-              {BRAND.tagline}. Answers, books and sells for you — 24×7.
-            </p>
-            <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
-              <ShieldCheck className="h-3.5 w-3.5" /> Encrypted keys · Your own Google OAuth · Made in India
-            </div>
-          </div>
+      {/* ───────── Footer ───────── */}
+      <footer className="bg-card">
+        <div className="mx-auto flex max-w-6xl flex-col gap-8 px-4 py-10 sm:px-6 md:flex-row md:items-start md:justify-between">
           <div>
-            <h4 className="text-sm font-semibold">Product</h4>
-            <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
-              <li>
-                <a href="#features" className="hover:text-foreground">
-                  Features
-                </a>
-              </li>
-              <li>
-                <a href="#pricing" className="hover:text-foreground">
-                  Pricing
-                </a>
-              </li>
-              <li>
-                <a href="#faq" className="hover:text-foreground">
-                  FAQ
-                </a>
-              </li>
-              <li>
-                <Link href="/login" className="hover:text-foreground">
-                  Sign in
-                </Link>
-              </li>
-            </ul>
+            <Logo className="[&_img]:h-9" />
+            <p className="mt-3 max-w-xs text-sm text-muted-foreground">{BRAND.tagline}.</p>
           </div>
-          <div>
-            <h4 className="text-sm font-semibold">Contact</h4>
-            <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
-              <li>
-                <a href={`mailto:${BRAND.email}`} className="flex items-center gap-2 hover:text-foreground">
-                  <Mail className="h-4 w-4" /> {BRAND.email}
-                </a>
-              </li>
-              <li>
-                <a href={`tel:+91${BRAND.phone}`} className="flex items-center gap-2 hover:text-foreground">
-                  <Phone className="h-4 w-4" /> {BRAND.phoneDisplay}
-                </a>
-              </li>
-              <li>
-                <a
-                  href={whatsappLink(`Hi ${BRAND.name} team!`)}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center gap-2 hover:text-foreground"
-                >
-                  <MessageCircle className="h-4 w-4" /> WhatsApp us
-                </a>
-              </li>
-              <li className="flex items-center gap-2">
-                <MapPin className="h-4 w-4" /> India
-              </li>
-            </ul>
+          <div className="grid grid-cols-2 gap-x-12 gap-y-2 text-sm">
+            <a href="#features" className="text-muted-foreground hover:text-foreground">
+              Features
+            </a>
+            <a
+              href={`mailto:${BRAND.email}`}
+              className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
+            >
+              <Mail className="h-4 w-4" /> {BRAND.email}
+            </a>
+            <a href="#pricing" className="text-muted-foreground hover:text-foreground">
+              Pricing
+            </a>
+            <a
+              href={`tel:+91${BRAND.phone}`}
+              className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
+            >
+              <Phone className="h-4 w-4" /> {BRAND.phoneDisplay}
+            </a>
+            <a href="#faq" className="text-muted-foreground hover:text-foreground">
+              FAQ
+            </a>
+            <a
+              href={whatsappLink(`Hi ${BRAND.name} team!`)}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
+            >
+              <MessageCircle className="h-4 w-4" /> WhatsApp us
+            </a>
+            <Link href="/login" className="text-muted-foreground hover:text-foreground">
+              Sign in
+            </Link>
           </div>
         </div>
         <div className="border-t">
-          <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 px-4 py-5 text-xs text-muted-foreground sm:flex-row sm:px-6">
-            <span>
-              © {new Date().getFullYear()} {BRAND.name}. All rights reserved.
-            </span>
-            <span className="flex items-center gap-1">
-              <Clock className="h-3 w-3" /> Support: Mon–Sat, 10 AM – 7 PM IST
-            </span>
-          </div>
+          <p className="mx-auto max-w-6xl px-4 py-5 text-xs text-muted-foreground sm:px-6">
+            © {new Date().getFullYear()} {BRAND.name} — AI co-workers for WhatsApp &amp; Telegram ·{' '}
+            {BRAND.url.replace('https://', '')}
+          </p>
         </div>
       </footer>
     </div>

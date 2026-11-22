@@ -4,7 +4,7 @@ import { prisma } from '../db/client.js';
 import { tenantDb, type TenantDb } from '../db/tenant.js';
 import { verifyAccessToken } from '../auth/tokens.js';
 import { COOKIE_ACCESS, COOKIE_CSRF } from '../auth/session.js';
-import { forbidden, unauthorized } from '../lib/errors.js';
+import { forbidden, HttpError, unauthorized } from '../lib/errors.js';
 import { safeEqual } from '../lib/crypto.js';
 
 export interface AuthContext {
@@ -63,6 +63,19 @@ export async function authenticate(req: FastifyRequest, _reply: FastifyReply) {
   if (!user) throw unauthorized();
   if (user.status === 'SUSPENDED' && !auth.impersonatorId)
     throw forbidden('Your account is suspended. Contact support.');
+  // Waiting for admin approval: only the auth endpoints (me, logout, refresh…) are usable.
+  if (
+    !user.approvedAt &&
+    user.role !== 'ADMIN' &&
+    !auth.impersonatorId &&
+    !req.url.startsWith('/api/auth/')
+  ) {
+    throw new HttpError(
+      403,
+      'Your account is waiting for approval. We will notify you by email.',
+      'ACCOUNT_PENDING',
+    );
+  }
   req.auth = auth;
   req.currentUser = user;
   req.db = tenantDb(user.id);

@@ -41,7 +41,7 @@ export default function SignupPage() {
         <h1 className="font-display text-3xl font-semibold">Check your inbox</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           We sent a verification link to <span className="font-medium text-foreground">{sentTo}</span>. Click
-          it to activate your account — your 24-hour free trial starts then.
+          it to confirm your email. Our team then approves your account and your 24-hour free trial starts.
         </p>
         <p className="mt-2 text-xs text-muted-foreground">Can’t find it? Check Spam or Promotions.</p>
         <div className="mt-6 flex flex-col gap-2">
@@ -65,7 +65,7 @@ export default function SignupPage() {
       <h1 className="font-display text-3xl font-semibold">Create your agent</h1>
       <p className="mt-1 text-sm text-muted-foreground">Free for 24 hours. No card needed.</p>
       <div className="mb-6 mt-4 inline-flex items-center gap-2 rounded-full bg-primary-soft px-3 py-1 text-xs font-medium text-primary">
-        <Clock className="h-3.5 w-3.5" /> Trial starts when you verify your email
+        <Clock className="h-3.5 w-3.5" /> Free trial starts once your account is approved
       </div>
       <form onSubmit={onSubmit} className="space-y-4">
         <Field label="Your name" htmlFor="name">

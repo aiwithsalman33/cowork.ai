@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import {
   Activity,
@@ -20,6 +21,7 @@ import { formatInr, formatNumber } from '@/lib/utils';
 type Overview = {
   kpis: {
     users: number;
+    pendingApprovals: number;
     newThisWeek: number;
     mrr: number;
     activeAgents: number;
@@ -79,6 +81,18 @@ export default function AdminOverview() {
   return (
     <div className="space-y-6">
       <PageHeader title="Platform overview" description="Last 30 days across all tenants." />
+      {k.pendingApprovals > 0 && (
+        <Link
+          href="/admin/users?status=PENDING"
+          className="flex items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary-soft/60 px-4 py-3 text-sm transition-colors hover:bg-primary-soft"
+        >
+          <span>
+            <b>{k.pendingApprovals}</b> new {k.pendingApprovals === 1 ? 'account is' : 'accounts are'} waiting
+            for approval.
+          </span>
+          <span className="font-medium text-primary">Review →</span>
+        </Link>
+      )}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Kpi label="Users" value={formatNumber(k.users)} icon={Users} hint={`+${k.newThisWeek} this week`} />
         <Kpi label="MRR" value={formatInr(k.mrr)} icon={IndianRupee} hint="active paid plans" />

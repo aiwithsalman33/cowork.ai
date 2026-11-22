@@ -15,6 +15,8 @@ export interface MeDTO {
   status: 'ACTIVE' | 'SUSPENDED';
   trialEndsAt: string | null;
   planActive: boolean;
+  /** false until an admin grants access */
+  approved: boolean;
   subscriptionStatus: string | null;
   currentPeriodEnd: string | null;
   impersonatedBy: { id: string; email: string } | null;

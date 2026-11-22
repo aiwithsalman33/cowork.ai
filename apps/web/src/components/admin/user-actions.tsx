@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
-import { Ban, Clock, LogIn, MailCheck, MoreHorizontal, ShieldCheck, Trash2 } from 'lucide-react';
+import { Ban, Clock, LogIn, MailCheck, MoreHorizontal, ShieldCheck, Trash2, UserCheck } from 'lucide-react';
 import { PLAN_IDS, type PlanId } from '@partner/shared';
 import { Button } from '@/components/ui/button';
 import {
@@ -30,6 +30,7 @@ type Row = {
   status: 'ACTIVE' | 'SUSPENDED';
   role: 'USER' | 'ADMIN';
   emailVerified?: boolean;
+  approved?: boolean;
 };
 
 export function useUserActions(onDone?: () => void) {
@@ -47,6 +48,7 @@ export function useUserActions(onDone?: () => void) {
         status?: string;
         extendTrialHours?: number;
         verifyEmail?: true;
+        approve?: true;
       }) => patch(`/admin/users/${id}`, body),
       {
         success: 'User updated',
@@ -72,7 +74,7 @@ export function UserActionsMenu({
   u,
   onDeleted,
 }: {
-  u: Pick<Row, 'id' | 'email' | 'status' | 'role' | 'emailVerified'>;
+  u: Pick<Row, 'id' | 'email' | 'status' | 'role' | 'emailVerified' | 'approved'>;
   onDeleted?: () => void;
 }) {
   const actions = useUserActions(onDeleted);
@@ -89,6 +91,14 @@ export function UserActionsMenu({
           {u.role !== 'ADMIN' && (
             <DropdownMenuItem onClick={() => actions.impersonate.mutate(u.id)}>
               <LogIn /> Login as user
+            </DropdownMenuItem>
+          )}
+          {u.approved === false && (
+            <DropdownMenuItem
+              onClick={() => actions.update.mutate({ id: u.id, approve: true })}
+              className="font-medium text-success focus:text-success"
+            >
+              <UserCheck /> Approve access (start trial)
             </DropdownMenuItem>
           )}
           {u.emailVerified === false && (

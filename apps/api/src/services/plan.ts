@@ -3,13 +3,17 @@ import { PLANS, type PlanLimits } from '@partner/shared';
 import { prisma } from '../db/client.js';
 import { paymentRequired } from '../lib/errors.js';
 
-type PlanUser = Pick<User, 'plan' | 'status' | 'trialEndsAt' | 'subscriptionStatus' | 'currentPeriodEnd'>;
+type PlanUser = Pick<User, 'plan' | 'status' | 'trialEndsAt' | 'subscriptionStatus' | 'currentPeriodEnd'> & {
+  /** null = waiting for admin approval (undefined is treated as approved, for plain objects in tests) */
+  approvedAt?: Date | null;
+};
 
 const ACTIVE_SUB = new Set(['active', 'authenticated', 'charged']);
 
 /** Can this tenant's agent reply right now? */
 export function isPlanActive(user: PlanUser, now = new Date()): boolean {
   if (user.status !== 'ACTIVE') return false;
+  if (user.approvedAt === null) return false;
   if (user.plan === 'TRIAL') return !!user.trialEndsAt && user.trialEndsAt > now;
   if (user.currentPeriodEnd && user.currentPeriodEnd > now) return true;
   return !!user.subscriptionStatus && ACTIVE_SUB.has(user.subscriptionStatus);

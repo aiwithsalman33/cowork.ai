@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import {
   PLANS,
+  TRIAL_HOURS,
   adminUserQuerySchema,
   adminUserUpdateSchema,
   featureFlagSchema,
@@ -20,7 +21,9 @@ import { invalidateFlags } from '../../services/flags.js';
 import { toMeDTO } from '../../services/me.js';
 import { logoutSession } from '../../channels/baileys.js';
 import { servicesFromScopes } from '../../integrations/google.js';
-import { mailConfigured } from '../../lib/mailer.js';
+import { accountApprovedEmail, mailConfigured, sendMail } from '../../lib/mailer.js';
+import { env } from '../../config.js';
+import { logEvent } from '../../services/audit.js';
 
 const idParam = z.object({ id: z.string().min(1) });
 
@@ -113,6 +116,9 @@ export async function adminRoutes(app: FastifyInstance) {
     return {
       kpis: {
         users,
+        pendingApprovals: await prisma.user.count({
+          where: { role: 'USER', approvedAt: null, emailVerifiedAt: { not: null } },
+        }),
         newThisWeek,
         mrr,
         activeAgents: activeAgentUsers.filter((u) => isPlanActive(u)).length,
@@ -145,7 +151,11 @@ export async function adminRoutes(app: FastifyInstance) {
           }
         : {}),
       ...(q.plan ? { plan: q.plan } : {}),
-      ...(q.status ? { status: q.status } : {}),
+      ...(q.status === 'PENDING'
+        ? { approvedAt: null, role: 'USER' as const }
+        : q.status
+          ? { status: q.status }
+          : {}),
     };
     const [rows, total] = await Promise.all([
       prisma.user.findMany({
@@ -169,6 +179,7 @@ export async function adminRoutes(app: FastifyInstance) {
         role: u.role,
         status: u.status,
         emailVerified: !!u.emailVerifiedAt,
+        approved: u.role === 'ADMIN' || !!u.approvedAt,
         plan: u.plan,
         planActive: isPlanActive(u),
         trialEndsAt: u.trialEndsAt,
@@ -225,6 +236,7 @@ export async function adminRoutes(app: FastifyInstance) {
         currentPeriodEnd: u.currentPeriodEnd,
         bossNumbers: u.bossNumbers,
         emailVerified: !!u.emailVerifiedAt,
+        approved: u.role === 'ADMIN' || !!u.approvedAt,
         createdAt: u.createdAt,
         lastLoginAt: u.lastLoginAt,
       },
@@ -286,9 +298,14 @@ export async function adminRoutes(app: FastifyInstance) {
       else if (!target.razorpaySubscriptionId || target.subscriptionStatus !== 'active')
         data.currentPeriodEnd = new Date(Date.now() + 30 * 86400_000);
     }
-    if (input.verifyEmail && !target.emailVerifiedAt) {
-      data.emailVerifiedAt = new Date();
-      if (!target.trialEndsAt) data.trialEndsAt = new Date(Date.now() + 24 * 3600_000);
+    if (input.verifyEmail && !target.emailVerifiedAt) data.emailVerifiedAt = new Date();
+    const approving = input.approve && !target.approvedAt;
+    if (approving) {
+      data.approvedAt = new Date();
+      data.emailVerifiedAt = target.emailVerifiedAt ?? new Date();
+      // the free trial starts when access is granted
+      if (target.plan === 'TRIAL' && !input.extendTrialHours)
+        data.trialEndsAt = new Date(Date.now() + TRIAL_HOURS * 3600_000);
     }
     if (input.extendTrialHours) {
       const base = target.trialEndsAt && target.trialEndsAt > new Date() ? target.trialEndsAt : new Date();
@@ -302,7 +319,19 @@ export async function adminRoutes(app: FastifyInstance) {
         data: { revokedAt: new Date() },
       });
     }
-    await audit(admin.id, 'user.update', { type: 'user', id }, { ...input, email: target.email }, req.ip);
+    await audit(
+      admin.id,
+      approving ? 'user.approve' : 'user.update',
+      { type: 'user', id },
+      { ...input, email: target.email },
+      req.ip,
+    );
+    if (approving) {
+      await logEvent(id, 'INFO', 'account.approved', 'Your account was approved — free trial started');
+      await sendMail(accountApprovedEmail(target.email, target.name, `${env.WEB_ORIGIN}/login`)).catch(
+        (err) => req.log.warn({ err: (err as Error).message }, 'approval email failed'),
+      );
+    }
     return {
       ok: true,
       user: { id: updated.id, plan: updated.plan, status: updated.status, trialEndsAt: updated.trialEndsAt },

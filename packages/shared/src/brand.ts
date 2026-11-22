@@ -1,6 +1,6 @@
 /** Single place for product name and public contact details. */
 export const BRAND = {
-  name: 'CoworkAI',
+  name: 'CoWork AI',
   tagline: 'Your AI co-worker for WhatsApp & Telegram',
   url: 'https://coworkai.axxeler.in',
   email: 'aiwithsalman33@gmail.com',

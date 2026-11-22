@@ -13,7 +13,7 @@ async function adminVerify(email: string) {
   const csrf = (await ctx.storageState()).cookies.find((c) => c.name === 'pa_csrf')!.value;
   const users = await (await ctx.get(`/api/admin/users?q=${encodeURIComponent(email)}`)).json();
   const res = await ctx.patch(`/api/admin/users/${users.items[0].id}`, {
-    data: { verifyEmail: true },
+    data: { verifyEmail: true, approve: true },
     headers: { 'x-csrf-token': csrf },
   });
   expect(res.ok()).toBeTruthy();
@@ -46,8 +46,8 @@ async function signup(page: Page) {
 
 test('landing page shows hero, pricing and contact details @mobile', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: /Never miss a customer/i })).toBeVisible();
-  await expect(page.getByText('₹999')).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Your Next Co-Worker/i })).toBeVisible();
+  await expect(page.getByText('₹999').first()).toBeVisible();
   await expect(page.getByRole('link', { name: /aiwithsalman33@gmail.com/ }).first()).toBeVisible();
   await expect(page.getByText('+91 81480 35472').first()).toBeVisible();
 });
@@ -189,5 +189,5 @@ test('clicking the link in the verification email activates the account (needs M
   await page.goto(link!);
   await expect(page.getByText('Email verified!')).toBeVisible();
   await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 });
-  await expect(page.getByText(/Free trial · \d+h \d+m left/)).toBeVisible();
+  await expect(page.getByRole('heading', { name: /on the list/ })).toBeVisible(); // waits for admin approval
 });

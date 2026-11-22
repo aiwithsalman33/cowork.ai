@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 
 const LINKS = [
   { href: '#features', label: 'Features' },
-  { href: '#how', label: 'How it works' },
+  { href: '#use-cases', label: 'Use cases' },
   { href: '#pricing', label: 'Pricing' },
   { href: '#faq', label: 'FAQ' },
   { href: '#contact', label: 'Contact' },
@@ -45,7 +45,7 @@ export function LandingNav() {
             <Link href="/login">Sign in</Link>
           </Button>
           <Button asChild>
-            <Link href="/signup">Start free trial</Link>
+            <Link href="/signup">Start Free · 24h Trial</Link>
           </Button>
         </div>
         <button className="cursor-pointer md:hidden" onClick={() => setOpen(!open)} aria-label="Menu">

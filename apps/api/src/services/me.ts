@@ -21,6 +21,7 @@ export async function toMeDTO(user: User, impersonatorId: string | null): Promis
     status: user.status,
     trialEndsAt: user.trialEndsAt?.toISOString() ?? null,
     planActive: isPlanActive(user),
+    approved: user.role === 'ADMIN' || !!user.approvedAt,
     subscriptionStatus: user.subscriptionStatus,
     currentPeriodEnd: user.currentPeriodEnd?.toISOString() ?? null,
     impersonatedBy,

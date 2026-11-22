@@ -1,10 +1,10 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter, Fraunces } from 'next/font/google';
+import { Inter, Space_Grotesk } from 'next/font/google';
 import { Providers } from './providers';
 import './globals.css';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' });
-const display = Fraunces({
+const display = Space_Grotesk({
   subsets: ['latin'],
   variable: '--font-display',
   display: 'swap',
@@ -12,15 +12,15 @@ const display = Fraunces({
 });
 
 export const metadata: Metadata = {
-  title: { default: 'CoworkAI — Your AI co-worker for WhatsApp & Telegram', template: '%s · CoworkAI' },
+  title: { default: 'CoWork AI — Your AI co-worker for WhatsApp & Telegram', template: '%s · CoWork AI' },
   metadataBase: new URL('https://coworkai.axxeler.in'),
   description:
-    'CoworkAI answers your customers on WhatsApp and Telegram 24×7 — books appointments, captures leads and knows your business. Made in India.',
+    'CoWork AI answers your customers on WhatsApp and Telegram 24×7 — books appointments, captures leads and knows your business. Made in India.',
   openGraph: {
-    title: 'CoworkAI',
+    title: 'CoWork AI',
     description: 'Your AI co-worker for WhatsApp & Telegram',
     url: 'https://coworkai.axxeler.in',
-    siteName: 'CoworkAI',
+    siteName: 'CoWork AI',
   },
 };
 

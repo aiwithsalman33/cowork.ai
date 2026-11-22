@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { hmacSha256Hex } from '../src/lib/crypto.js';
 import { isPlanActive } from '../src/services/plan.js';
-import { call, cookiesFrom, getApp, prisma, signup } from './helpers.js';
+import { call, cookiesFrom, getApp, lastEmailToken, prisma, signup, testOutbox } from './helpers.js';
 
 const SECRET = 'rzp_test_webhook_secret';
 
@@ -227,5 +227,59 @@ describe('admin panel', () => {
       plans: ['GROWTH'],
     });
     expect(flag.json().flag).toMatchObject({ key: 'beta_widget', enabled: true, plans: ['GROWTH'] });
+  });
+});
+
+describe('admin approval (payments on hold)', () => {
+  it('lists pending accounts and approving starts the trial + emails the user', async () => {
+    const app = await getApp();
+    const admin = await adminSession();
+    const email = `pending_${Date.now()}@test.dev`;
+    await app.inject({
+      method: 'POST',
+      url: '/api/auth/signup',
+      remoteAddress: '10.77.1.1',
+      payload: { name: 'Pending Person', email, password: 'password123' },
+    });
+    const verify = await app.inject({
+      method: 'POST',
+      url: '/api/auth/verify-email',
+      remoteAddress: '10.77.1.2',
+      payload: { token: lastEmailToken(email) },
+    });
+    const userCookies = cookiesFrom(verify);
+    // admin was notified (ADMIN_EMAIL is not set in tests, so only check the user flow)
+    const pending = await call(admin, 'GET', '/api/admin/users?status=PENDING&pageSize=100');
+    const row = pending.json().items.find((u: { email: string }) => u.email === email);
+    expect(row).toMatchObject({ approved: false, emailVerified: true });
+
+    expect(
+      (await app.inject({ method: 'GET', url: '/api/dashboard', cookies: userCookies })).statusCode,
+    ).toBe(403);
+
+    const res = await call(admin, 'PATCH', `/api/admin/users/${row.id}`, { approve: true });
+    expect(res.statusCode).toBe(200);
+    const u = await prisma.user.findUniqueOrThrow({ where: { email } });
+    expect(u.approvedAt).not.toBeNull();
+    expect((u.trialEndsAt!.getTime() - Date.now()) / 3_600_000).toBeGreaterThan(23.9);
+    expect(testOutbox.some((m) => m.to === email && /approved/i.test(m.subject))).toBe(true);
+    expect(await prisma.auditLog.count({ where: { action: 'user.approve', targetId: row.id } })).toBe(1);
+
+    expect(
+      (await app.inject({ method: 'GET', url: '/api/dashboard', cookies: userCookies })).statusCode,
+    ).toBe(200);
+  });
+
+  it('an unapproved tenant’s agent never replies', async () => {
+    expect(
+      isPlanActive({
+        status: 'ACTIVE',
+        plan: 'TRIAL',
+        trialEndsAt: new Date(Date.now() + 1e7),
+        subscriptionStatus: null,
+        currentPeriodEnd: null,
+        approvedAt: null,
+      }),
+    ).toBe(false);
   });
 });

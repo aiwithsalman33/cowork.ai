@@ -1,29 +1,33 @@
 import Link from 'next/link';
+import { BRAND } from '@partner/shared';
 import { cn } from '@/lib/utils';
 
-export function Logo({ className, collapsed }: { className?: string; collapsed?: boolean }) {
+/**
+ * Brand logo from /public (generated from the original "logo .png"):
+ * logo.png / logo-light.png = robot + "CoWork" wordmark, logo-mark*.png = robot only.
+ * The *-light files are used in dark mode or on dark backgrounds.
+ */
+export function Logo({
+  className,
+  collapsed,
+  variant = 'auto',
+}: {
+  className?: string;
+  collapsed?: boolean;
+  /** "light" forces the light logo (for dark/coloured backgrounds) */
+  variant?: 'auto' | 'light';
+}) {
+  const file = collapsed ? 'logo-mark' : 'logo';
+  const h = collapsed ? 'h-9' : 'h-8';
   return (
-    <Link
-      href="/"
-      className={cn('flex items-center gap-2 font-display text-lg font-semibold tracking-tight', className)}
-    >
-      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
-        <svg
-          viewBox="0 0 24 24"
-          className="h-4.5 w-4.5"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.2"
-          strokeLinecap="round"
-        >
-          <path d="M5 19V9a7 7 0 0 1 14 0v1a6 6 0 0 1-6 6H9" />
-          <circle cx="12" cy="9.5" r="1.4" fill="currentColor" stroke="none" />
-        </svg>
-      </span>
-      {!collapsed && (
-        <span>
-          Cowork<span className="text-primary">AI</span>
-        </span>
+    <Link href="/" aria-label={`${BRAND.name} home`} className={cn('flex shrink-0 items-center', className)}>
+      {variant === 'light' ? (
+        <img src={`/${file}-light.png`} alt={BRAND.name} className={cn(h, 'w-auto')} />
+      ) : (
+        <>
+          <img src={`/${file}.png`} alt={BRAND.name} className={cn(h, 'w-auto dark:hidden')} />
+          <img src={`/${file}-light.png`} alt="" aria-hidden className={cn(h, 'hidden w-auto dark:block')} />
+        </>
       )}
     </Link>
   );

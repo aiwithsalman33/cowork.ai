@@ -102,3 +102,36 @@ function escapeHtml(s: string) {
     (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!,
   );
 }
+
+export function accountApprovedEmail(to: string, name: string, loginUrl: string): MailMessage {
+  return {
+    to,
+    subject: `Your ${BRAND.name} account is approved 🎉`,
+    text: `Hi ${name},\n\nGood news — your ${BRAND.name} account has been approved and your free trial has started.\nSign in and set up your AI agent: ${loginUrl}\n\nNeed help? WhatsApp us at ${BRAND.phoneDisplay}.`,
+    html: layout(
+      'You’re approved!',
+      `Hi ${escapeHtml(name)}, your ${BRAND.name} account is ready and your free trial has started. Sign in to set up your AI agent and connect WhatsApp or Telegram.`,
+      { label: 'Sign in', url: loginUrl },
+      `Questions? WhatsApp us at ${BRAND.phoneDisplay}.`,
+    ),
+  };
+}
+
+export function newSignupAdminEmail(
+  to: string,
+  user: { name: string; email: string; businessName?: string | null },
+  reviewUrl: string,
+): MailMessage {
+  const who = `${user.name} <${user.email}>${user.businessName ? ` — ${user.businessName}` : ''}`;
+  return {
+    to,
+    subject: `New ${BRAND.name} signup waiting for approval: ${user.name}`,
+    text: `${who} verified their email and is waiting for access.\nReview: ${reviewUrl}`,
+    html: layout(
+      'New account waiting for approval',
+      `${escapeHtml(who)} verified their email and is waiting for you to grant access.`,
+      { label: 'Review in admin', url: reviewUrl },
+      'Approve to start their free trial, or suspend/delete the account.',
+    ),
+  };
+}

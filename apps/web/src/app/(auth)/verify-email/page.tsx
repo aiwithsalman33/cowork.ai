@@ -32,7 +32,7 @@ function Verify() {
       .then((res) => {
         qc.setQueryData(['me'], res.user);
         setState('ok');
-        setTimeout(() => router.replace('/dashboard'), 1500);
+        setTimeout(() => router.replace('/dashboard'), 2500);
       })
       .catch((err: Error) => {
         setState('error');
@@ -54,7 +54,7 @@ function Verify() {
         <CheckCircle2 className="mx-auto mb-4 h-14 w-14 text-success" />
         <h1 className="font-display text-3xl font-semibold">Email verified!</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Your 24-hour free trial has started. Taking you to your dashboard…
+          Your account is now waiting for approval — we’ll email you as soon as it’s ready.
         </p>
       </div>
     );

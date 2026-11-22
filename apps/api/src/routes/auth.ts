@@ -5,14 +5,20 @@ import {
   loginSchema,
   resetPasswordSchema,
   signupSchema,
-  TRIAL_HOURS,
   verifyEmailSchema,
 } from '@partner/shared';
 import { env } from '../config.js';
 import { prisma } from '../db/client.js';
 import { parse } from '../lib/validate.js';
 import { badRequest, conflict, forbidden, HttpError, unauthorized } from '../lib/errors.js';
-import { MailNotConfiguredError, resetPasswordEmail, sendMail, verificationEmail } from '../lib/mailer.js';
+import {
+  MailNotConfiguredError,
+  newSignupAdminEmail,
+  resetPasswordEmail,
+  sendMail,
+  verificationEmail,
+} from '../lib/mailer.js';
+import { logger } from '../lib/logger.js';
 import { hashPassword, verifyPassword, fakeVerify } from '../auth/password.js';
 import {
   clearSessionCookies,
@@ -85,29 +91,33 @@ export async function authRoutes(app: FastifyInstance) {
     return reply.code(201).send({ needsVerification: true, email: created.email });
   });
 
-  /** Confirms the email, starts the 24h trial and signs the user in. */
+  /**
+   * Confirms the email and signs the user in. While payments are on hold, an admin must still
+   * approve the account; the free trial starts at approval (see admin PATCH /users/:id).
+   */
   app.post('/verify-email', { config: authLimit }, async (req, reply) => {
     const { token } = parse(verifyEmailSchema, req.body);
     const userId = await consumeEmailToken(token, 'VERIFY_EMAIL');
     if (!userId) throw badRequest('This verification link is invalid or has expired. Request a new one.');
-    const current = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    const current = await prisma.user.findUniqueOrThrow({ where: { id: userId }, include: { agent: true } });
     const verified = await prisma.user.update({
       where: { id: userId },
-      data: {
-        emailVerifiedAt: current.emailVerifiedAt ?? new Date(),
-        ...(current.emailVerifiedAt ? {} : { trialEndsAt: new Date(Date.now() + TRIAL_HOURS * 3600 * 1000) }),
-        lastLoginAt: new Date(),
-      },
+      data: { emailVerifiedAt: current.emailVerifiedAt ?? new Date(), lastLoginAt: new Date() },
     });
     if (verified.status === 'SUSPENDED') throw forbidden('Your account is suspended. Contact support.');
     await issueSession(req, reply, verified);
     if (!current.emailVerifiedAt) {
-      await logEvent(
-        verified.id,
-        'INFO',
-        'account.verified',
-        'Email verified — your 24 hour free trial has started',
-      );
+      await logEvent(verified.id, 'INFO', 'account.verified', 'Email verified — waiting for admin approval');
+      if (env.ADMIN_EMAIL && !verified.approvedAt) {
+        // best effort: never block the user's verification on the admin notification
+        await sendMail(
+          newSignupAdminEmail(
+            env.ADMIN_EMAIL,
+            { name: verified.name, email: verified.email, businessName: current.agent?.businessName },
+            `${env.WEB_ORIGIN}/admin/users?status=PENDING`,
+          ),
+        ).catch((err) => logger.warn({ err: (err as Error).message }, 'admin signup notification failed'));
+      }
     }
     return { user: await toMeDTO(verified, null) };
   });
@@ -178,9 +188,7 @@ export async function authRoutes(app: FastifyInstance) {
       // the reset link proves ownership of the inbox, so it also verifies the email
       data: {
         passwordHash: await hashPassword(password),
-        ...(u.emailVerifiedAt
-          ? {}
-          : { emailVerifiedAt: new Date(), trialEndsAt: new Date(Date.now() + TRIAL_HOURS * 3600 * 1000) }),
+        ...(u.emailVerifiedAt ? {} : { emailVerifiedAt: new Date() }),
       },
     });
     await prisma.refreshToken.updateMany({

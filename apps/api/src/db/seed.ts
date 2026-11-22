@@ -59,6 +59,7 @@ export async function seed() {
           name: 'Platform Admin',
           role: 'ADMIN',
           emailVerifiedAt: new Date(),
+          approvedAt: new Date(),
           plan: 'GROWTH',
           passwordHash: await hashPassword(password),
           currentPeriodEnd: new Date('2099-01-01'),
@@ -69,7 +70,11 @@ export async function seed() {
     } else if (existing.role !== 'ADMIN') {
       await prisma.user.update({
         where: { id: existing.id },
-        data: { role: 'ADMIN', emailVerifiedAt: existing.emailVerifiedAt ?? new Date() },
+        data: {
+          role: 'ADMIN',
+          emailVerifiedAt: existing.emailVerifiedAt ?? new Date(),
+          approvedAt: existing.approvedAt ?? new Date(),
+        },
       });
       console.log(`Promoted ${email} to ADMIN`);
     }

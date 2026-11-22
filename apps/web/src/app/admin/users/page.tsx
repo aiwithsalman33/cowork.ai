@@ -22,6 +22,7 @@ type Row = {
   role: 'USER' | 'ADMIN';
   status: 'ACTIVE' | 'SUSPENDED';
   emailVerified: boolean;
+  approved: boolean;
   plan: PlanId;
   planActive: boolean;
   trialEndsAt: string | null;
@@ -36,6 +37,11 @@ export default function AdminUsers() {
   const [debounced, setDebounced] = useState('');
   const [plan, setPlan] = useState<string>('all');
   const [status, setStatus] = useState<string>('all');
+  // deep link from the new-signup email: /admin/users?status=PENDING
+  useEffect(() => {
+    const s = new URLSearchParams(window.location.search).get('status');
+    if (s) setStatus(s);
+  }, []);
   const [page, setPage] = useState(1);
   useEffect(() => {
     const t = setTimeout(() => {
@@ -101,6 +107,7 @@ export default function AdminUsers() {
             <SelectItem value="all">All statuses</SelectItem>
             <SelectItem value="ACTIVE">Active</SelectItem>
             <SelectItem value="SUSPENDED">Suspended</SelectItem>
+            <SelectItem value="PENDING">Pending approval</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -142,6 +149,9 @@ export default function AdminUsers() {
                         <Badge variant={u.planActive ? 'success' : 'secondary'}>{u.plan}</Badge>
                         {u.status === 'SUSPENDED' && <Badge variant="destructive">Suspended</Badge>}
                         {!u.emailVerified && <Badge variant="warning">Unverified</Badge>}
+                        {u.emailVerified && !u.approved && (
+                          <Badge variant="destructive">Pending approval</Badge>
+                        )}
                         {u.role === 'ADMIN' && <Badge>Admin</Badge>}
                       </div>
                     </td>

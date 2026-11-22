@@ -90,6 +90,8 @@ model User {
   email                  String     @unique
   passwordHash           String
   emailVerifiedAt        DateTime?
+  /// set when an admin grants access (payments are on hold, so access is manual)
+  approvedAt             DateTime?
   name                   String
   role                   Role       @default(USER)
   status                 UserStatus @default(ACTIVE)

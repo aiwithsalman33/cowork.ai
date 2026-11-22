@@ -140,6 +140,23 @@ export async function channelRoutes(app: FastifyInstance) {
     },
   );
 
+  /** Turn AI replies on/off for one channel (messages are still saved to Conversations). */
+  app.patch('/channels/:id', async (req) => {
+    const { id } = parse(idParam, req.params);
+    const { aiEnabled } = parse(z.object({ aiEnabled: z.boolean() }), req.body);
+    const u = user(req);
+    const channel = await req.db.channel.findFirst({ where: { id } });
+    if (!channel) throw notFound('Channel not found');
+    const updated = await req.db.channel.update({ where: { id }, data: { aiEnabled } });
+    await logEvent(
+      u.id,
+      'INFO',
+      'channel.ai_toggled',
+      `AI replies ${aiEnabled ? 'on' : 'off'} for ${channel.name}`,
+    );
+    return { channel: toChannelDTO(updated) };
+  });
+
   app.post('/channels/:id/reconnect', async (req) => {
     const { id } = parse(idParam, req.params);
     const u = user(req);

@@ -102,8 +102,8 @@ function Checklist({ d }: { d: DashboardDTO }) {
       icon: Bot,
     },
     { done: d.checklist.aiKey, label: 'Add your AI key', href: '/agent?tab=keys', icon: KeyRound },
-    { done: d.checklist.channel, label: 'Connect a channel', href: '/agent?tab=channels', icon: Plug },
-    { done: d.checklist.testMessage, label: 'Send a test message', href: '/agent?tab=channels', icon: Send },
+    { done: d.checklist.channel, label: 'Connect a channel', href: '/integrations?tab=channels', icon: Plug },
+    { done: d.checklist.testMessage, label: 'Send a test message', href: '/integrations?tab=channels', icon: Send },
   ];
   const done = steps.filter((s) => s.done).length;
   if (done === steps.length) return null;
@@ -213,7 +213,7 @@ export default function DashboardPage() {
                 description="Connect a channel and send your agent a message to see it here."
                 action={
                   <Button size="sm" asChild>
-                    <Link href="/agent?tab=channels">Connect a channel</Link>
+                    <Link href="/integrations?tab=channels">Connect a channel</Link>
                   </Button>
                 }
               />
@@ -294,7 +294,7 @@ export default function DashboardPage() {
               {[
                 { href: '/knowledge', label: 'Edit knowledge', icon: BookOpen },
                 { href: '/agent?tab=skills', label: 'Manage skills', icon: Sparkles },
-                { href: '/agent?tab=channels', label: 'Channels', icon: Plug },
+                { href: '/integrations?tab=channels', label: 'Channels', icon: Plug },
                 { href: '/integrations', label: 'Integrations', icon: Plug },
               ].map(({ href, label, icon: Icon }) => (
                 <Link
@@ -339,7 +339,7 @@ export default function DashboardPage() {
           <CardHeader className="flex-row items-center justify-between">
             <CardTitle>Channels</CardTitle>
             <Button variant="ghost" size="sm" asChild>
-              <Link href="/agent?tab=channels">Manage</Link>
+              <Link href="/integrations?tab=channels">Manage</Link>
             </Button>
           </CardHeader>
           <CardContent>

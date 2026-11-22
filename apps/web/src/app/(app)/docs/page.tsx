@@ -40,7 +40,7 @@ const sections = [
       'WhatsApp Business API (recommended): add your Phone number ID, access token and app secret from Meta, then paste the Callback URL and Verify token into Meta’s webhook settings and subscribe to “messages”.',
       'WhatsApp QR: scan with your phone. This is unofficial and your number can be banned — use a spare number.',
     ],
-    link: { href: '/agent?tab=channels', label: 'Open Channels' },
+    link: { href: '/integrations?tab=channels', label: 'Open Channels' },
   },
   {
     icon: Sparkles,

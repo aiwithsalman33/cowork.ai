@@ -30,6 +30,8 @@ export interface ChannelDTO {
   status: ChannelStatus;
   externalId: string | null;
   lastError: string | null;
+  /** whether the AI agent replies on this channel */
+  aiEnabled: boolean;
   webhookUrl: string | null;
   verifyToken?: string | null;
   createdAt: string;

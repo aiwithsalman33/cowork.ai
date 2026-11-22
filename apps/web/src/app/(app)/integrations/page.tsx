@@ -10,6 +10,7 @@ import {
   ExternalLink,
   KeyRound,
   Link2,
+  Plug,
   Settings2,
   Sheet,
   Unplug,
@@ -24,6 +25,8 @@ import { Input, Textarea } from '@/components/ui/input';
 import { Field } from '@/components/ui/label';
 import { PageHeader, Skeleton } from '@/components/ui/misc';
 import { CopyField } from '@/components/copy-field';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ChannelsTab } from '@/components/agent/channels-tab';
 import { del, get, post, put } from '@/lib/api';
 import { useAction } from '@/lib/hooks';
 import { cn } from '@/lib/utils';
@@ -149,7 +152,7 @@ function Integrations() {
     if (result === 'connected') toast.success('Google account connected');
     else toast.error(params.get('reason') ?? 'Google connection failed');
     qc.invalidateQueries({ queryKey: ['google'] });
-    router.replace('/integrations');
+    router.replace('/integrations?tab=google');
   }, [params, qc, router]);
 
   const saveCreds = useAction(() => put('/integrations/google/credentials', creds), {
@@ -427,15 +430,39 @@ function Integrations() {
   );
 }
 
+function IntegrationTabs() {
+  const params = useSearchParams();
+  const router = useRouter();
+  const tab = params.get('tab') === 'google' || params.has('google') ? 'google' : 'channels';
+  return (
+    <Tabs value={tab} onValueChange={(v) => router.replace(`/integrations?tab=${v}`, { scroll: false })}>
+      <TabsList>
+        <TabsTrigger value="channels">
+          <Plug /> Channels
+        </TabsTrigger>
+        <TabsTrigger value="google">
+          <Link2 /> Google
+        </TabsTrigger>
+      </TabsList>
+      <TabsContent value="channels">
+        <ChannelsTab />
+      </TabsContent>
+      <TabsContent value="google">
+        <Integrations />
+      </TabsContent>
+    </Tabs>
+  );
+}
+
 export default function IntegrationsPage() {
   return (
     <div>
       <PageHeader
         title="Integrations"
-        description="Connect Google with your own Google Cloud credentials so your agent can use Sheets, Calendar, Gmail, Drive and Docs."
+        description="Connect your WhatsApp and Telegram channels, and Google (Sheets, Calendar, Gmail, Drive, Docs)."
       />
       <Suspense>
-        <Integrations />
+        <IntegrationTabs />
       </Suspense>
     </div>
   );

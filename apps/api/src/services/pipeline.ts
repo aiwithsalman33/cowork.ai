@@ -203,6 +203,11 @@ export async function processInbound(messageId: string, attempt = 0): Promise<vo
     return;
   }
 
+  if (!channel.aiEnabled) {
+    await finish('SKIPPED', 'channel_ai_off');
+    return;
+  }
+
   const gate = await canReply(user, user.agent?.isActive ?? true);
   if (!gate.ok) {
     await finish('SKIPPED', gate.reason);

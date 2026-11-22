@@ -12,6 +12,7 @@ import {
   ShieldCheck,
   Trash2,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import type { ChannelDTO } from '@cowork/shared';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,6 +20,7 @@ import { Input } from '@/components/ui/input';
 import { Field } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/misc';
+import { Switch } from '@/components/ui/switch';
 import {
   Dialog,
   DialogContent,
@@ -29,7 +31,7 @@ import {
 } from '@/components/ui/dialog';
 import { ChannelIcon, ChannelStatusBadge, CHANNEL_LABEL } from '@/components/channel-badge';
 import { CopyField } from '@/components/copy-field';
-import { del, get, post } from '@/lib/api';
+import { del, get, patch, post } from '@/lib/api';
 import { useAction } from '@/lib/hooks';
 
 type ChannelsRes = { channels: ChannelDTO[]; baileysEnabled: boolean };
@@ -339,6 +341,15 @@ export function ChannelsTab() {
     success: 'Channel removed',
     invalidate: [['channels'], ['dashboard']],
   });
+  const toggleAi = useAction(
+    (v: { id: string; aiEnabled: boolean }) =>
+      patch<{ channel: ChannelDTO }>(`/channels/${v.id}`, { aiEnabled: v.aiEnabled }),
+    {
+      invalidate: [['channels']],
+      onSuccess: (r) =>
+        toast.success(`AI replies ${r.channel.aiEnabled ? 'on' : 'off'} for ${r.channel.name}`),
+    },
+  );
   const reconnect = useAction(
     (c: ChannelDTO) => post<{ channel: ChannelDTO }>(`/channels/${c.id}/reconnect`),
     {
@@ -376,6 +387,21 @@ export function ChannelsTab() {
                   </div>
                   <ChannelStatusBadge status={c.status} />
                 </div>
+                <label className="mt-3 flex items-center justify-between gap-3 rounded-lg border px-3 py-2 text-sm">
+                  <span>
+                    <span className="font-medium">AI bot replies</span>
+                    <span className="block text-xs text-muted-foreground">
+                      {c.aiEnabled
+                        ? 'The agent answers messages on this channel.'
+                        : 'Off — messages are saved, but the agent stays silent.'}
+                    </span>
+                  </span>
+                  <Switch
+                    checked={c.aiEnabled}
+                    disabled={toggleAi.isPending && toggleAi.variables?.id === c.id}
+                    onCheckedChange={(v) => toggleAi.mutate({ id: c.id, aiEnabled: v })}
+                  />
+                </label>
                 {c.lastError && (
                   <p className="mt-3 rounded-md bg-destructive/10 p-2 text-xs text-destructive">
                     {c.lastError}

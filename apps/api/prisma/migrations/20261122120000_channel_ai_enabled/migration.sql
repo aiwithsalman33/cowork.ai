@@ -1,0 +1,1 @@
+ALTER TABLE "Channel" ADD COLUMN "aiEnabled" BOOLEAN NOT NULL DEFAULT true;

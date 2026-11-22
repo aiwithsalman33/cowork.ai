@@ -1,17 +1,16 @@
 'use client';
 import { Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { KeyRound, Plug, Sheet, Sparkles, Store, UserRound } from 'lucide-react';
+import { KeyRound, Sheet, Sparkles, Store, UserRound } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PageHeader } from '@/components/ui/misc';
 import { SkillsTab } from '@/components/agent/skills-tab';
 import { SkillStoreTab } from '@/components/agent/skill-store-tab';
 import { ApiKeysTab } from '@/components/agent/api-keys-tab';
 import { PersonalityTab } from '@/components/agent/personality-tab';
-import { ChannelsTab } from '@/components/agent/channels-tab';
 import { SheetsTab } from '@/components/agent/sheets-tab';
 
-const TABS = ['skills', 'store', 'channels', 'sheets', 'keys', 'personality'] as const;
+const TABS = ['skills', 'store', 'sheets', 'keys', 'personality'] as const;
 
 function AgentConfig() {
   const params = useSearchParams();
@@ -26,9 +25,6 @@ function AgentConfig() {
         </TabsTrigger>
         <TabsTrigger value="store">
           <Store /> Skill Store
-        </TabsTrigger>
-        <TabsTrigger value="channels">
-          <Plug /> Channels
         </TabsTrigger>
         <TabsTrigger value="sheets">
           <Sheet /> Google Sheets
@@ -46,9 +42,6 @@ function AgentConfig() {
       <TabsContent value="store">
         <SkillStoreTab />
       </TabsContent>
-      <TabsContent value="channels">
-        <ChannelsTab />
-      </TabsContent>
       <TabsContent value="sheets">
         <SheetsTab />
       </TabsContent>
@@ -65,10 +58,7 @@ function AgentConfig() {
 export default function AgentPage() {
   return (
     <div>
-      <PageHeader
-        title="Agent Config"
-        description="Skills, channels, AI model and personality for your agent."
-      />
+      <PageHeader title="Agent Config" description="Skills, AI model and personality for your agent." />
       <Suspense>
         <AgentConfig />
       </Suspense>

@@ -56,7 +56,13 @@ const envSchema = z.object({
 export type Env = z.infer<typeof envSchema>;
 
 function load(): Env {
-  const parsed = envSchema.safeParse(process.env);
+  // accept common alternative names for the mail settings
+  const src = { ...process.env };
+  src.SMTP_PASS ||= src.SMTP_PASSWORD;
+  src.MAIL_FROM ||= src.SMTP_FROM;
+  // Gmail app passwords are shown with spaces ("abcd efgh ijkl mnop")
+  if (src.SMTP_PASS) src.SMTP_PASS = src.SMTP_PASS.replace(/\s+/g, '');
+  const parsed = envSchema.safeParse(src);
   if (!parsed.success) {
     const issues = parsed.error.issues.map((i) => `  - ${i.path.join('.')}: ${i.message}`).join('\n');
     throw new Error(`Invalid environment configuration:\n${issues}`);

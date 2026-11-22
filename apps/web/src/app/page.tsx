@@ -18,7 +18,7 @@ import {
   Zap,
   type LucideIcon,
 } from 'lucide-react';
-import { BRAND, PLANS, formatLimit, whatsappLink } from '@partner/shared';
+import { BRAND, PLANS, formatLimit, whatsappLink } from '@cowork/shared';
 import { Logo } from '@/components/brand';
 import { Button } from '@/components/ui/button';
 import { LandingNav } from '@/components/landing/nav';

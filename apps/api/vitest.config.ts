@@ -1,7 +1,7 @@
 import { defineConfig } from 'vitest/config';
 
 const TEST_DB =
-  process.env.TEST_DATABASE_URL ?? 'postgresql://partner:partner@localhost:5433/partner_test?schema=public';
+  process.env.TEST_DATABASE_URL ?? 'postgresql://cowork:cowork@localhost:5433/cowork_test?schema=public';
 
 export default defineConfig({
   test: {

@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { checkoutSchema, PLANS } from '@partner/shared';
+import { checkoutSchema, PLANS } from '@cowork/shared';
 import { authenticate, user } from '../plugins/auth.js';
 import { parse } from '../lib/validate.js';
 import { badRequest } from '../lib/errors.js';

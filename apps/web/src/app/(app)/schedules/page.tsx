@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { CalendarClock, Plus, Repeat, Trash2 } from 'lucide-react';
-import type { ChannelDTO, ScheduleInput } from '@partner/shared';
+import type { ChannelDTO, ScheduleInput } from '@cowork/shared';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';

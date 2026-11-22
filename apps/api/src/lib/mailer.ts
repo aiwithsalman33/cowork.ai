@@ -1,5 +1,5 @@
 import nodemailer, { type Transporter } from 'nodemailer';
-import { BRAND } from '@partner/shared';
+import { BRAND } from '@cowork/shared';
 import { env, isProd, isTest } from '../config.js';
 import { logger } from './logger.js';
 

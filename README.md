@@ -21,89 +21,78 @@ Contact: aiwithsalman33@gmail.com · +91 81480 35472
 
 ## Local development
 
-### Option A — everything in Docker (hot reload)
-
-```bash
-cp .env.example .env          # fill JWT_SECRET + ENCRYPTION_KEY (commands are in the file)
-docker compose up --build     # db + api (tsx watch) + web (next dev)
-```
-
-- Web: http://localhost:3000 · API: http://localhost:4000 · Postgres: localhost:5433
-- Uses `docker-compose.yml` + `Dockerfile.dev`. Source is bind-mounted, so edits reload automatically.
-
-### Option B — Node on your machine, database in Docker
+Node on your machine, Postgres in a throwaway container:
 
 ```bash
 npm install
-cp .env.example .env
-docker compose up -d db
+cp .env.example .env              # fill JWT_SECRET + ENCRYPTION_KEY (commands are in the file)
+docker run -d --name cowork-db -e POSTGRES_USER=cowork -e POSTGRES_PASSWORD=cowork -e POSTGRES_DB=cowork -p 127.0.0.1:5433:5432 postgres:16-alpine
 npm run build:shared
-npm run db:deploy             # apply migrations
-npm run dev:api               # http://localhost:4000 (seeds 40 skills + admin on boot)
-npm run dev:web               # http://localhost:3000
+npm run db:deploy                 # apply migrations
+npm run dev:api                   # http://localhost:4000 (seeds 40 skills + admin on boot)
+npm run dev:web                   # http://localhost:3000
 ```
 
-Without SMTP settings in development, verification and reset emails are **printed in the API log**, so you can
-click the link from there.
+Without SMTP settings in development, verification emails are printed in the API log.
 
 ## Tests
 
 ```bash
-docker compose up -d db
-npm test                      # Vitest (uses database partner_test on localhost:5433)
+npm test                          # Vitest (needs the Postgres above; uses database cowork_test)
 npm run lint && npm run typecheck
-ADMIN_EMAIL=… ADMIN_PASSWORD=… E2E_BASE_URL=http://localhost:8080 npm run test:e2e   # Playwright against a running stack
+ADMIN_EMAIL=… ADMIN_PASSWORD=… E2E_BASE_URL=http://localhost:8080 npm run test:e2e
 ```
 
-> Windows tip: run Vitest from a path with an upper-case drive letter (`D:\…`). A lower-case `d:` path makes Vitest
-> load twice and every test file fails with "failed to find the runner".
+> Windows: run Vitest from an upper-case drive path (`D:\…`), otherwise Vitest loads twice.
 
 ---
 
-## Production (coworkai.axxeler.in)
+## Production — one compose file: `docker-compose.prod.yml`
 
-The production stack is `docker-compose.prod.yml`: **db + api + web + Caddy**. Only Caddy is published, on **port 8080**:
+Built for a **1 vCPU / 2 GB KVM VPS**:
 
-```
-Internet ──HTTPS──▶ TLS proxy (Dokploy/Traefik, Cloudflare, nginx…) ──▶ :8080 Caddy ─┬─ /api/*, /webhooks/* ─▶ api:4000
-                                                                                    └─ everything else     ─▶ web:3000
-```
+| Container | What                                                                               | Memory limit |
+| --------- | ---------------------------------------------------------------------------------- | ------------ |
+| `db`      | Postgres 16, tuned for low memory                                                  | 320 MB       |
+| `app`     | API + web in **one** image/container (`Dockerfile`, started by `docker/start.mjs`) | 900 MB       |
+| `caddy`   | Reverse proxy, the only published port: **8080**                                   | 64 MB        |
+
+Idle usage is about 300 MB in total. The image is built **once** (one `npm ci`), Next.js builds with a single
+worker and capped memory, and type-checking is skipped in the image build (CI does it), so the build fits the VPS.
 
 ```bash
-cp .env.example .env.production   # fill it in (see below)
+cp .env.example .env.production   # fill it in
 docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
 ```
 
-Required in `.env.production`:
+**Before the first deploy on a 1-core VPS, add swap.** The build needs about 1.5 GB of memory at peak, and without
+swap it can be killed, which shows up as a cancelled deploy:
 
-- `APP_URL=https://coworkai.axxeler.in`
-- `POSTGRES_PASSWORD`, `JWT_SECRET`, `ENCRYPTION_KEY`. **Back up `ENCRYPTION_KEY`.** It decrypts every stored key and token.
-- `ADMIN_EMAIL`, `ADMIN_PASSWORD`: the first admin is created on boot
-- `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`: needed for signup verification emails (see Gmail below)
+```bash
+sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+```
+
+The first build takes about 8–15 minutes on 1 vCPU. In Dokploy, raise the build timeout if it is set lower.
 
 ### Deploying with Dokploy
 
-1. DNS: an `A` record for `coworkai.axxeler.in` pointing at the server.
-2. Dokploy → **Create Service → Compose** → Git repo `aiwithsalman33/cowork.ai`, branch `main`, compose path
-   `./docker-compose.prod.yml`.
-3. **Environment**: paste your `.env.production` values.
+1. DNS: an `A` record for `coworkai.axxeler.in` pointing at the VPS.
+2. Dokploy → **Create Service → Compose** → repo `aiwithsalman33/cowork.ai`, branch `main`, compose path
+   **`./docker-compose.prod.yml`**.
+3. **Environment**: `APP_URL=https://coworkai.axxeler.in`, `POSTGRES_PASSWORD`, `JWT_SECRET`, `ENCRYPTION_KEY`,
+   `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`.
 4. **Domains**: `coworkai.axxeler.in` → service **caddy**, port **8080**, HTTPS on.
-5. Deploy. The api runs `prisma migrate deploy`, seeds skills and flags, creates the admin, and restores WhatsApp QR
-   sessions from the `wa_sessions` volume.
+5. Deploy. On start the app runs migrations, seeds skills and flags, and creates the admin. The database starts
+   empty otherwise, with no demo data.
 
-Health: `GET /health/ready` (api via Caddy) and `GET /web-health` (web via Caddy).
-Run **one** api replica: Baileys QR sessions must not be shared between processes.
-
-> If `docker compose build` asks for an extra BuildKit `fs.read` privilege (seen with Docker Desktop on Windows),
-> build with plain Docker and then start without building:
-> `docker build -f apps/api/Dockerfile -t coworkai-api . && docker build -f apps/web/Dockerfile -t coworkai-web .`
-> then `docker compose -f docker-compose.prod.yml --env-file .env.production up -d --no-build`.
+Health: `GET /health/ready` (API) and `GET /web-health` (web), both through Caddy.
 
 ### Gmail SMTP for verification emails
 
-1. Turn on 2-Step Verification on the Gmail account that will send emails.
+1. Turn on 2-Step Verification on the Gmail account that sends emails.
 2. Create an **App Password** at https://myaccount.google.com/apppasswords.
-3. Set `SMTP_USER=<that gmail>`, `SMTP_PASS=<16-character app password>`, `MAIL_FROM="CoworkAI <that gmail>"`.
+3. Set `SMTP_USER=<that gmail>`, `SMTP_PASS=<16-character app password>`, `MAIL_FROM="CoWork AI <that gmail>"`.
 
 ---
 

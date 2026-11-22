@@ -9,7 +9,7 @@ import {
   type SkillDTO,
   type SkillCategory,
   type ToolName,
-} from '@partner/shared';
+} from '@cowork/shared';
 import type { Skill } from '@prisma/client';
 import { authenticate, user } from '../plugins/auth.js';
 import { parse } from '../lib/validate.js';

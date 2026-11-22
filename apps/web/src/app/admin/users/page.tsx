@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { Search } from 'lucide-react';
-import { PLAN_IDS, type PlanId } from '@partner/shared';
+import { PLAN_IDS, type PlanId } from '@cowork/shared';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';

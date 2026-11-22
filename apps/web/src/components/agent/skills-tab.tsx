@@ -2,7 +2,7 @@
 import { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Search, Sparkles, Trash2, Wrench } from 'lucide-react';
-import { SKILL_CATEGORIES, type SkillDTO } from '@partner/shared';
+import { SKILL_CATEGORIES, type SkillDTO } from '@cowork/shared';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';

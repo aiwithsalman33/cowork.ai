@@ -16,7 +16,7 @@ import {
   Wand2,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { TOOLKITS, TOOLKIT_META, type GoogleStatusDTO, type Toolkit } from '@partner/shared';
+import { TOOLKITS, TOOLKIT_META, type GoogleStatusDTO, type Toolkit } from '@cowork/shared';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';

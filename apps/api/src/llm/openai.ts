@@ -1,4 +1,4 @@
-import { PROVIDERS } from '@partner/shared';
+import { PROVIDERS } from '@cowork/shared';
 import { postJson } from './http.js';
 import type { ChatMessage, CompletionRequest, CompletionResult, ToolCall } from './types.js';
 
@@ -59,7 +59,7 @@ export async function openaiComplete(req: CompletionRequest): Promise<Completion
   if (req.json) body.response_format = { type: 'json_object' };
 
   const headers: Record<string, string> = { authorization: `Bearer ${req.apiKey}` };
-  if (req.provider === 'openrouter') headers['X-Title'] = 'partner.ai';
+  if (req.provider === 'openrouter') headers['X-Title'] = 'cowork-ai';
 
   const data = await postJson<OAIResponse>(`${p.baseUrl}/chat/completions`, headers, body, req.signal);
   const msg = data.choices[0]?.message;

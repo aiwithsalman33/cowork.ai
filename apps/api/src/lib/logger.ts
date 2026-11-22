@@ -26,7 +26,7 @@ export const REDACT_PATHS = [
 export const loggerOptions: LoggerOptions = {
   level: isTest ? 'silent' : env.LOG_LEVEL,
   redact: { paths: REDACT_PATHS, censor: '[redacted]' },
-  base: { service: 'partner-api' },
+  base: { service: 'cowork-api' },
   ...(isProd || isTest
     ? {}
     : { transport: { target: 'pino-pretty', options: { colorize: true, translateTime: 'HH:MM:ss' } } }),

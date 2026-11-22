@@ -1,5 +1,5 @@
 import type { Prisma } from '@prisma/client';
-import { TOOL_NAMES, type ToolName } from '@partner/shared';
+import { TOOL_NAMES, type ToolName } from '@cowork/shared';
 import { loadGoogleState } from '../integrations/google.js';
 import { prisma } from '../db/client.js';
 import { complete, type ChatMessage, type ToolDef } from '../llm/index.js';

@@ -1,5 +1,5 @@
 import type { User, ChannelType } from '@prisma/client';
-import { PLANS, type PlanLimits } from '@partner/shared';
+import { PLANS, type PlanLimits } from '@cowork/shared';
 import { prisma } from '../db/client.js';
 import { paymentRequired } from '../lib/errors.js';
 

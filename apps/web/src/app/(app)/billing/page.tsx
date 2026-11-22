@@ -1,7 +1,7 @@
 'use client';
 import { useQuery } from '@tanstack/react-query';
 import { AlertTriangle, Check, CreditCard, Crown, MessageCircle, ShieldCheck } from 'lucide-react';
-import { BRAND, whatsappLink, type PlanDef, type PlanId } from '@partner/shared';
+import { BRAND, whatsappLink, type PlanDef, type PlanId } from '@cowork/shared';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';

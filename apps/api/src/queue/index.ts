@@ -33,7 +33,7 @@ export async function startQueue(withWorkers: boolean) {
   boss = new PgBoss({
     connectionString: pgConnectionString(env.DATABASE_URL),
     schema: 'pgboss',
-    application_name: 'partner-api',
+    application_name: 'cowork-api',
   });
   boss.on('error', (err) => logger.error({ err }, 'pg-boss error'));
   await boss.start();

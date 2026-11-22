@@ -1,4 +1,4 @@
-import type { ProviderId } from '@partner/shared';
+import type { ProviderId } from '@cowork/shared';
 
 export interface ToolCall {
   id: string;

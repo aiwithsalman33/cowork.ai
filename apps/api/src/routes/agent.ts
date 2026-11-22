@@ -8,7 +8,7 @@ import {
   PROVIDER_IDS,
   type ApiKeyDTO,
   type ProviderId,
-} from '@partner/shared';
+} from '@cowork/shared';
 import { z } from 'zod';
 import { authenticate, user } from '../plugins/auth.js';
 import { parse } from '../lib/validate.js';

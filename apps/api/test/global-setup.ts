@@ -6,7 +6,7 @@ import { execSync } from 'node:child_process';
  */
 export default async function setup() {
   const url =
-    process.env.TEST_DATABASE_URL ?? 'postgresql://partner:partner@localhost:5433/partner_test?schema=public';
+    process.env.TEST_DATABASE_URL ?? 'postgresql://cowork:cowork@localhost:5433/cowork_test?schema=public';
   execSync('npx prisma migrate deploy', {
     stdio: 'inherit',
     env: { ...process.env, DATABASE_URL: url, PRISMA_HIDE_UPDATE_MESSAGE: '1' },

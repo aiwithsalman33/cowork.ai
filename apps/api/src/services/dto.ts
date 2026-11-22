@@ -1,5 +1,5 @@
 import type { Channel, Contact, Conversation } from '@prisma/client';
-import type { ChannelDTO, ConversationDTO } from '@partner/shared';
+import type { ChannelDTO, ConversationDTO } from '@cowork/shared';
 import { env } from '../config.js';
 
 export function webhookUrlFor(channel: Pick<Channel, 'id' | 'type'>): string | null {

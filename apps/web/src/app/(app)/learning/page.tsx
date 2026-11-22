@@ -3,7 +3,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { Brain, Eraser, MessageCircle, Sparkles } from 'lucide-react';
-import type { ChannelType } from '@partner/shared';
+import type { ChannelType } from '@cowork/shared';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, EmptyState, PageHeader, Skeleton } from '@/components/ui/misc';

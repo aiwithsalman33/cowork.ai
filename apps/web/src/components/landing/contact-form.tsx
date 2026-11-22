@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { CheckCircle2, Send } from 'lucide-react';
 import { toast } from 'sonner';
-import { BRAND, whatsappLink } from '@partner/shared';
+import { BRAND, whatsappLink } from '@cowork/shared';
 import { Button } from '@/components/ui/button';
 import { Input, Textarea } from '@/components/ui/input';
 import { Field } from '@/components/ui/label';

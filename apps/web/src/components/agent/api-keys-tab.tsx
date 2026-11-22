@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { CheckCircle2, ExternalLink, KeyRound, Lock, Trash2, Zap } from 'lucide-react';
 import { toast } from 'sonner';
-import { PROVIDERS, PROVIDER_IDS, type ApiKeyDTO, type ProviderId } from '@partner/shared';
+import { PROVIDERS, PROVIDER_IDS, type ApiKeyDTO, type ProviderId } from '@cowork/shared';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

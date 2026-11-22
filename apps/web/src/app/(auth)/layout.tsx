@@ -1,5 +1,5 @@
 import { Bot, CalendarCheck, MessageCircle, Sparkles } from 'lucide-react';
-import { BRAND } from '@partner/shared';
+import { BRAND } from '@cowork/shared';
 import { Logo } from '@/components/brand';
 
 const points = [

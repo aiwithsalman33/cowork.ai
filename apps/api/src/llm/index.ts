@@ -1,4 +1,4 @@
-import { PROVIDERS } from '@partner/shared';
+import { PROVIDERS } from '@cowork/shared';
 import { anthropicComplete } from './anthropic.js';
 import { googleComplete } from './google.js';
 import { openaiComplete } from './openai.js';

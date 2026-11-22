@@ -11,7 +11,7 @@
  *   Docs      GET docs/v1/documents/{id}
  */
 import { SignJWT, jwtVerify } from 'jose';
-import type { Toolkit } from '@partner/shared';
+import type { Toolkit } from '@cowork/shared';
 import { env } from '../config.js';
 import { prisma } from '../db/client.js';
 import { decryptJson, decrypt, encrypt } from '../lib/crypto.js';

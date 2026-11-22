@@ -2,7 +2,7 @@
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { CheckCircle2, Clock, LogOut, MessageCircle, RefreshCw } from 'lucide-react';
-import { BRAND, whatsappLink, type MeDTO } from '@partner/shared';
+import { BRAND, whatsappLink, type MeDTO } from '@cowork/shared';
 import { Logo } from './brand';
 import { Button } from './ui/button';
 import { post } from '@/lib/api';

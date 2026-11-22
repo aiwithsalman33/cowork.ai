@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { PROVIDERS } from '@partner/shared';
+import { PROVIDERS } from '@cowork/shared';
 import { postJson } from './http.js';
 import type { CompletionRequest, CompletionResult, ToolCall } from './types.js';
 

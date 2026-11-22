@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import type { MessageDTO } from '@partner/shared';
-import { appointmentUpdateSchema, paginationSchema, scheduleSchema } from '@partner/shared';
+import type { MessageDTO } from '@cowork/shared';
+import { appointmentUpdateSchema, paginationSchema, scheduleSchema } from '@cowork/shared';
 import { authenticate, user } from '../plugins/auth.js';
 import { parse } from '../lib/validate.js';
 import { badRequest, notFound } from '../lib/errors.js';

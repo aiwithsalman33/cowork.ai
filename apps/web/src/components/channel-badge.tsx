@@ -1,4 +1,4 @@
-import type { ChannelStatus, ChannelType } from '@partner/shared';
+import type { ChannelStatus, ChannelType } from '@cowork/shared';
 import { Badge } from './ui/badge';
 import { cn } from '@/lib/utils';
 

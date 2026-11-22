@@ -23,7 +23,7 @@ import {
   Users,
   type LucideIcon,
 } from 'lucide-react';
-import type { DashboardDTO } from '@partner/shared';
+import type { DashboardDTO } from '@cowork/shared';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';

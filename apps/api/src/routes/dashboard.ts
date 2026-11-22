@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { IMPACT, type DashboardDTO } from '@partner/shared';
+import { IMPACT, type DashboardDTO } from '@cowork/shared';
 import { authenticate, user } from '../plugins/auth.js';
 import { isPlanActive, limitsFor, messagesThisMonth } from '../services/plan.js';
 import { toChannelDTO, toConversationDTO } from '../services/dto.js';

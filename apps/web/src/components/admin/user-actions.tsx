@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { Ban, Clock, LogIn, MailCheck, MoreHorizontal, ShieldCheck, Trash2, UserCheck } from 'lucide-react';
-import { PLAN_IDS, type PlanId } from '@partner/shared';
+import { PLAN_IDS, type PlanId } from '@cowork/shared';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,

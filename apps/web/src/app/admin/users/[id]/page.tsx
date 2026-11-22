@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { AlertCircle, AlertTriangle, ArrowLeft, Info } from 'lucide-react';
-import type { ChannelStatus, ChannelType } from '@partner/shared';
+import type { ChannelStatus, ChannelType } from '@cowork/shared';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

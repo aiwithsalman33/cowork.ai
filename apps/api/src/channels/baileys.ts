@@ -125,7 +125,7 @@ async function connect(s: Session) {
   const sock = makeWASocket({
     auth: state,
     logger: baileysLogger as never,
-    browser: Browsers.ubuntu('partner.ai'),
+    browser: Browsers.ubuntu('cowork-ai'),
     markOnlineOnConnect: false,
     syncFullHistory: false,
     ...(cachedVersion ? { version: cachedVersion } : {}),

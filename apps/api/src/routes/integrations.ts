@@ -9,7 +9,7 @@ import {
   integrationRequestSchema,
   type AgentSheetDTO,
   type GoogleStatusDTO,
-} from '@partner/shared';
+} from '@cowork/shared';
 import { env } from '../config.js';
 import { prisma } from '../db/client.js';
 import { authenticate, user } from '../plugins/auth.js';

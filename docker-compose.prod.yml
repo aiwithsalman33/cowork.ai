@@ -1,8 +1,8 @@
-# CoworkAI — PRODUCTION stack (https://coworkai.axxeler.in)
+# CoWork AI — PRODUCTION (https://coworkai.axxeler.in)
+# Sized for a 1 vCPU / 2 GB VPS: one app container (API + web), Postgres tuned for low memory,
+# and Caddy on port 8080 (point Dokploy / your TLS proxy at :8080).
 #
 #   docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
-#
-# Only Caddy is published, on port 8080. Point your domain / TLS proxy (e.g. Dokploy) at :8080.
 name: coworkai
 
 services:
@@ -10,37 +10,45 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-coworkai}
+      POSTGRES_USER: ${POSTGRES_USER:-cowork}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB:-coworkai}
+      POSTGRES_DB: ${POSTGRES_DB:-cowork}
+    # small-server tuning
+    command: >
+      postgres -c shared_buffers=64MB -c effective_cache_size=192MB -c work_mem=2MB
+               -c maintenance_work_mem=32MB -c max_connections=40 -c max_worker_processes=2
+               -c max_parallel_workers=1 -c max_parallel_workers_per_gather=0
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
-      interval: 5s
+      interval: 10s
       timeout: 5s
-      retries: 20
+      retries: 30
+    mem_limit: 320m
 
-  api:
+  app:
     build:
       context: .
-      dockerfile: apps/api/Dockerfile
-    image: coworkai-api:latest
+      dockerfile: Dockerfile
+    image: coworkai-app:latest
     restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
     environment:
       NODE_ENV: production
-      PORT: 4000
-      DATABASE_URL: postgresql://${POSTGRES_USER:-coworkai}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-coworkai}?schema=public
+      DATABASE_URL: postgresql://${POSTGRES_USER:-cowork}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-cowork}?schema=public&connection_limit=8
       JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:?set ENCRYPTION_KEY}
       WEB_ORIGIN: ${APP_URL:-https://coworkai.axxeler.in}
       PUBLIC_API_URL: ${APP_URL:-https://coworkai.axxeler.in}
+      API_INTERNAL_URL: http://127.0.0.1:4000
       COOKIE_SECURE: ${COOKIE_SECURE:-true}
-      # client → TLS proxy → Caddy → api
+      # client → TLS proxy → Caddy → app
       TRUST_PROXY: ${TRUST_PROXY:-2}
+      API_MAX_MEMORY_MB: ${API_MAX_MEMORY_MB:-384}
+      WEB_MAX_MEMORY_MB: ${WEB_MAX_MEMORY_MB:-256}
       WA_SESSIONS_DIR: /data/wa-sessions
       WA_GRAPH_VERSION: ${WA_GRAPH_VERSION:-v21.0}
       BAILEYS_ENABLED: ${BAILEYS_ENABLED:-true}
@@ -62,27 +70,14 @@ services:
       AUTH_RATE_LIMIT_PER_MIN: ${AUTH_RATE_LIMIT_PER_MIN:-10}
     volumes:
       - wa_sessions:/data/wa-sessions
+    mem_limit: 900m
     stop_grace_period: 30s
-
-  web:
-    build:
-      context: .
-      dockerfile: apps/web/Dockerfile
-      args:
-        API_INTERNAL_URL: http://api:4000
-    image: coworkai-web:latest
-    restart: unless-stopped
-    depends_on:
-      api:
-        condition: service_healthy
 
   caddy:
     image: caddy:2.10-alpine
     restart: unless-stopped
     depends_on:
-      web:
-        condition: service_healthy
-      api:
+      app:
         condition: service_healthy
     ports:
       - '${CADDY_PORT:-8080}:8080'
@@ -92,9 +87,10 @@ services:
       - caddy_config:/config
     healthcheck:
       test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:8080/health']
-      interval: 15s
+      interval: 20s
       timeout: 5s
       retries: 5
+    mem_limit: 64m
 
 volumes:
   pgdata:

@@ -3,7 +3,7 @@ import { Suspense, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Bot, Brain, MessagesSquare, Search, Send, UserRound, Wrench } from 'lucide-react';
-import type { ConversationDTO, MessageDTO } from '@partner/shared';
+import type { ConversationDTO, MessageDTO } from '@cowork/shared';
 import { Card } from '@/components/ui/card';
 import { Input, Textarea } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';

@@ -6,7 +6,7 @@ import {
   resetPasswordSchema,
   signupSchema,
   verifyEmailSchema,
-} from '@partner/shared';
+} from '@cowork/shared';
 import { env } from '../config.js';
 import { prisma } from '../db/client.js';
 import { parse } from '../lib/validate.js';

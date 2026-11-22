@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { telegramChannelSchema, whatsappCloudChannelSchema, whatsappQrChannelSchema } from '@partner/shared';
+import { telegramChannelSchema, whatsappCloudChannelSchema, whatsappQrChannelSchema } from '@cowork/shared';
 import { env } from '../config.js';
 import { authenticate, user } from '../plugins/auth.js';
 import { parse } from '../lib/validate.js';

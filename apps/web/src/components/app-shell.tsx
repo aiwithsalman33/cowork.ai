@@ -29,7 +29,7 @@ import {
   X,
   type LucideIcon,
 } from 'lucide-react';
-import type { MeDTO } from '@partner/shared';
+import type { MeDTO } from '@cowork/shared';
 import { Logo } from './brand';
 import { Button } from './ui/button';
 import { Avatar } from './ui/misc';

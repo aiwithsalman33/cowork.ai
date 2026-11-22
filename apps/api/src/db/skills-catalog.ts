@@ -1,4 +1,4 @@
-import type { SkillCategory, ToolName } from '@partner/shared';
+import type { SkillCategory, ToolName } from '@cowork/shared';
 
 export interface CatalogSkill {
   slug: string;

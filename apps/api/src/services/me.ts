@@ -1,5 +1,5 @@
 import type { User } from '@prisma/client';
-import type { MeDTO } from '@partner/shared';
+import type { MeDTO } from '@cowork/shared';
 import { prisma } from '../db/client.js';
 import { isPlanActive } from './plan.js';
 

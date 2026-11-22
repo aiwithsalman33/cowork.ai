@@ -1,5 +1,5 @@
 import { Prisma, type Channel } from '@prisma/client';
-import { normalizePhone } from '@partner/shared';
+import { normalizePhone } from '@cowork/shared';
 import { prisma } from '../db/client.js';
 import { logger, scrubSecrets } from '../lib/logger.js';
 import { CHANNEL_LABEL, sendText, sendTyping } from '../channels/index.js';

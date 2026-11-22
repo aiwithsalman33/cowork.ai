@@ -1,22 +1,22 @@
 {
-  "name": "partner-ai",
+  "name": "cowork-ai",
   "private": true,
   "engines": {
     "node": ">=22.22.3"
   },
   "scripts": {
-    "build": "npm run build -w @partner/shared && npm run build -w @partner/api && npm run build -w @partner/web",
-    "build:shared": "npm run build -w @partner/shared",
+    "build": "npm run build -w @cowork/shared && npm run build -w @cowork/api && npm run build -w @cowork/web",
+    "build:shared": "npm run build -w @cowork/shared",
     "typecheck": "npm run build:shared && npm run typecheck --workspaces --if-present",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "test": "npm test -w @partner/api",
-    "test:e2e": "npm run test:e2e -w @partner/web",
-    "dev:api": "npm run dev -w @partner/api",
-    "dev:web": "npm run dev -w @partner/web",
-    "db:migrate": "npm run prisma:migrate -w @partner/api",
-    "db:deploy": "npm run prisma:deploy -w @partner/api",
-    "db:seed": "npm run seed -w @partner/api"
+    "test": "npm test -w @cowork/api",
+    "test:e2e": "npm run test:e2e -w @cowork/web",
+    "dev:api": "npm run dev -w @cowork/api",
+    "dev:web": "npm run dev -w @cowork/web",
+    "db:migrate": "npm run prisma:migrate -w @cowork/api",
+    "db:deploy": "npm run prisma:deploy -w @cowork/api",
+    "db:seed": "npm run seed -w @cowork/api"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.0",

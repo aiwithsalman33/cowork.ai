@@ -1,4 +1,4 @@
-import type { ToolName, Toolkit } from '@partner/shared';
+import type { ToolName, Toolkit } from '@cowork/shared';
 import { prisma } from '../db/client.js';
 import { logger } from '../lib/logger.js';
 import type { ToolDef } from '../llm/types.js';

@@ -3,7 +3,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { BookOpenCheck, ExternalLink, Eye, Plus, Sheet, Trash2, UserPlus } from 'lucide-react';
-import type { AgentSheetDTO, AgentSheetInput, GoogleStatusDTO } from '@partner/shared';
+import type { AgentSheetDTO, AgentSheetInput, GoogleStatusDTO } from '@cowork/shared';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';

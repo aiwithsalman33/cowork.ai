@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Pencil, Plus, Search } from 'lucide-react';
-import { SKILL_CATEGORIES, TOOL_NAMES, type SkillUpsertInput } from '@partner/shared';
+import { SKILL_CATEGORIES, TOOL_NAMES, type SkillUpsertInput } from '@cowork/shared';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';

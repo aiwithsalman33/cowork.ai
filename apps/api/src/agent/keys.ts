@@ -1,4 +1,4 @@
-import { PROVIDER_IDS, type ProviderId } from '@partner/shared';
+import { PROVIDER_IDS, type ProviderId } from '@cowork/shared';
 import { prisma } from '../db/client.js';
 import { decrypt } from '../lib/crypto.js';
 

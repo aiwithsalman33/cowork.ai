@@ -9,7 +9,7 @@ import {
   featureFlagSchema,
   paginationSchema,
   skillUpsertSchema,
-} from '@partner/shared';
+} from '@cowork/shared';
 import { prisma } from '../../db/client.js';
 import { requireAdmin, user } from '../../plugins/auth.js';
 import { parse } from '../../lib/validate.js';

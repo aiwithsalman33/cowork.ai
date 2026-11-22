@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { contactSchema } from '@partner/shared';
+import { contactSchema } from '@cowork/shared';
 import { prisma } from '../db/client.js';
 import { parse } from '../lib/validate.js';
 

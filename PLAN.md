@@ -1,4 +1,4 @@
-# partner.ai — Build Plan
+# cowork-ai — Build Plan
 
 Multi-tenant SaaS: business owners create an AI agent, give it knowledge + skills, bring their own
 AI key, and connect it to Telegram and WhatsApp.
@@ -103,7 +103,7 @@ main flows. Lint and typecheck are clean, and `docker compose up` brings up db +
 Additional notes discovered while building:
 
 - `prisma migrate reset` is blocked by Prisma's AI-agent guard. Tests therefore use `migrate deploy` against a
-  dedicated `partner_test` database, with unique users per test (no destructive resets).
+  dedicated `cowork_test` database, with unique users per test (no destructive resets).
 - Docker Desktop's BuildKit may ask for an `fs.read` entitlement under `docker compose build`. Plain `docker build`
   works (README has the commands). Dokploy builds on Linux and is not affected as far as we know.
 - Dokploy network wiring for Compose domains differs between versions. Check the current Dokploy docs.

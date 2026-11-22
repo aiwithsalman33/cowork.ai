@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { Lightbulb, Sparkles, Wand2 } from 'lucide-react';
-import { SKILL_CATEGORIES, TOOL_NAMES, type SkillUpsertInput } from '@partner/shared';
+import { SKILL_CATEGORIES, TOOL_NAMES, type SkillUpsertInput } from '@cowork/shared';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input, Textarea } from '@/components/ui/input';

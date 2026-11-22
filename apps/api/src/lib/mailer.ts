@@ -37,7 +37,7 @@ export async function sendMail(msg: MailMessage): Promise<void> {
     return;
   }
   if (!mailConfigured()) {
-    if (isProd) throw new MailNotConfiguredError('Email sending is not configured (SMTP_USER / SMTP_PASS)');
+    if (isProd && !env.MAIL_LOG_FALLBACK) throw new MailNotConfiguredError('Email sending is not configured (SMTP_USER / SMTP_PASS)');
     // Development without SMTP: print the email so links can be clicked from the console.
     logger.warn(
       { to: msg.to, subject: msg.subject, text: msg.text },

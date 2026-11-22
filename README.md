@@ -21,6 +21,19 @@ Contact: aiwithsalman33@gmail.com · +91 81480 35472
 
 ## Local development
 
+### With Docker → http://localhost:3000 (`docker-compose.yml`)
+
+```bash
+docker compose up -d --build
+```
+
+Same image as production but without Caddy: the app is on **port 3000**, Postgres on 5433. It works with no `.env` (dev secrets are built in).
+Admin: `admin@cowork.local` / `ChangeMe123!`. With no SMTP configured, verification emails are printed by `docker compose logs app` (open the link from there).
+
+**Production** uses `docker-compose.prod.yml` with Caddy on **port 8080** (below).
+
+### Without Docker
+
 Node on your machine, Postgres in a throwaway container:
 
 ```bash

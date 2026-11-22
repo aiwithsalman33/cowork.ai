@@ -1,0 +1,62 @@
+# CoWork AI — LOCAL (http://localhost:3000)
+#
+#   docker compose up -d --build
+#
+# Same app image as production, without Caddy: the web app is published on port 3000 and
+# calls the API inside the container. Production uses docker-compose.prod.yml (Caddy on :8080).
+name: coworkai-local
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: cowork
+      POSTGRES_PASSWORD: cowork
+      POSTGRES_DB: cowork
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - '127.0.0.1:5433:5432' # also used by `npm test`
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U cowork -d cowork']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: coworkai-app:latest
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://cowork:cowork@db:5432/cowork?schema=public
+      JWT_SECRET: ${JWT_SECRET:-local-dev-jwt-secret-change-me-0123456789abcdef}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-0000000000000000000000000000000000000000000000000000000000000001}
+      WEB_ORIGIN: http://localhost:3000
+      PUBLIC_API_URL: http://localhost:3000
+      API_INTERNAL_URL: http://127.0.0.1:4000
+      COOKIE_SECURE: 'false'
+      TRUST_PROXY: '1'
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@cowork.local}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-ChangeMe123!}
+      WA_SESSIONS_DIR: /data/wa-sessions
+      # no SMTP locally: verification/approval emails are printed in `docker compose logs app`
+      MAIL_LOG_FALLBACK: 'true'
+      AUTH_RATE_LIMIT_PER_MIN: '60'
+    volumes:
+      - wa_sessions:/data/wa-sessions
+    ports:
+      - '3000:3000'
+
+volumes:
+  pgdata:
+  wa_sessions:

@@ -37,6 +37,8 @@ const envSchema = z.object({
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
   MAIL_FROM: z.string().optional(),
+  /** without SMTP, print emails to the log instead of failing (local docker only) */
+  MAIL_LOG_FALLBACK: bool.default(false),
 
   // Online payments are on hold until Razorpay is set up.
   BILLING_ENABLED: bool.default(false),

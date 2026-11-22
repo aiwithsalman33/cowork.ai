@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { PLANS } from '@cowork/shared';
 import { hmacSha256Hex } from '../src/lib/crypto.js';
 import { isPlanActive } from '../src/services/plan.js';
 import { call, cookiesFrom, getApp, lastEmailToken, prisma, signup, testOutbox } from './helpers.js';
@@ -111,7 +112,7 @@ describe('Razorpay webhooks', () => {
     expect(res.json()).toMatchObject({
       plan: 'TRIAL',
       planActive: true,
-      usage: { messages: { used: 0, limit: 200 } },
+      usage: { messages: { used: 0, limit: PLANS.TRIAL.limits.messagesPerMonth } },
     });
   });
 });

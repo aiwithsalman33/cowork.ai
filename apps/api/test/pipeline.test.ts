@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { PLANS } from '@cowork/shared';
 import { encrypt, encryptJson, hmacSha256Hex } from '../src/lib/crypto.js';
 import { call, getApp, prisma, signup, type Session } from './helpers.js';
 
@@ -198,7 +199,7 @@ describe('telegram webhook → agent reply', () => {
       data: { userId: s.userId, channelId: channel.id, contactId: filler.id },
     });
     await prisma.message.createMany({
-      data: Array.from({ length: 200 }, () => ({
+      data: Array.from({ length: PLANS.TRIAL.limits.messagesPerMonth }, () => ({
         userId: s.userId,
         conversationId: convo.id,
         direction: 'OUT' as const,

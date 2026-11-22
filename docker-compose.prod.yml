@@ -28,11 +28,9 @@ services:
     mem_limit: 320m
 
   app:
-    # Built on the VPS by Dokploy (the GHCR image is private, so pulling it needs a login).
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: coworkai-app:latest
+    # Pre-built by GitHub Actions (.github/workflows/docker.yml) — public on GHCR; the VPS only pulls it.
+    image: ghcr.io/aiwithsalman33/cowork-ai:latest
+    pull_policy: always
     restart: unless-stopped
     depends_on:
       db:

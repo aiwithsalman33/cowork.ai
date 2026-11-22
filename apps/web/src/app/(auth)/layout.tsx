@@ -1,6 +1,7 @@
 import { Bot, CalendarCheck, MessageCircle, Sparkles } from 'lucide-react';
 import { BRAND } from '@cowork/shared';
 import { Logo } from '@/components/brand';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 const points = [
   { icon: MessageCircle, text: 'Answers customers on WhatsApp & Telegram, 24×7' },
@@ -40,7 +41,8 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         <div className="pointer-events-none absolute -right-24 -top-24 h-96 w-96 rounded-full bg-white/5 blur-2xl" />
         <div className="pointer-events-none absolute -bottom-32 right-10 h-80 w-80 rounded-full bg-white/5 blur-2xl" />
       </aside>
-      <main className="flex items-center justify-center px-4 py-10 sm:px-8">
+      <main className="relative flex items-center justify-center px-4 py-10 sm:px-8">
+        <ThemeToggle className="absolute right-4 top-4" />
         <div className="w-full max-w-sm">
           <div className="mb-8 lg:hidden">
             <Logo />

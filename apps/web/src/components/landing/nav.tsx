@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Menu, X } from 'lucide-react';
 import { Logo } from '@/components/brand';
+import { ThemeToggle } from '@/components/theme-toggle';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -41,6 +42,7 @@ export function LandingNav() {
           ))}
         </nav>
         <div className="hidden items-center gap-2 md:flex">
+          <ThemeToggle />
           <Button variant="ghost" asChild>
             <Link href="/login">Sign in</Link>
           </Button>
@@ -48,9 +50,12 @@ export function LandingNav() {
             <Link href="/signup">Start Free · 24h Trial</Link>
           </Button>
         </div>
-        <button className="cursor-pointer md:hidden" onClick={() => setOpen(!open)} aria-label="Menu">
-          {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-        </button>
+        <div className="flex items-center gap-2 md:hidden">
+          <ThemeToggle />
+          <button className="cursor-pointer" onClick={() => setOpen(!open)} aria-label="Menu">
+            {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          </button>
+        </div>
       </div>
       {open && (
         <div className="border-t px-4 pb-5 md:hidden">

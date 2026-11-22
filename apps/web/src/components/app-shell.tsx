@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import type { MeDTO } from '@cowork/shared';
 import { Logo } from './brand';
+import { ThemeToggle } from './theme-toggle';
 import { Button } from './ui/button';
 import { Avatar } from './ui/misc';
 import { Tooltip } from './ui/tooltip';
@@ -339,6 +340,7 @@ export function AppShell({ me, nav, children }: { me: MeDTO; nav: NavItem[]; chi
                 <Link href="/billing">Upgrade</Link>
               </Button>
             )}
+            <ThemeToggle />
             {userMenu}
           </header>
           <main className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 sm:px-6 lg:px-8">{children}</main>

@@ -2,7 +2,7 @@
 # Sized for a 1 vCPU / 2 GB VPS: one app container (API + web), Postgres tuned for low memory,
 # and Caddy on port 8080 (point Dokploy / your TLS proxy at :8080).
 #
-#   docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
+#   docker compose -f docker-compose.prod.yml --env-file .env.production up -d
 name: coworkai
 
 services:
@@ -28,10 +28,9 @@ services:
     mem_limit: 320m
 
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: coworkai-app:latest
+    # Pre-built by GitHub Actions (.github/workflows/docker.yml) — the VPS only pulls it, no build.
+    image: ghcr.io/aiwithsalman33/cowork-ai:latest
+    pull_policy: always
     restart: unless-stopped
     depends_on:
       db:

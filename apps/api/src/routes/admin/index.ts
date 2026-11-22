@@ -293,7 +293,7 @@ export async function adminRoutes(app: FastifyInstance) {
     if (input.role) data.role = input.role;
     if (input.plan) {
       data.plan = input.plan;
-      if (input.plan === 'TRIAL') data.trialEndsAt = new Date(Date.now() + 24 * 3600_000);
+      if (input.plan === 'TRIAL') data.trialEndsAt = new Date(Date.now() + TRIAL_HOURS * 3600_000);
       // manual plan grant by admin: 30 days of access unless a live subscription manages it
       else if (!target.razorpaySubscriptionId || target.subscriptionStatus !== 'active')
         data.currentPeriodEnd = new Date(Date.now() + 30 * 86400_000);

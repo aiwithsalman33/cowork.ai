@@ -226,7 +226,7 @@ export default function Home() {
       <section className="mx-auto max-w-6xl px-4 pb-10 pt-12 text-center sm:px-6 sm:pt-20">
         <span className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[#e8711c] to-[#c2410c] px-4 py-1.5 text-xs font-semibold text-white shadow-lg shadow-orange-500/25 sm:text-sm">
           <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
-          Early access open · 24-hour free trial · Made in India
+          Early access open · 7-day free trial · Made in India
         </span>
         <h1 className="mx-auto mt-8 max-w-4xl font-display text-5xl font-bold leading-[1.02] tracking-tight sm:text-7xl">
           Your Next Co-Worker
@@ -310,7 +310,7 @@ export default function Home() {
               </Link>
             </Button>
             <p className="mt-3 text-xs text-muted-foreground">
-              Free 24-hour trial · No credit card · Cancel anytime
+              Free 7-day trial · No credit card · Cancel anytime
             </p>
           </div>
         </div>
@@ -496,7 +496,7 @@ export default function Home() {
                       {p.priceInr === 0 ? 'Free' : `₹${p.priceInr.toLocaleString('en-IN')}`}
                     </span>
                     <span className="text-sm text-muted-foreground">
-                      {p.priceInr === 0 ? 'for 24 hours' : '/month'}
+                      {p.priceInr === 0 ? 'for 7 days' : '/month'}
                     </span>
                   </p>
                   <ul className="mt-6 flex-1 space-y-2.5 text-sm">
@@ -629,7 +629,7 @@ export default function Home() {
             Get your AI co-worker <ArrowRight />
           </Link>
         </Button>
-        <p className="mt-4 text-sm opacity-70">24-hour free trial · No credit card · Approved within hours</p>
+        <p className="mt-4 text-sm opacity-70">7-day free trial · No credit card · Start in 2 minutes</p>
       </section>
 
       {/* ───────── Footer ───────── */}

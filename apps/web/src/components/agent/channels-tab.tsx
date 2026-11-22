@@ -21,6 +21,7 @@ import { Field } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/misc';
 import { Switch } from '@/components/ui/switch';
+import { TemplatesDialog } from '@/components/agent/templates-dialog';
 import {
   Dialog,
   DialogContent,
@@ -337,6 +338,7 @@ export function ChannelsTab() {
   });
   const [qrFor, setQrFor] = useState<string | null>(null);
   const [details, setDetails] = useState<ChannelDTO | null>(null);
+  const [templatesFor, setTemplatesFor] = useState<ChannelDTO | null>(null);
   const remove = useAction((id: string) => del(`/channels/${id}`), {
     success: 'Channel removed',
     invalidate: [['channels'], ['dashboard']],
@@ -414,9 +416,14 @@ export function ChannelsTab() {
                     </Button>
                   )}
                   {c.type === 'WHATSAPP_CLOUD' && (
-                    <Button size="sm" variant="outline" onClick={() => setDetails(c)}>
-                      Webhook details
-                    </Button>
+                    <>
+                      <Button size="sm" variant="outline" onClick={() => setDetails(c)}>
+                        Webhook details
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => setTemplatesFor(c)}>
+                        Templates
+                      </Button>
+                    </>
                   )}
                   {c.type !== 'WHATSAPP_CLOUD' && c.status !== 'CONNECTED' && (
                     <Button
@@ -449,6 +456,7 @@ export function ChannelsTab() {
         <TelegramCard onCreated={() => {}} />
       </section>
 
+      {templatesFor && <TemplatesDialog channel={templatesFor} onClose={() => setTemplatesFor(null)} />}
       {qrFor && <QrDialog channelId={qrFor} onClose={() => setQrFor(null)} />}
       {details && (
         <Dialog open onOpenChange={(o) => !o && setDetails(null)}>

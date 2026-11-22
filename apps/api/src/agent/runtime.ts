@@ -6,6 +6,7 @@ import { complete, type ChatMessage, type ToolDef } from '../llm/index.js';
 import type { ResolvedModel } from './keys.js';
 import { composeSystemPrompt } from './prompt.js';
 import { availableTools, runTool, TOOL_DEFS, type ToolContext } from './tools.js';
+import { buildTemplateTool } from './templates.js';
 
 export const HISTORY_LIMIT = 16;
 export const MAX_TOOL_ROUNDS = 5;
@@ -90,13 +91,29 @@ export async function runAgent(params: {
 }): Promise<AgentRunResult> {
   const conversation = await prisma.conversation.findUniqueOrThrow({
     where: { id: params.conversationId },
-    include: { contact: true },
+    include: { contact: true, channel: true, user: { select: { plan: true } } },
   });
-  const { system, tools, g } = await buildAgentPrompt(params.userId, {
+  const built = await buildAgentPrompt(params.userId, {
     channel: params.channelLabel,
     contact: conversation.contact,
     conversationSummary: conversation.summary,
   });
+  const { g } = built;
+  let { system } = built;
+  const tools = [...built.tools];
+  // WhatsApp Business API templates the bot may send (Growth plan)
+  const templateTool = await buildTemplateTool({
+    channel: conversation.channel,
+    plan: conversation.user.plan,
+    conversationId: conversation.id,
+    to: conversation.contact.externalId,
+  });
+  if (templateTool) {
+    tools.push(templateTool.def);
+    system += `
+
+${templateTool.promptNote}`;
+  }
 
   const cutoff = params.upToMessageId
     ? (await prisma.message.findUnique({ where: { id: params.upToMessageId }, select: { createdAt: true } }))
@@ -155,9 +172,11 @@ export async function runAgent(params: {
     messages.push({ role: 'assistant', content: res.content, toolCalls: res.toolCalls });
     for (const tc of res.toolCalls) {
       const allowed = tools.some((t) => t.name === tc.name);
-      const out = allowed
-        ? await runTool(tc.name, tc.arguments, ctx)
-        : { ok: false, error: 'Tool not available' };
+      const out = !allowed
+        ? { ok: false, error: 'Tool not available' }
+        : templateTool && tc.name === templateTool.def.name
+          ? await templateTool.run(tc.arguments).catch((err: Error) => ({ ok: false, error: err.message }))
+          : await runTool(tc.name, tc.arguments, ctx);
       calls.push({ name: tc.name, ok: out.ok === true });
       messages.push({ role: 'tool', toolCallId: tc.id, name: tc.name, content: JSON.stringify(out) });
     }

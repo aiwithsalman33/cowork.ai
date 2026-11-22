@@ -3,6 +3,7 @@ import { dashboardRoutes } from './dashboard.js';
 import { agentRoutes } from './agent.js';
 import { skillRoutes } from './skills.js';
 import { channelRoutes } from './channels.js';
+import { templateRoutes } from './templates.js';
 import { inboxRoutes } from './inbox.js';
 import { integrationRoutes } from './integrations.js';
 import { webhookRoutes } from './webhooks.js';
@@ -16,6 +17,7 @@ export async function registerRoutes(app: FastifyInstance) {
   await app.register(agentRoutes, { prefix: '/api' });
   await app.register(skillRoutes, { prefix: '/api' });
   await app.register(channelRoutes, { prefix: '/api' });
+  await app.register(templateRoutes, { prefix: '/api' });
   await app.register(inboxRoutes, { prefix: '/api' });
   await app.register(integrationRoutes, { prefix: '/api' });
   await app.register(billingRoutes, { prefix: '/api' });

@@ -85,9 +85,10 @@ function useCountdown(iso: string | null) {
   if (!iso) return null;
   const ms = new Date(iso).getTime() - now;
   if (ms <= 0) return 'expired';
-  const h = Math.floor(ms / 3_600_000);
+  const d = Math.floor(ms / 86_400_000);
+  const h = Math.floor((ms % 86_400_000) / 3_600_000);
   const m = Math.floor((ms % 3_600_000) / 60_000);
-  return `${h}h ${m}m`;
+  return d > 0 ? `${d}d ${h}h` : `${h}h ${m}m`;
 }
 
 function TrialBanner({ me }: { me: MeDTO }) {
@@ -105,15 +106,15 @@ function TrialBanner({ me }: { me: MeDTO }) {
       <span>
         {expired
           ? me.plan === 'TRIAL'
-            ? 'Your free trial has ended — your agent has stopped replying.'
-            : 'Your subscription is inactive — your agent has stopped replying.'
-          : `Free trial · ${left} left. Upgrade to keep your agent replying.`}
+            ? 'Your 7-day free trial has ended — contact the admin to activate Starter (₹499) or Growth (₹999).'
+            : 'Your plan is inactive — contact the admin to activate it again.'
+          : `Free trial (Telegram only) · ${left} left.`}
       </span>
       <Link
         href="/billing"
         className="rounded-md bg-white px-3 py-1 text-xs font-semibold text-primary shadow-sm transition hover:bg-white/90"
       >
-        Upgrade
+        {expired ? 'Contact admin' : 'See plans'}
       </Link>
     </div>
   );

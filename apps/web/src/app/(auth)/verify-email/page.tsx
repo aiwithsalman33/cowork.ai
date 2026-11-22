@@ -54,7 +54,7 @@ function Verify() {
         <CheckCircle2 className="mx-auto mb-4 h-14 w-14 text-success" />
         <h1 className="font-display text-3xl font-semibold">Email verified!</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Your account is now waiting for approval — we’ll email you as soon as it’s ready.
+          Your 7-day free trial has started. Taking you to your dashboard…
         </p>
       </div>
     );

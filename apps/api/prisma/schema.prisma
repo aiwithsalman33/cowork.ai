@@ -113,6 +113,7 @@ model User {
   userSkills          UserSkill[]
   authoredSkills      Skill[]              @relation("SkillAuthor")
   channels            Channel[]
+  waTemplates         WhatsAppTemplate[]
   contacts            Contact[]
   conversations       Conversation[]
   messages            Message[]
@@ -239,6 +240,7 @@ model Channel {
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   conversations Conversation[]
   schedules     Schedule[]
+  waTemplates   WhatsAppTemplate[]
 
   @@index([userId])
   @@index([type, status])
@@ -507,4 +509,36 @@ model BillingEvent {
   createdAt DateTime @default(now())
 
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+/** WhatsApp Business API message templates (synced from / created in Meta). */
+model WhatsAppTemplate {
+  id          String   @id @default(cuid())
+  userId      String
+  channelId   String
+  metaId      String?
+  name        String
+  language    String
+  category    String
+  /** APPROVED | PENDING | REJECTED | PAUSED | DISABLED */
+  status      String
+  header      String?
+  body        String
+  footer      String?
+  /** number of {{n}} placeholders in the body */
+  variables   Int      @default(0)
+  components  Json     @default("[]")
+  /** the AI bot may send this template */
+  useInAi     Boolean  @default(true)
+  /** when the AI should use it (shown to the model) */
+  aiHint      String   @default("")
+  syncedAt    DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@unique([channelId, name, language])
+  @@index([userId])
 }

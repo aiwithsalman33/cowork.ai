@@ -63,7 +63,10 @@ export default function BillingPage() {
 
   return (
     <div>
-      <PageHeader title="Billing" description="Plans in ₹, billed monthly via Razorpay. Cancel any time." />
+      <PageHeader
+        title="Billing"
+        description="Free 7-day trial on Telegram, then Starter ₹499/month or Growth ₹999/month (all features)."
+      />
 
       {!data.planActive && (
         <div className="mb-6 flex items-start gap-3 rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm">
@@ -71,8 +74,10 @@ export default function BillingPage() {
           <div>
             <p className="font-semibold text-destructive">Your agent has stopped replying.</p>
             <p className="text-muted-foreground">
-              {data.plan === 'TRIAL' ? 'Your free trial has ended.' : 'Your subscription is not active.'}{' '}
-              Choose a plan below to turn it back on instantly.
+              {data.plan === 'TRIAL' ? 'Your 7-day free trial has ended.' : 'Your plan is not active.'}{' '}
+              {data.billingEnabled
+                ? 'Choose a plan below to turn it back on instantly.'
+                : 'Contact the admin with the button below to activate Starter (₹499/month) or Growth (₹999/month).'}
             </p>
           </div>
         </div>

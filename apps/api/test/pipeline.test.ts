@@ -326,17 +326,27 @@ describe('WhatsApp Cloud API webhook', () => {
 });
 
 describe('plan limits', () => {
-  it('blocks adding channels beyond the plan limit (trial = 2)', async () => {
+  it('the free trial allows Telegram only', async () => {
     const s = await signup();
-    for (let i = 0; i < 2; i++) {
-      await prisma.channel.create({
-        data: { userId: s.userId, type: 'TELEGRAM', name: `b${i}`, webhookSecret: 'x' },
-      });
-    }
     const res = await call(s, 'POST', '/api/channels/whatsapp-cloud', {
       phoneNumberId: '1234567',
       accessToken: 'EAAG'.padEnd(30, 'x'),
       appSecret: 'secret-secret-secret',
+    });
+    expect(res.statusCode).toBe(402);
+    expect(res.json().error).toMatch(/Telegram only/);
+  });
+
+  it('blocks adding channels beyond the plan limit', async () => {
+    const s = await signup();
+    await prisma.user.update({ where: { id: s.userId }, data: { plan: 'STARTER' } });
+    for (let i = 0; i < 3; i++) {
+      await prisma.channel.create({
+        data: { userId: s.userId, type: 'TELEGRAM', name: `b${i}`, webhookSecret: 'x' },
+      });
+    }
+    const res = await call(s, 'POST', '/api/channels/telegram', {
+      botToken: '123456789:AAH' + 'x'.repeat(32),
     });
     expect(res.statusCode).toBe(402);
     expect(res.json().code).toBe('PLAN_LIMIT');

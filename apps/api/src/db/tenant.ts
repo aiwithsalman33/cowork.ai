@@ -17,6 +17,7 @@ export const TENANT_MODELS = new Set<string>([
   'IntegrationRequest',
   'Schedule',
   'EventLog',
+  'WhatsAppTemplate',
 ]);
 
 const WHERE_OPS = new Set([

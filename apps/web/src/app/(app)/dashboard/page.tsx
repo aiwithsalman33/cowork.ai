@@ -103,7 +103,12 @@ function Checklist({ d }: { d: DashboardDTO }) {
     },
     { done: d.checklist.aiKey, label: 'Add your AI key', href: '/agent?tab=keys', icon: KeyRound },
     { done: d.checklist.channel, label: 'Connect a channel', href: '/integrations?tab=channels', icon: Plug },
-    { done: d.checklist.testMessage, label: 'Send a test message', href: '/integrations?tab=channels', icon: Send },
+    {
+      done: d.checklist.testMessage,
+      label: 'Send a test message',
+      href: '/integrations?tab=channels',
+      icon: Send,
+    },
   ];
   const done = steps.filter((s) => s.done).length;
   if (done === steps.length) return null;

@@ -248,6 +248,8 @@ describe('admin approval (payments on hold)', () => {
       payload: { token: lastEmailToken(email) },
     });
     const userCookies = cookiesFrom(verify);
+    // verification auto-starts the trial; simulate an account the admin put back on hold
+    await prisma.user.update({ where: { email }, data: { approvedAt: null, trialEndsAt: null } });
     // admin was notified (ADMIN_EMAIL is not set in tests, so only check the user flow)
     const pending = await call(admin, 'GET', '/api/admin/users?status=PENDING&pageSize=100');
     const row = pending.json().items.find((u: { email: string }) => u.email === email);
@@ -261,7 +263,7 @@ describe('admin approval (payments on hold)', () => {
     expect(res.statusCode).toBe(200);
     const u = await prisma.user.findUniqueOrThrow({ where: { email } });
     expect(u.approvedAt).not.toBeNull();
-    expect((u.trialEndsAt!.getTime() - Date.now()) / 3_600_000).toBeGreaterThan(23.9);
+    expect((u.trialEndsAt!.getTime() - Date.now()) / 3_600_000).toBeGreaterThan(7 * 24 - 0.1);
     expect(testOutbox.some((m) => m.to === email && /approved/i.test(m.subject))).toBe(true);
     expect(await prisma.auditLog.count({ where: { action: 'user.approve', targetId: row.id } })).toBe(1);
 

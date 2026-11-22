@@ -35,6 +35,18 @@ export async function messagesThisMonth(userId: string): Promise<number> {
 
 export async function assertCanAddChannel(user: Pick<User, 'id' | 'plan'>, type: ChannelType) {
   const limits = limitsFor(user);
+  if (!limits.channelTypes.includes(type)) {
+    const label = {
+      TELEGRAM: 'Telegram',
+      WHATSAPP_QR: 'WhatsApp (QR)',
+      WHATSAPP_CLOUD: 'WhatsApp Business API',
+    }[type];
+    throw paymentRequired(
+      user.plan === 'TRIAL'
+        ? `The free trial includes Telegram only. Contact the admin to activate a plan for ${label}.`
+        : `${label} is not included in the ${PLANS[user.plan].name} plan. Upgrade to Growth to use it.`,
+    );
+  }
   const channels = await prisma.channel.findMany({ where: { userId: user.id }, select: { type: true } });
   if (channels.length >= limits.channels) {
     throw paymentRequired(

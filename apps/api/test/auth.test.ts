@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  approve,
   call,
   cookiesFrom,
   getApp,
@@ -53,26 +52,23 @@ describe('signup + email verification', () => {
     expect(res.json().code).toBe('EMAIL_NOT_VERIFIED');
   });
 
-  it('verifying signs the user in but the account waits for admin approval', async () => {
+  it('verifying signs the user in and starts the 7-day trial right away', async () => {
     const app = await getApp();
     const email = uniq();
     await rawSignup(email);
     const res = await post('/api/auth/verify-email', { token: lastEmailToken(email) });
     expect(res.statusCode).toBe(200);
-    expect(res.json().user).toMatchObject({ approved: false, planActive: false });
+    expect(res.json().user).toMatchObject({ approved: true, planActive: true, plan: 'TRIAL' });
     const cookies = cookiesFrom(res);
     const u = await prisma.user.findUniqueOrThrow({ where: { email } });
-    expect(u.approvedAt).toBeNull();
-    expect(u.trialEndsAt).toBeNull();
+    expect(u.approvedAt).not.toBeNull();
+    expect(u.trialEndsAt).not.toBeNull();
 
-    const me = await app.inject({ method: 'GET', url: '/api/auth/me', cookies });
-    expect(me.statusCode).toBe(200);
     const dash = await app.inject({ method: 'GET', url: '/api/dashboard', cookies });
-    expect(dash.statusCode).toBe(403);
-    expect(dash.json().code).toBe('ACCOUNT_PENDING');
+    expect(dash.statusCode).toBe(200);
   });
 
-  it('verification + approval starts the 24h trial, and the link works only once', async () => {
+  it('verification starts the 7-day trial, and the link works only once', async () => {
     const email = uniq();
     await rawSignup(email);
     const token = lastEmailToken(email);
@@ -84,12 +80,11 @@ describe('signup + email verification', () => {
     expect(byName.pa_rt?.path).toBe('/api/auth');
     expect(byName.pa_csrf?.httpOnly).toBeFalsy();
 
-    await approve(email);
     const u = await prisma.user.findUniqueOrThrow({ where: { email } });
     expect(u.emailVerifiedAt).not.toBeNull();
     const hours = (u.trialEndsAt!.getTime() - Date.now()) / 3_600_000;
-    expect(hours).toBeGreaterThan(23.9);
-    expect(hours).toBeLessThanOrEqual(24);
+    expect(hours).toBeGreaterThan(7 * 24 - 0.1);
+    expect(hours).toBeLessThanOrEqual(7 * 24);
     expect(await prisma.userSkill.count({ where: { userId: u.id, enabled: true } })).toBeGreaterThan(0);
 
     expect((await post('/api/auth/verify-email', { token })).statusCode).toBe(400);

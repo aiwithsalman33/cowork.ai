@@ -37,7 +37,8 @@ export async function sendMail(msg: MailMessage): Promise<void> {
     return;
   }
   if (!mailConfigured()) {
-    if (isProd && !env.MAIL_LOG_FALLBACK) throw new MailNotConfiguredError('Email sending is not configured (SMTP_USER / SMTP_PASS)');
+    if (isProd && !env.MAIL_LOG_FALLBACK)
+      throw new MailNotConfiguredError('Email sending is not configured (SMTP_USER / SMTP_PASS)');
     // Development without SMTP: print the email so links can be clicked from the console.
     logger.warn(
       { to: msg.to, subject: msg.subject, text: msg.text },
@@ -72,10 +73,10 @@ export function verificationEmail(to: string, name: string, url: string): MailMe
   return {
     to,
     subject: `Verify your email for ${BRAND.name}`,
-    text: `Hi ${name},\n\nConfirm your email to activate your ${BRAND.name} account and start your 24-hour free trial:\n${url}\n\nThis link expires in 24 hours. If you didn't sign up, ignore this email.`,
+    text: `Hi ${name},\n\nConfirm your email to activate your ${BRAND.name} account and start your 7-day free trial:\n${url}\n\nThis link expires in 24 hours. If you didn't sign up, ignore this email.`,
     html: layout(
       `Welcome, ${escapeHtml(name)}!`,
-      `Confirm your email address to activate your ${BRAND.name} account. Your 24-hour free trial starts as soon as you verify.`,
+      `Confirm your email address to activate your ${BRAND.name} account. Your 7-day free trial starts as soon as you verify.`,
       { label: 'Verify email', url },
       "This link expires in 24 hours. If you didn't create an account, you can ignore this email.",
     ),
@@ -125,13 +126,13 @@ export function newSignupAdminEmail(
   const who = `${user.name} <${user.email}>${user.businessName ? ` — ${user.businessName}` : ''}`;
   return {
     to,
-    subject: `New ${BRAND.name} signup waiting for approval: ${user.name}`,
-    text: `${who} verified their email and is waiting for access.\nReview: ${reviewUrl}`,
+    subject: `New ${BRAND.name} signup started a free trial: ${user.name}`,
+    text: `${who} verified their email and started the 7-day free trial (Telegram only).\nManage: ${reviewUrl}`,
     html: layout(
-      'New account waiting for approval',
-      `${escapeHtml(who)} verified their email and is waiting for you to grant access.`,
-      { label: 'Review in admin', url: reviewUrl },
-      'Approve to start their free trial, or suspend/delete the account.',
+      'New account — 7-day free trial started',
+      `${escapeHtml(who)} verified their email and started the 7-day free trial (Telegram only).`,
+      { label: 'Open in admin', url: reviewUrl },
+      'When the trial ends they will contact you — activate Starter (₹499) or Growth (₹999) from the admin panel.',
     ),
   };
 }

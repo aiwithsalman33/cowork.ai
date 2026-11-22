@@ -142,3 +142,113 @@ export function parseWebhook(body: unknown, expectedPhoneNumberId: string): Norm
   }
   return out;
 }
+
+// ---------------- Message templates ----------------
+
+export interface MetaTemplateComponent {
+  type: 'HEADER' | 'BODY' | 'FOOTER' | 'BUTTONS';
+  format?: string;
+  text?: string;
+  buttons?: { type: string; text: string }[];
+}
+
+export interface MetaTemplate {
+  id: string;
+  name: string;
+  language: string;
+  status: string;
+  category: string;
+  components: MetaTemplateComponent[];
+}
+
+function requireWaba(cfg: CloudConfig): string {
+  if (!cfg.businessAccountId) {
+    throw new CloudApiError('Add your WhatsApp Business Account ID to use templates.');
+  }
+  return cfg.businessAccountId;
+}
+
+/** All templates of the WhatsApp Business Account (follows paging, max 1000). */
+export async function listTemplates(cfg: CloudConfig): Promise<MetaTemplate[]> {
+  const waba = requireWaba(cfg);
+  const out: MetaTemplate[] = [];
+  let after: string | undefined;
+  for (let page = 0; page < 10; page++) {
+    const r = await graphFetch<{
+      data?: MetaTemplate[];
+      paging?: { cursors?: { after?: string }; next?: string };
+    }>(
+      cfg,
+      `${waba}/message_templates?fields=id,name,language,status,category,components&limit=100${after ? `&after=${after}` : ''}`,
+      { method: 'GET' },
+    );
+    out.push(...(r.data ?? []));
+    if (!r.paging?.next || !r.paging.cursors?.after) break;
+    after = r.paging.cursors.after;
+  }
+  return out;
+}
+
+/** Submits a new template to Meta for review. Returns its id and review status. */
+export async function createTemplate(
+  cfg: CloudConfig,
+  t: {
+    name: string;
+    language: string;
+    category: string;
+    header?: string;
+    body: string;
+    footer?: string;
+    examples: string[];
+  },
+) {
+  const waba = requireWaba(cfg);
+  const components: Record<string, unknown>[] = [];
+  if (t.header) components.push({ type: 'HEADER', format: 'TEXT', text: t.header });
+  components.push({
+    type: 'BODY',
+    text: t.body,
+    ...(t.examples.length ? { example: { body_text: [t.examples] } } : {}),
+  });
+  if (t.footer) components.push({ type: 'FOOTER', text: t.footer });
+  return graphFetch<{ id: string; status?: string; category?: string }>(cfg, `${waba}/message_templates`, {
+    method: 'POST',
+    body: { name: t.name, language: t.language, category: t.category, components },
+  });
+}
+
+/** Sends an approved template; `params` fill the body's {{1}}, {{2}}, … in order. */
+export async function sendTemplate(
+  cfg: CloudConfig,
+  to: string,
+  t: { name: string; language: string },
+  params: string[],
+): Promise<string> {
+  const r = await graphFetch<{ messages?: { id: string }[] }>(cfg, `${cfg.phoneNumberId}/messages`, {
+    method: 'POST',
+    body: {
+      messaging_product: 'whatsapp',
+      recipient_type: 'individual',
+      to,
+      type: 'template',
+      template: {
+        name: t.name,
+        language: { code: t.language },
+        ...(params.length
+          ? { components: [{ type: 'body', parameters: params.map((text) => ({ type: 'text', text })) }] }
+          : {}),
+      },
+    },
+  });
+  return r.messages?.[0]?.id ?? '';
+}
+
+/** Counts distinct {{n}} placeholders. */
+export function countVariables(text: string): number {
+  return new Set([...text.matchAll(/\{\{\s*(\d+)\s*\}\}/g)].map((m) => m[1])).size;
+}
+
+/** Renders a template body with its parameters (for the conversation transcript). */
+export function renderTemplate(body: string, params: string[]): string {
+  return body.replace(/\{\{\s*(\d+)\s*\}\}/g, (_, n: string) => params[Number(n) - 1] ?? `{{${n}}}`);
+}

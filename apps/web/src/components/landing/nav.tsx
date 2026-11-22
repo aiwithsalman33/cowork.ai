@@ -47,7 +47,7 @@ export function LandingNav() {
             <Link href="/login">Sign in</Link>
           </Button>
           <Button asChild>
-            <Link href="/signup">Start Free · 24h Trial</Link>
+            <Link href="/signup">Start Free · 7-day Trial</Link>
           </Button>
         </div>
         <div className="flex items-center gap-2 md:hidden">

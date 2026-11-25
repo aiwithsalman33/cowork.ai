@@ -7,6 +7,13 @@ import { PLANS } from '@cowork/shared';
 import { prisma } from '../db/client.js';
 import type { ToolDef } from '../llm/types.js';
 import { cloudConfig } from '../channels/index.js';
+import {
+  buildComponents,
+  checkValues,
+  renderSent,
+  templateFields,
+  unsupportedReason,
+} from '../channels/template-fields.js';
 import * as cloud from '../channels/whatsapp-cloud.js';
 import { logEvent } from '../services/audit.js';
 
@@ -26,17 +33,21 @@ export async function buildTemplateTool(params: {
 }): Promise<TemplateTool | null> {
   const { channel } = params;
   if (channel.type !== 'WHATSAPP_CLOUD' || !PLANS[params.plan].limits.templates) return null;
-  const templates = await prisma.whatsAppTemplate.findMany({
+  const rows = await prisma.whatsAppTemplate.findMany({
     where: { channelId: channel.id, status: 'APPROVED', useInAi: true },
     orderBy: { name: 'asc' },
     take: 30,
   });
+  // the AI only sends templates that need plain text (it has no media links to offer)
+  const templates = rows
+    .map((t) => ({ ...t, fields: templateFields(t) }))
+    .filter((t) => !unsupportedReason(t) && t.fields.every((f) => f.kind === 'text'));
   if (!templates.length) return null;
 
   const list = templates
     .map(
       (t) =>
-        `- ${t.name} (${t.language})${t.aiHint ? ` — use when: ${t.aiHint}` : ''}; ${t.variables} parameter(s); text: "${t.body.slice(0, 160)}"`,
+        `- ${t.name} (${t.language})${t.aiHint ? ` — use when: ${t.aiHint}` : ''}; parameters in order: ${t.fields.map((f) => f.label).join(', ') || 'none'}; text: "${t.body.slice(0, 160)}"`,
     )
     .join('\n');
 
@@ -68,16 +79,15 @@ export async function buildTemplateTool(params: {
       const values = Array.isArray(args.parameters)
         ? args.parameters.map((v) => String(v).slice(0, 300))
         : [];
-      if (values.length < t.variables) {
-        return { ok: false, error: `Template ${t.name} needs ${t.variables} parameter(s).` };
-      }
+      const problem = checkValues(t.fields, values.slice(0, t.fields.length));
+      if (problem) return { ok: false, error: problem };
       const externalId = await cloud.sendTemplate(
         cloudConfig(channel),
         params.to,
         { name: t.name, language: t.language },
-        values.slice(0, t.variables),
+        buildComponents(t.fields, values),
       );
-      const text = `[Template: ${t.name}] ${cloud.renderTemplate(t.body, values)}`;
+      const text = `[Template: ${t.name}] ${renderSent(t, t.fields, values)}`;
       await prisma.message.create({
         data: {
           userId: channel.userId,

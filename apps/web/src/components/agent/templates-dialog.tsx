@@ -59,6 +59,7 @@ export function TemplatesDialog({ channel, onClose }: { channel: ChannelDTO; onC
     retry: false,
   });
   const [waba, setWaba] = useState('');
+  const [editWaba, setEditWaba] = useState(false);
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState(EMPTY);
 
@@ -121,7 +122,7 @@ export function TemplatesDialog({ channel, onClose }: { channel: ChannelDTO; onC
           <Skeleton className="h-40 rounded-xl" />
         ) : (
           <div className="space-y-4">
-            {!data.hasBusinessAccountId && (
+            {(!data.hasBusinessAccountId || editWaba) && (
               <Field
                 label="WhatsApp Business Account ID"
                 hint="Meta → WhatsApp → API Setup. Needed once to read and create templates."
@@ -130,6 +131,16 @@ export function TemplatesDialog({ channel, onClose }: { channel: ChannelDTO; onC
               </Field>
             )}
             <div className="flex flex-wrap gap-2">
+              {data.hasBusinessAccountId && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="order-last"
+                  onClick={() => setEditWaba((v) => !v)}
+                >
+                  Change account ID
+                </Button>
+              )}
               <Button
                 size="sm"
                 onClick={() => sync.mutate(undefined)}

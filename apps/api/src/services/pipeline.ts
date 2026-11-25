@@ -3,6 +3,13 @@ import { normalizePhone } from '@cowork/shared';
 import { prisma } from '../db/client.js';
 import { logger, scrubSecrets } from '../lib/logger.js';
 import { CHANNEL_LABEL, cloudConfig, sendText, sendTyping } from '../channels/index.js';
+import {
+  buildComponents,
+  checkValues,
+  renderSent,
+  templateFields,
+  unsupportedReason,
+} from '../channels/template-fields.js';
 import * as cloud from '../channels/whatsapp-cloud.js';
 import type { NormalizedInbound } from '../channels/telegram.js';
 import { enqueueInbound, enqueueSummarize } from '../queue/index.js';
@@ -155,6 +162,47 @@ export async function sendOwnerReply(conversationId: string, userId: string, tex
   });
 }
 
+/** Meta reported that an accepted message was not delivered. */
+export async function markUndelivered(channel: Channel, externalId: string, error: string, retry = true) {
+  const msg = await prisma.message.findFirst({
+    where: { userId: channel.userId, externalId, direction: 'OUT', conversation: { channelId: channel.id } },
+    select: { id: true, status: true },
+  });
+  if (!msg) {
+    // the report can arrive before our own send finished saving its id
+    if (retry)
+      setTimeout(() => {
+        markUndelivered(channel, externalId, error, false).catch((err) =>
+          logger.warn({ err: (err as Error).message }, 'delivery report failed'),
+        );
+      }, 3000).unref();
+    return;
+  }
+  if (msg.status === 'FAILED') return;
+  await prisma.message.update({ where: { id: msg.id }, data: { status: 'FAILED', error } });
+  await logEvent(channel.userId, 'ERROR', 'message.undelivered', `WhatsApp message not delivered: ${error}`);
+}
+
+/** Finds or creates the conversation for a phone number on a WhatsApp Business API channel. */
+export async function openCloudConversation(channel: Channel, phone: string) {
+  const contact = await prisma.contact.upsert({
+    where: {
+      userId_channelType_externalId: {
+        userId: channel.userId,
+        channelType: channel.type,
+        externalId: phone,
+      },
+    },
+    create: { userId: channel.userId, channelType: channel.type, externalId: phone, phone },
+    update: {},
+  });
+  return prisma.conversation.upsert({
+    where: { channelId_contactId: { channelId: channel.id, contactId: contact.id } },
+    create: { userId: channel.userId, channelId: channel.id, contactId: contact.id },
+    update: {},
+  });
+}
+
 /** Owner sends an approved WhatsApp Business API template from the inbox. */
 export async function sendOwnerTemplate(
   conversationId: string,
@@ -173,14 +221,24 @@ export async function sendOwnerTemplate(
   });
   if (!t) throw new Error('template not found');
   if (t.status !== 'APPROVED') throw new Error(`template is ${t.status.toLowerCase()}, not approved`);
-  if (params.length !== t.variables) throw new Error(`template needs ${t.variables} value(s)`);
+  const blocked = unsupportedReason(t);
+  if (blocked) throw new Error(blocked);
+  const fields = templateFields(t);
+  const problem = checkValues(fields, params);
+  if (problem) throw new Error(problem);
   return recordOutbound({
     channel: convo.channel,
     conversationId,
     to: convo.contact.externalId,
-    text: cloud.renderTemplate([t.header, t.body, t.footer].filter(Boolean).join('\n'), params),
+    text: renderSent(t, fields, params),
     role: 'OWNER',
-    send: () => cloud.sendTemplate(cloudConfig(convo.channel), convo.contact.externalId, t, params),
+    send: () =>
+      cloud.sendTemplate(
+        cloudConfig(convo.channel),
+        convo.contact.externalId,
+        t,
+        buildComponents(fields, params),
+      ),
   });
 }
 

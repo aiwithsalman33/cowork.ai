@@ -12,6 +12,7 @@ import { badRequest, notFound, paymentRequired } from '../lib/errors.js';
 import { encryptJson } from '../lib/crypto.js';
 import { logEvent } from '../services/audit.js';
 import { cloudConfig } from '../channels/index.js';
+import { templateFields, unsupportedReason } from '../channels/template-fields.js';
 import * as cloud from '../channels/whatsapp-cloud.js';
 
 const idParam = z.object({ id: z.string().min(1) });
@@ -50,6 +51,8 @@ export function toTemplateDTO(t: WhatsAppTemplate) {
     body: t.body,
     footer: t.footer,
     variables: t.variables,
+    fields: templateFields(t),
+    unsupported: unsupportedReason(t),
     useInAi: t.useInAi,
     aiHint: t.aiHint,
     syncedAt: t.syncedAt.toISOString(),
@@ -101,7 +104,6 @@ export async function templateRoutes(app: FastifyInstance) {
       let cfg = cloudConfig(channel);
       if (businessAccountId && businessAccountId !== cfg.businessAccountId) {
         cfg = { ...cfg, businessAccountId };
-        await req.db.channel.update({ where: { id }, data: { encryptedConfig: encryptJson(cfg) } });
       }
       let remote: cloud.MetaTemplate[];
       try {
@@ -109,6 +111,12 @@ export async function templateRoutes(app: FastifyInstance) {
       } catch (err) {
         throw badRequest(`Meta: ${(err as Error).message}`);
       }
+      // saved only once Meta accepted it, so a wrong id is never kept
+      if (businessAccountId)
+        await req.db.channel.update({ where: { id }, data: { encryptedConfig: encryptJson(cfg) } });
+      await cloud.subscribeApp(cfg).catch(async (err: Error) => {
+        await logEvent(u.id, 'WARN', 'channel.subscribe_failed', `Meta webhook subscription: ${err.message}`);
+      });
       const now = new Date();
       for (const t of remote) {
         const body = textOf(t.components, 'BODY') ?? '';
@@ -119,7 +127,11 @@ export async function templateRoutes(app: FastifyInstance) {
           header: textOf(t.components, 'HEADER'),
           body,
           footer: textOf(t.components, 'FOOTER'),
-          variables: cloud.countVariables(body),
+          variables: templateFields({
+            header: textOf(t.components, 'HEADER'),
+            body,
+            components: t.components,
+          }).length,
           components: t.components as unknown as Prisma.InputJsonValue,
           syncedAt: now,
         };
@@ -153,6 +165,7 @@ export async function templateRoutes(app: FastifyInstance) {
       const { id } = parse(idParam, req.params);
       const input = parse(createSchema, req.body);
       const { u, channel } = await cloudChannel(req, id);
+      if (/\{\{/.test(input.header ?? '')) throw badRequest('The header cannot contain {{ }} values.');
       const variables = cloud.countVariables(input.body);
       if (variables > input.examples.length) {
         throw badRequest(

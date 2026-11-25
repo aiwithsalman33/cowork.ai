@@ -1,12 +1,18 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { MessageDTO } from '@cowork/shared';
-import { appointmentUpdateSchema, paginationSchema, PLANS, scheduleSchema } from '@cowork/shared';
+import {
+  appointmentUpdateSchema,
+  normalizePhone,
+  paginationSchema,
+  PLANS,
+  scheduleSchema,
+} from '@cowork/shared';
 import { authenticate, user } from '../plugins/auth.js';
 import { parse } from '../lib/validate.js';
 import { badRequest, notFound, paymentRequired } from '../lib/errors.js';
 import { toConversationDTO } from '../services/dto.js';
-import { sendOwnerReply, sendOwnerTemplate } from '../services/pipeline.js';
+import { openCloudConversation, sendOwnerReply, sendOwnerTemplate } from '../services/pipeline.js';
 
 const idParam = z.object({ id: z.string().min(1) });
 
@@ -105,7 +111,7 @@ export async function inboxRoutes(app: FastifyInstance) {
       const input = parse(
         z.object({
           templateId: z.string().min(1),
-          params: z.array(z.string().trim().min(1).max(300)).max(20).default([]),
+          params: z.array(z.string().trim().min(1).max(1000)).max(20).default([]),
         }),
         req.body,
       );
@@ -120,6 +126,41 @@ export async function inboxRoutes(app: FastifyInstance) {
         throw badRequest(`Could not send: ${(err as Error).message}`);
       }
       return { ok: true };
+    },
+  );
+
+  /** Message a number that has not chatted yet: WhatsApp requires a template first. */
+  app.post(
+    '/conversations/start',
+    { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } },
+    async (req) => {
+      const input = parse(
+        z.object({
+          channelId: z.string().min(1),
+          phone: z.string().trim().min(8).max(25),
+          templateId: z.string().min(1),
+          params: z.array(z.string().trim().min(1).max(1000)).max(20).default([]),
+        }),
+        req.body,
+      );
+      const u = user(req);
+      if (!PLANS[u.plan].limits.templates)
+        throw paymentRequired('WhatsApp templates are part of the Growth plan. Upgrade to use them.');
+      const channel = await req.db.channel.findFirst({
+        where: { id: input.channelId, type: 'WHATSAPP_CLOUD' },
+      });
+      if (!channel) throw notFound('WhatsApp Business API channel not found');
+      let phone = normalizePhone(input.phone).replace(/^0+/, '');
+      if (phone.length === 10) phone = `91${phone}`; // Indian number without country code
+      if (phone.length < 8 || phone.length > 15)
+        throw badRequest('Enter the number with country code, e.g. 919876543210');
+      const convo = await openCloudConversation(channel, phone);
+      try {
+        await sendOwnerTemplate(convo.id, u.id, input.templateId, input.params);
+      } catch (err) {
+        throw badRequest(`Could not send: ${(err as Error).message}`);
+      }
+      return { conversationId: convo.id };
     },
   );
 

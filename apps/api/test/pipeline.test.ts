@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PLANS } from '@cowork/shared';
+import { buildComponents, checkValues, templateFields } from '../src/channels/template-fields.js';
 import { textOf } from '../src/channels/baileys.js';
 import { encrypt, encryptJson, hmacSha256Hex } from '../src/lib/crypto.js';
 import { call, getApp, prisma, signup, type Session } from './helpers.js';
@@ -346,6 +347,14 @@ describe('WhatsApp Cloud API webhook', () => {
     await prisma.user.update({ where: { id: s.userId }, data: { plan: 'GROWTH' } });
     expect((await sendTpl(['Meera'])).statusCode).toBe(400);
     expect((await sendTpl(['Meera', '#1'])).statusCode).toBe(200);
+    const unsent = await call(s, 'POST', '/api/conversations/start', {
+      channelId: channel.id,
+      phone: '98765 43210',
+      templateId: tpl.id,
+      params: ['Ravi', '#2'],
+    });
+    expect(unsent.statusCode).toBe(200);
+    expect(sent.at(-1)?.body.to).toBe('919876543210');
     expect(sent.find((r) => r.body.type === 'template')?.body.template).toMatchObject({
       name: 'order_update',
     });
@@ -355,6 +364,73 @@ describe('WhatsApp Cloud API webhook', () => {
       status: 'SENT',
       content: 'Hi Meera, order #1 shipped',
     });
+
+    // Meta accepts first and reports the failure later
+    const report = JSON.stringify({
+      entry: [
+        {
+          changes: [
+            {
+              value: {
+                metadata: { phone_number_id: '1111111' },
+                statuses: [
+                  { id: 'wamid.FAIL', status: 'failed', errors: [{ code: 131042, title: 'Payment issue' }] },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    });
+    const last = thread.json().messages.at(-1);
+    await prisma.message.update({ where: { id: last.id }, data: { externalId: 'wamid.FAIL' } });
+    await app.inject({
+      method: 'POST',
+      url: `/webhooks/whatsapp/${channel.id}`,
+      headers: {
+        'content-type': 'application/json',
+        'x-hub-signature-256': `sha256=${hmacSha256Hex('app-secret-0123456789', report)}`,
+      },
+      payload: report,
+    });
+    expect(await prisma.message.findUnique({ where: { id: last.id } })).toMatchObject({
+      status: 'FAILED',
+      error: 'Payment issue (131042)',
+    });
+  });
+});
+
+describe('template payloads', () => {
+  it('fills media headers, named values and link buttons', () => {
+    const t = {
+      header: null,
+      body: 'Hi {{customer_name}}, pay {{amount}}',
+      components: [
+        { type: 'HEADER', format: 'IMAGE' },
+        { type: 'BODY', text: 'Hi {{customer_name}}, pay {{amount}}' },
+        {
+          type: 'BUTTONS',
+          buttons: [
+            { type: 'QUICK_REPLY', text: 'Ok' },
+            { type: 'URL', text: 'Pay', url: 'https://x.in/{{1}}' },
+          ],
+        },
+      ],
+    };
+    const f = templateFields(t);
+    expect(f.map((x) => x.kind)).toEqual(['image', 'text', 'text', 'text']);
+    expect(checkValues(f, ['not-a-link', 'a', 'b', 'c'])).toMatch(/https/);
+    expect(buildComponents(f, ['https://x.in/a.png', 'Meera', 'Rs 5', 'inv1'])).toEqual([
+      { type: 'header', parameters: [{ type: 'image', image: { link: 'https://x.in/a.png' } }] },
+      {
+        type: 'body',
+        parameters: [
+          { type: 'text', text: 'Meera', parameter_name: 'customer_name' },
+          { type: 'text', text: 'Rs 5', parameter_name: 'amount' },
+        ],
+      },
+      { type: 'button', sub_type: 'url', index: '1', parameters: [{ type: 'text', text: 'inv1' }] },
+    ]);
   });
 });
 

@@ -4,9 +4,9 @@ import { prisma } from '../db/client.js';
 import { safeEqual } from '../lib/crypto.js';
 import { parse } from '../lib/validate.js';
 import { normalizeUpdate, type TelegramUpdate } from '../channels/telegram.js';
-import { parseWebhook, verifySignature } from '../channels/whatsapp-cloud.js';
+import { parseFailures, parseWebhook, verifySignature } from '../channels/whatsapp-cloud.js';
 import { cloudConfig } from '../channels/index.js';
-import { ingestInbound } from '../services/pipeline.js';
+import { ingestInbound, markUndelivered } from '../services/pipeline.js';
 import { logEvent } from '../services/audit.js';
 
 const params = z.object({ channelId: z.string().min(1).max(40) });
@@ -78,6 +78,7 @@ export async function webhookRoutes(app: FastifyInstance) {
       return reply.code(401).send({ error: 'invalid signature' });
     }
     for (const msg of parseWebhook(req.body, cfg.phoneNumberId)) await ingestInbound(channel, msg);
+    for (const f of parseFailures(req.body, cfg.phoneNumberId)) await markUndelivered(channel, f.id, f.error);
     return { ok: true };
   });
 }

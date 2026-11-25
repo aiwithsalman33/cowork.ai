@@ -50,20 +50,22 @@ export interface NavItem {
   href: string;
   label: string;
   icon: LucideIcon;
+  /** heading shown above this item in the sidebar */
+  group?: string;
 }
 
 export const TENANT_NAV: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/conversations', label: 'Conversations', icon: MessagesSquare },
+  { href: '/conversations', label: 'Conversations', icon: MessagesSquare, group: 'Customers' },
   { href: '/appointments', label: 'Appointments', icon: CalendarCheck },
-  { href: '/knowledge', label: 'Knowledge Base', icon: BookOpen },
-  { href: '/learning', label: 'Learning', icon: Brain },
-  { href: '/integrations', label: 'Integrations', icon: Plug },
-  { href: '/agent', label: 'Agent Config', icon: Bot },
   { href: '/schedules', label: 'Schedules', icon: Clock },
+  { href: '/learning', label: 'Learning', icon: Brain },
+  { href: '/agent', label: 'Agent Config', icon: Bot, group: 'AI agent' },
+  { href: '/knowledge', label: 'Knowledge Base', icon: BookOpen },
+  { href: '/integrations', label: 'Integrations', icon: Plug },
+  { href: '/billing', label: 'Billing', icon: CreditCard, group: 'Account' },
   { href: '/logs', label: 'Logs', icon: ScrollText },
   { href: '/docs', label: 'Documentation', icon: FileText },
-  { href: '/billing', label: 'Billing', icon: CreditCard },
 ];
 
 export const ADMIN_NAV: NavItem[] = [
@@ -172,26 +174,34 @@ function NavLinks({
   const pathname = usePathname();
   return (
     <nav className="flex flex-col gap-0.5">
-      {items.map(({ href, label, icon: Icon }) => {
+      {items.map(({ href, label, icon: Icon, group }) => {
         const active =
           href === '/admin' ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
         return (
-          <Tooltip key={href} content={label} disabled={!collapsed}>
-            <Link
-              href={href}
-              onClick={onNavigate}
-              className={cn(
-                'group flex h-10 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors',
-                active
-                  ? 'bg-primary-soft font-semibold text-primary'
-                  : 'text-muted-foreground hover:bg-accent hover:text-foreground',
-                collapsed && 'justify-center px-0',
-              )}
-            >
-              <Icon className="h-[18px] w-[18px] shrink-0" />
-              {!collapsed && <span className="truncate">{label}</span>}
-            </Link>
-          </Tooltip>
+          <div key={href}>
+            {group &&
+              (collapsed ? (
+                <div className="mx-3 my-2 border-t" />
+              ) : (
+                <div className="px-3 pb-1 pt-4 text-xs font-semibold text-muted-foreground">{group}</div>
+              ))}
+            <Tooltip content={label} disabled={!collapsed}>
+              <Link
+                href={href}
+                onClick={onNavigate}
+                className={cn(
+                  'group flex h-9 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors',
+                  active
+                    ? 'bg-primary font-semibold text-primary-foreground shadow-sm'
+                    : 'text-muted-foreground hover:bg-accent hover:text-foreground',
+                  collapsed && 'justify-center px-0',
+                )}
+              >
+                <Icon className="h-[18px] w-[18px] shrink-0" />
+                {!collapsed && <span className="truncate">{label}</span>}
+              </Link>
+            </Tooltip>
+          </div>
         );
       })}
     </nav>
@@ -204,6 +214,8 @@ export function AppShell({ me, nav, children }: { me: MeDTO; nav: NavItem[]; chi
   const router = useRouter();
   const qc = useQueryClient();
   const isAdminArea = nav === ADMIN_NAV;
+  const pathname = usePathname();
+  const current = nav.findLast((n) => pathname === n.href || pathname.startsWith(`${n.href}/`));
 
   useEffect(() => {
     try {
@@ -266,7 +278,7 @@ export function AppShell({ me, nav, children }: { me: MeDTO; nav: NavItem[]; chi
         {/* desktop sidebar */}
         <aside
           className={cn(
-            'sticky top-0 hidden h-dvh shrink-0 flex-col border-r bg-sidebar transition-[width] duration-200 lg:flex',
+            'sticky top-0 hidden h-dvh shrink-0 flex-col border-r bg-sidebar shadow-[1px_0_0_var(--border)] transition-[width] duration-200 lg:flex',
             collapsed ? 'w-[68px]' : 'w-60',
           )}
         >
@@ -335,7 +347,20 @@ export function AppShell({ me, nav, children }: { me: MeDTO; nav: NavItem[]; chi
             <div className="lg:hidden">
               <Logo collapsed />
             </div>
-            <div className="flex-1" />
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm font-semibold">{current?.label}</div>
+              <div className="truncate text-xs text-muted-foreground">
+                {isAdminArea ? 'Admin panel' : `${me.name}’s workspace`}
+              </div>
+            </div>
+            {!isAdminArea && (
+              <Link
+                href="/billing"
+                className="hidden rounded-full bg-primary-soft px-3 py-1 text-xs font-semibold text-primary sm:block"
+              >
+                {me.plan === 'TRIAL' ? 'Free trial' : me.plan === 'STARTER' ? 'Starter plan' : 'Growth plan'}
+              </Link>
+            )}
             {!isAdminArea && me.plan === 'TRIAL' && (
               <Button size="sm" asChild className="hidden sm:inline-flex">
                 <Link href="/billing">Upgrade</Link>

@@ -32,8 +32,14 @@ async function graphFetch<T>(
     ...(init.body ? { body: JSON.stringify(init.body) } : {}),
     signal: AbortSignal.timeout(15_000),
   });
-  const data = (await res.json().catch(() => ({}))) as T & { error?: { message?: string } };
-  if (!res.ok) throw new CloudApiError(data.error?.message ?? `WhatsApp Cloud API error (${res.status})`);
+  const data = (await res.json().catch(() => ({}))) as T & {
+    error?: { message?: string; code?: number; error_user_msg?: string; error_data?: { details?: string } };
+  };
+  if (!res.ok) {
+    const e = data.error;
+    const parts = [e?.message, e?.error_user_msg, e?.error_data?.details].filter(Boolean);
+    throw new CloudApiError([...new Set(parts)].join(' — ') || `WhatsApp Cloud API error (${res.status})`);
+  }
   return data;
 }
 
@@ -97,6 +103,11 @@ interface CloudWebhook {
       field?: string;
       value?: {
         metadata?: { phone_number_id?: string };
+        statuses?: {
+          id: string;
+          status: string;
+          errors?: { code?: number; title?: string; error_data?: { details?: string } }[];
+        }[];
         contacts?: { wa_id?: string; profile?: { name?: string } }[];
         messages?: {
           from: string;
@@ -149,7 +160,7 @@ export interface MetaTemplateComponent {
   type: 'HEADER' | 'BODY' | 'FOOTER' | 'BUTTONS';
   format?: string;
   text?: string;
-  buttons?: { type: string; text: string }[];
+  buttons?: { type: string; text: string; url?: string }[];
 }
 
 export interface MetaTemplate {
@@ -217,12 +228,12 @@ export async function createTemplate(
   });
 }
 
-/** Sends an approved template; `params` fill the body's {{1}}, {{2}}, … in order. */
+/** Sends an approved template; build `components` with template-fields.ts. */
 export async function sendTemplate(
   cfg: CloudConfig,
   to: string,
   t: { name: string; language: string },
-  params: string[],
+  components: Record<string, unknown>[],
 ): Promise<string> {
   const r = await graphFetch<{ messages?: { id: string }[] }>(cfg, `${cfg.phoneNumberId}/messages`, {
     method: 'POST',
@@ -234,9 +245,7 @@ export async function sendTemplate(
       template: {
         name: t.name,
         language: { code: t.language },
-        ...(params.length
-          ? { components: [{ type: 'body', parameters: params.map((text) => ({ type: 'text', text })) }] }
-          : {}),
+        ...(components.length ? { components } : {}),
       },
     },
   });
@@ -248,7 +257,27 @@ export function countVariables(text: string): number {
   return new Set([...text.matchAll(/\{\{\s*(\d+)\s*\}\}/g)].map((m) => m[1])).size;
 }
 
-/** Renders a template body with its parameters (for the conversation transcript). */
-export function renderTemplate(body: string, params: string[]): string {
-  return body.replace(/\{\{\s*(\d+)\s*\}\}/g, (_, n: string) => params[Number(n) - 1] ?? `{{${n}}}`);
+/** Makes Meta deliver this account's messages and delivery reports to the app's webhook. */
+export async function subscribeApp(cfg: CloudConfig) {
+  await graphFetch(cfg, `${requireWaba(cfg)}/subscribed_apps`, { method: 'POST' });
+}
+
+/** Messages Meta accepted but later failed to deliver. */
+export function parseFailures(body: unknown, expectedPhoneNumberId: string): { id: string; error: string }[] {
+  const out: { id: string; error: string }[] = [];
+  for (const entry of (body as CloudWebhook).entry ?? [])
+    for (const change of entry.changes ?? []) {
+      const v = change.value;
+      if (v?.metadata?.phone_number_id !== expectedPhoneNumberId) continue;
+      for (const st of v?.statuses ?? []) {
+        if (st.status !== 'failed') continue;
+        const e = st.errors?.[0];
+        const text = [...new Set([e?.title, e?.error_data?.details].filter(Boolean))].join(' — ');
+        out.push({
+          id: st.id,
+          error: `${text || 'WhatsApp could not deliver it'}${e?.code ? ` (${e.code})` : ''}`,
+        });
+      }
+    }
+  return out;
 }

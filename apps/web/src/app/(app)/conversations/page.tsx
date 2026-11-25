@@ -10,6 +10,7 @@ import {
   Brain,
   LayoutTemplate,
   MessagesSquare,
+  Plus,
   Search,
   Send,
   UserRound,
@@ -20,7 +21,7 @@ import { Card } from '@/components/ui/card';
 import { Input, Textarea } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, EmptyState, PageHeader, Skeleton } from '@/components/ui/misc';
+import { Avatar, EmptyState, Skeleton } from '@/components/ui/misc';
 import { ChannelIcon, CHANNEL_LABEL } from '@/components/channel-badge';
 import { SendTemplateDialog } from '@/components/send-template-dialog';
 import { get, post } from '@/lib/api';
@@ -154,7 +155,7 @@ function ThreadView({ id, onBack }: { id: string; onBack: () => void }) {
                 </Link>
               </span>
             ) : (
-              'The customer’s last message is over 24 hours old. WhatsApp only delivers templates now.'
+              'No message from this customer in the last 24 hours, so WhatsApp only delivers templates.'
             )}
           </p>
         )}
@@ -244,6 +245,8 @@ function Inbox() {
   const params = useSearchParams();
   const router = useRouter();
   const selected = params.get('id');
+  const qc = useQueryClient();
+  const [composing, setComposing] = useState(false);
   const [filter, setFilter] = useState<Filter>('ALL');
   const [search, setSearch] = useState('');
   const [debounced, setDebounced] = useState('');
@@ -264,9 +267,12 @@ function Inbox() {
     router.replace(id ? `/conversations?id=${id}` : '/conversations', { scroll: false });
 
   return (
-    <Card className="flex h-[calc(100dvh-12rem)] min-h-[420px] overflow-hidden">
+    <Card className="flex h-[calc(100dvh-7.5rem)] min-h-[420px] overflow-hidden">
       <div className={cn('flex w-full flex-col border-r md:w-80 md:shrink-0', selected && 'hidden md:flex')}>
         <div className="space-y-3 border-b p-3">
+          <Button className="w-full" onClick={() => setComposing(true)}>
+            <Plus /> New message
+          </Button>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -346,6 +352,15 @@ function Inbox() {
           </div>
         )}
       </div>
+      {composing && (
+        <SendTemplateDialog
+          onClose={() => setComposing(false)}
+          onSent={(newId) => {
+            qc.invalidateQueries({ queryKey: ['conversations'] });
+            select(newId);
+          }}
+        />
+      )}
     </Card>
   );
 }
@@ -353,7 +368,7 @@ function Inbox() {
 export default function ConversationsPage() {
   return (
     <div>
-      <PageHeader title="Conversations" description="Every chat your agent has had, across channels." />
+      <h1 className="sr-only">Conversations</h1>
       <Suspense>
         <Inbox />
       </Suspense>

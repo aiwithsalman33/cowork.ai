@@ -100,7 +100,7 @@ function TrialBanner({ me }: { me: MeDTO }) {
     <div
       className={cn(
         'flex flex-wrap items-center justify-center gap-x-3 gap-y-1 px-4 py-2 text-center text-sm',
-        expired ? 'bg-destructive text-white' : 'bg-primary text-primary-foreground',
+        expired ? 'bg-destructive text-white' : 'border-b bg-primary-soft text-foreground',
       )}
     >
       <span>
@@ -183,7 +183,7 @@ function NavLinks({
               className={cn(
                 'group flex h-10 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors',
                 active
-                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  ? 'bg-primary-soft font-semibold text-primary'
                   : 'text-muted-foreground hover:bg-accent hover:text-foreground',
                 collapsed && 'justify-center px-0',
               )}
@@ -322,7 +322,7 @@ export function AppShell({ me, nav, children }: { me: MeDTO; nav: NavItem[]; chi
         )}
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b bg-background/85 px-4 backdrop-blur sm:px-6">
+          <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b bg-card/90 px-4 backdrop-blur sm:px-6">
             <Button
               variant="ghost"
               size="icon"
@@ -360,6 +360,19 @@ export function ShellLoading() {
           <div className="h-full w-1/3 animate-[pulse_1s_ease-in-out_infinite] rounded-full bg-primary" />
         </div>
       </div>
+    </div>
+  );
+}
+
+export function ShellUnavailable({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="flex min-h-dvh flex-col items-center justify-center gap-3 p-6 text-center">
+      <Logo collapsed />
+      <h1 className="text-lg font-semibold">Can’t reach the server</h1>
+      <p className="max-w-sm text-sm text-muted-foreground">
+        It may be restarting after an update. You are still signed in.
+      </p>
+      <Button onClick={onRetry}>Try again</Button>
     </div>
   );
 }

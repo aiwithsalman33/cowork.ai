@@ -34,6 +34,8 @@ export function toChannelDTO(c: Channel): ChannelDTO {
 export function toConversationDTO(c: Conversation & { contact: Contact; channel: Channel }): ConversationDTO {
   return {
     id: c.id,
+    channelId: c.channelId,
+    channelStatus: c.channel.status,
     channelType: c.channel.type,
     channelName: c.channel.name,
     contact: {

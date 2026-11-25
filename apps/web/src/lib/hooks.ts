@@ -8,7 +8,8 @@ export function useMe() {
   return useQuery({
     queryKey: ['me'],
     queryFn: () => get<{ user: MeDTO }>('/auth/me').then((r) => r.user),
-    retry: false,
+    // only a real 401 means signed out; keep retrying while the server restarts
+    retry: (n, err) => !(err instanceof ApiError && err.status < 500 && err.status !== 429) && n < 4,
     staleTime: 60_000,
   });
 }

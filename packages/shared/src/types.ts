@@ -86,6 +86,8 @@ export interface AgentSheetDTO {
 
 export interface ConversationDTO {
   id: string;
+  channelId: string;
+  channelStatus: ChannelStatus;
   channelType: ChannelType;
   channelName: string;
   contact: { id: string; name: string | null; externalId: string; phone: string | null };
@@ -99,6 +101,9 @@ export interface MessageDTO {
   direction: 'IN' | 'OUT';
   role: 'USER' | 'ASSISTANT' | 'OWNER' | 'SYSTEM';
   content: string;
+  status: string;
+  /** why an outgoing message failed */
+  error: string | null;
   createdAt: string;
   toolCalls?: { name: string; ok: boolean }[] | null;
 }

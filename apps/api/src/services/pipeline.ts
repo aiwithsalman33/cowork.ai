@@ -2,7 +2,8 @@ import { Prisma, type Channel } from '@prisma/client';
 import { normalizePhone } from '@cowork/shared';
 import { prisma } from '../db/client.js';
 import { logger, scrubSecrets } from '../lib/logger.js';
-import { CHANNEL_LABEL, sendText, sendTyping } from '../channels/index.js';
+import { CHANNEL_LABEL, cloudConfig, sendText, sendTyping } from '../channels/index.js';
+import * as cloud from '../channels/whatsapp-cloud.js';
 import type { NormalizedInbound } from '../channels/telegram.js';
 import { enqueueInbound, enqueueSummarize } from '../queue/index.js';
 import { resolveModel } from '../agent/keys.js';
@@ -95,6 +96,8 @@ async function recordOutbound(params: {
   tokensIn?: number;
   tokensOut?: number;
   toolCalls?: { name: string; ok: boolean }[];
+  /** custom sender (e.g. a WhatsApp template); defaults to a plain text message */
+  send?: () => Promise<string>;
 }) {
   const out = await prisma.message.create({
     data: {
@@ -112,7 +115,16 @@ async function recordOutbound(params: {
         : undefined,
     },
   });
-  const externalId = await sendText(params.channel, params.to, params.text);
+  let externalId: string;
+  try {
+    externalId = await (params.send ? params.send() : sendText(params.channel, params.to, params.text));
+  } catch (err) {
+    await prisma.message.update({
+      where: { id: out.id },
+      data: { status: 'FAILED', error: scrubSecrets((err as Error).message), processedAt: new Date() },
+    });
+    throw err;
+  }
   await prisma.message.update({
     where: { id: out.id },
     data: { status: 'SENT', externalId, processedAt: new Date() },
@@ -140,6 +152,35 @@ export async function sendOwnerReply(conversationId: string, userId: string, tex
     to: convo.contact.externalId,
     text,
     role: 'OWNER',
+  });
+}
+
+/** Owner sends an approved WhatsApp Business API template from the inbox. */
+export async function sendOwnerTemplate(
+  conversationId: string,
+  userId: string,
+  templateId: string,
+  params: string[],
+) {
+  const convo = await prisma.conversation.findFirstOrThrow({
+    where: { id: conversationId, userId },
+    include: { channel: true, contact: true },
+  });
+  if (convo.channel.type !== 'WHATSAPP_CLOUD')
+    throw new Error('templates work only on WhatsApp Business API numbers');
+  const t = await prisma.whatsAppTemplate.findFirst({
+    where: { id: templateId, userId, channelId: convo.channelId },
+  });
+  if (!t) throw new Error('template not found');
+  if (t.status !== 'APPROVED') throw new Error(`template is ${t.status.toLowerCase()}, not approved`);
+  if (params.length !== t.variables) throw new Error(`template needs ${t.variables} value(s)`);
+  return recordOutbound({
+    channel: convo.channel,
+    conversationId,
+    to: convo.contact.externalId,
+    text: cloud.renderTemplate([t.header, t.body, t.footer].filter(Boolean).join('\n'), params),
+    role: 'OWNER',
+    send: () => cloud.sendTemplate(cloudConfig(convo.channel), convo.contact.externalId, t, params),
   });
 }
 

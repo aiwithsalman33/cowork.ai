@@ -83,7 +83,7 @@ const industries = [
   {
     emoji: '🍛',
     name: 'Restaurant & Cloud Kitchen',
-    tint: 'from-orange-50 to-white border-orange-200 dark:from-orange-950/40 dark:to-card dark:border-orange-900/50',
+    tint: 'from-green-50 to-white border-green-200 dark:from-green-950/40 dark:to-card dark:border-green-900/50',
     pains: ['Orders missed during rush hour', 'Same menu questions all day'],
     gains: ['Takes orders on WhatsApp 24/7', 'Menu & prices from your sheet'],
     chat: [
@@ -122,7 +122,7 @@ const industries = [
   {
     emoji: '🏠',
     name: 'Real Estate',
-    tint: 'from-amber-50 to-white border-amber-200 dark:from-amber-950/40 dark:to-card dark:border-amber-900/50',
+    tint: 'from-green-50 to-white border-green-200 dark:from-green-950/40 dark:to-card dark:border-green-900/50',
     pains: ['Leads enquire and vanish', 'Site visits planned on paper'],
     gains: ['Qualifies budget & location', 'Books site visits, logs leads'],
     chat: [
@@ -224,7 +224,7 @@ export default function Home() {
 
       {/* ───────── Hero ───────── */}
       <section className="mx-auto max-w-6xl px-4 pb-10 pt-12 text-center sm:px-6 sm:pt-20">
-        <span className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[#e8711c] to-[#c2410c] px-4 py-1.5 text-xs font-semibold text-white shadow-lg shadow-orange-500/25 sm:text-sm">
+        <span className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-green-600 to-green-700 px-4 py-1.5 text-xs font-semibold text-white shadow-lg shadow-green-600/20 sm:text-sm">
           <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
           Early access open · 7-day free trial · Made in India
         </span>
@@ -327,7 +327,7 @@ export default function Home() {
             {pillars.map(({ icon: Icon, title, text }) => (
               <div
                 key={title}
-                className="rounded-2xl border bg-card p-6 shadow-sm transition-shadow hover:shadow-md"
+                className="rounded-2xl border bg-card p-6 shadow-sm transition-shadow hover:border-primary/30 hover:shadow-md"
               >
                 <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-soft text-primary">
                   <Icon className="h-5 w-5" />
@@ -421,11 +421,11 @@ export default function Home() {
       </section>
 
       {/* ───────── Made in India ───────── */}
-      <section className="border-y border-amber-200/70 bg-amber-50/60 py-20 dark:border-amber-900/40 dark:bg-amber-950/10">
+      <section className="border-y border-green-200/70 bg-green-50/60 py-20 dark:border-green-900/40 dark:bg-green-950/10">
         <div className="mx-auto max-w-5xl px-4 sm:px-6">
           <SectionTitle
             pill={
-              <span className="mb-5 inline-flex items-center gap-2 rounded-full border border-amber-300 bg-card px-4 py-1 text-sm font-semibold text-amber-800 dark:border-amber-800 dark:text-amber-300">
+              <span className="mb-5 inline-flex items-center gap-2 rounded-full border border-green-300 bg-card px-4 py-1 text-sm font-semibold text-green-800 dark:border-green-800 dark:text-green-300">
                 <Flag className="h-3.5 w-3.5" /> Built in India · for Indian businesses
               </span>
             }
@@ -451,7 +451,7 @@ export default function Home() {
             ].map(({ icon: Icon, title, text }) => (
               <div
                 key={title}
-                className="rounded-2xl border border-amber-200 bg-card p-6 text-center dark:border-amber-900/50"
+                className="rounded-2xl border border-green-200 bg-card p-6 text-center dark:border-green-900/50"
               >
                 <Icon className="mx-auto h-7 w-7 text-primary" />
                 <h3 className="mt-3 font-semibold">{title}</h3>
@@ -613,7 +613,7 @@ export default function Home() {
       </section>
 
       {/* ───────── CTA band ───────── */}
-      <section className="bg-primary px-4 py-20 text-center text-primary-foreground dark:bg-[#4a1d0b] dark:text-white">
+      <section className="bg-primary px-4 py-20 text-center text-primary-foreground dark:bg-[#0b2a17] dark:text-white">
         <h2 className="mx-auto max-w-3xl font-display text-4xl font-bold leading-tight tracking-tight sm:text-5xl">
           Your competitors already reply in seconds.
         </h2>
@@ -622,7 +622,7 @@ export default function Home() {
         </p>
         <Button
           size="lg"
-          className="mt-9 h-13 rounded-xl bg-white px-8 text-base text-primary hover:bg-white/90 dark:text-[#4a1d0b]"
+          className="mt-9 h-13 rounded-xl bg-white px-8 text-base text-primary hover:bg-white/90 dark:text-[#0b2a17]"
           asChild
         >
           <Link href="/signup">

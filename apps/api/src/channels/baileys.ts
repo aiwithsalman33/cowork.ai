@@ -13,13 +13,17 @@ import QRCode from 'qrcode';
 import {
   Browsers,
   DisconnectReason,
+  extractMessageContent,
   fetchLatestBaileysVersion,
+  isHostedLidUser,
   isJidBroadcast,
   isJidGroup,
   isJidStatusBroadcast,
   isLidUser,
+  makeCacheableSignalKeyStore,
   makeWASocket,
   useMultiFileAuthState,
+  type proto,
   type WAMessage,
   type WASocket,
 } from 'baileys';
@@ -71,8 +75,30 @@ async function setStatus(
     .catch(() => null); // channel may have been deleted
 }
 
-function textOf(m: WAMessage): string | null {
-  const msg = m.message;
+/**
+ * Recently sent messages, kept so WhatsApp can ask us to re-encrypt one. Without this the customer
+ * can be left with "Waiting for this message".
+ */
+const sentMessages = new Map<string, proto.IMessage>();
+function rememberSent(id: string | null | undefined, message: proto.IMessage | null | undefined) {
+  if (!id || !message) return;
+  sentMessages.set(id, message);
+  if (sentMessages.size > 500) sentMessages.delete(sentMessages.keys().next().value!);
+}
+
+const MEDIA_LABEL: [keyof proto.IMessage, string][] = [
+  ['imageMessage', '[image message]'],
+  ['videoMessage', '[video message]'],
+  ['audioMessage', '[voice message]'],
+  ['documentMessage', '[document message]'],
+  ['stickerMessage', '[sticker message]'],
+  ['locationMessage', '[location message]'],
+  ['contactMessage', '[contact message]'],
+];
+
+/** Text of a message. Unwraps disappearing / view-once containers; media without a caption gets a label. */
+export function textOf(m: Pick<WAMessage, 'message'>): string | null {
+  const msg = extractMessageContent(m.message);
   if (!msg) return null;
   return (
     msg.conversation ??
@@ -81,6 +107,9 @@ function textOf(m: WAMessage): string | null {
     msg.videoMessage?.caption ??
     msg.buttonsResponseMessage?.selectedDisplayText ??
     msg.listResponseMessage?.title ??
+    msg.templateButtonReplyMessage?.selectedDisplayText ??
+    msg.documentMessage?.caption ??
+    MEDIA_LABEL.find(([k]) => msg[k])?.[1] ??
     null
   );
 }
@@ -91,9 +120,13 @@ async function handleMessages(s: Session, messages: WAMessage[]) {
     if (!jid || m.key.fromMe) continue;
     if (isJidGroup(jid) || isJidBroadcast(jid) || isJidStatusBroadcast(jid)) continue;
     const text = textOf(m);
-    if (!text || !m.key.id) continue;
+    if (!text || !m.key.id) {
+      if (m.messageStubType && !m.message)
+        logger.warn({ channelId: s.channelId }, 'WhatsApp message could not be decrypted yet');
+      continue;
+    }
     // With LID addressing the phone-number JID arrives in remoteJidAlt (Baileys 7).
-    const pnJid = isLidUser(jid) ? (m.key.remoteJidAlt ?? null) : jid;
+    const pnJid = isLidUser(jid) || isHostedLidUser(jid) ? (m.key.remoteJidAlt ?? null) : jid;
     const phone = pnJid ? pnJid.split('@')[0]!.split(':')[0]!.replace(/\D/g, '') : null;
     try {
       await onInbound(s.channelId, {
@@ -123,7 +156,11 @@ async function connect(s: Session) {
     }
   }
   const sock = makeWASocket({
-    auth: state,
+    auth: {
+      creds: state.creds,
+      keys: makeCacheableSignalKeyStore(state.keys, baileysLogger as never),
+    },
+    getMessage: async (key) => (key.id ? sentMessages.get(key.id) : undefined),
     logger: baileysLogger as never,
     browser: Browsers.ubuntu('cowork-ai'),
     markOnlineOnConnect: false,
@@ -134,9 +171,10 @@ async function connect(s: Session) {
 
   sock.ev.on('creds.update', saveCreds);
   sock.ev.on('messages.upsert', ({ messages, type }) => {
-    if (type === 'notify') void handleMessages(s, messages);
+    if (s.sock === sock && type === 'notify') void handleMessages(s, messages);
   });
   sock.ev.on('connection.update', async (u) => {
+    if (s.sock !== sock) return; // event from a socket that was already replaced
     if (u.qr) {
       s.qr = u.qr;
       s.qrDataUrl = await QRCode.toDataURL(u.qr, { margin: 1, width: 320 });
@@ -175,11 +213,22 @@ async function connect(s: Session) {
         );
         return;
       }
-      s.attempts += 1;
-      if (s.attempts > 8) {
+      if (code === DisconnectReason.connectionReplaced || code === DisconnectReason.forbidden) {
         await setStatus(s.channelId, {
           status: 'ERROR',
-          lastError: 'Could not reconnect to WhatsApp. Click Reconnect.',
+          lastError:
+            code === DisconnectReason.forbidden
+              ? 'WhatsApp refused this number (it may be restricted). Check WhatsApp on the phone.'
+              : 'This WhatsApp session was opened somewhere else. Click Reconnect to use it here.',
+        });
+        await logEvent(s.userId, 'ERROR', 'channel.error', `WhatsApp (QR) stopped (code ${code})`);
+        return;
+      }
+      s.attempts += 1;
+      if (s.attempts === 9) {
+        await setStatus(s.channelId, {
+          status: 'ERROR',
+          lastError: 'WhatsApp connection lost. Retrying every 5 minutes — or click Reconnect.',
         });
         await logEvent(
           s.userId,
@@ -187,15 +236,20 @@ async function connect(s: Session) {
           'channel.reconnect_failed',
           `WhatsApp (QR) reconnect failed (code ${code ?? 'unknown'})`,
         );
-        return;
       }
       const delay =
-        code === DisconnectReason.restartRequired ? 500 : Math.min(30_000, 1000 * 2 ** s.attempts);
-      await setStatus(s.channelId, { status: 'CONNECTING' });
-      s.timer = setTimeout(
-        () => void connect(s).catch((err) => logger.error({ err }, 'baileys reconnect failed')),
-        delay,
-      );
+        code === DisconnectReason.restartRequired
+          ? 500
+          : s.attempts > 8
+            ? 5 * 60_000
+            : Math.min(30_000, 1000 * 2 ** s.attempts);
+      if (s.attempts <= 8) await setStatus(s.channelId, { status: 'CONNECTING' });
+      if (s.stopping || s.sock) return; // stopped or reconnected by hand meanwhile
+      if (s.timer) clearTimeout(s.timer);
+      s.timer = setTimeout(() => {
+        s.timer = null;
+        connect(s).catch((err) => logger.error({ err }, 'baileys reconnect failed'));
+      }, delay);
     }
   });
 }
@@ -213,6 +267,8 @@ export async function startSession(channelId: string, userId: string) {
     stopping: false,
     timer: null,
   };
+  if (s.timer) clearTimeout(s.timer);
+  s.timer = null;
   s.stopping = false;
   s.attempts = 0;
   sessions.set(channelId, s);
@@ -228,12 +284,14 @@ export function getSessionState(channelId: string) {
 
 function requireSock(channelId: string): WASocket {
   const sock = sessions.get(channelId)?.sock;
-  if (!sock) throw new Error('WhatsApp session is not connected');
+  if (!sock?.user)
+    throw new Error('WhatsApp is not connected. Open Integrations → Channels and reconnect it');
   return sock;
 }
 
 export async function sendText(channelId: string, jid: string, text: string): Promise<string> {
   const res = await requireSock(channelId).sendMessage(jid, { text });
+  rememberSent(res?.key.id, res?.message);
   return res?.key.id ?? '';
 }
 

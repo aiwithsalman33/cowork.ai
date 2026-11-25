@@ -47,21 +47,21 @@ function ImpactStrip({ d }: { d: DashboardDTO }) {
     { label: 'Availability', value: d.impact.availability, icon: Radio },
   ];
   return (
-    <section className="hero-gradient relative overflow-hidden rounded-2xl p-5 text-white shadow-lg shadow-primary/10 sm:p-7">
+    <section className="hero-gradient relative overflow-hidden rounded-2xl border p-5 sm:p-7">
       <div className="relative z-10">
-        <p className="text-sm font-medium text-white/70">Your impact</p>
+        <p className="text-sm font-medium text-muted-foreground">Your impact</p>
         <h2 className="font-display text-2xl font-semibold sm:text-3xl">Your AI partner at work</h2>
         <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
           {items.map(({ label, value, icon: Icon }) => (
-            <div key={label} className="rounded-xl bg-white/10 p-3 backdrop-blur-sm sm:p-4">
-              <Icon className="mb-2 h-4 w-4 text-white/70" />
+            <div key={label} className="rounded-xl border border-primary/10 bg-card p-3 sm:p-4">
+              <Icon className="mb-2 h-4 w-4 text-primary" />
               <div className="text-xl font-semibold sm:text-2xl">{value}</div>
-              <div className="text-xs text-white/70">{label}</div>
+              <div className="text-xs text-muted-foreground">{label}</div>
             </div>
           ))}
         </div>
       </div>
-      <div className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full bg-white/10 blur-3xl" />
+      <div className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
     </section>
   );
 }

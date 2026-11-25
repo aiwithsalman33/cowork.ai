@@ -1,12 +1,12 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { MessageDTO } from '@cowork/shared';
-import { appointmentUpdateSchema, paginationSchema, scheduleSchema } from '@cowork/shared';
+import { appointmentUpdateSchema, paginationSchema, PLANS, scheduleSchema } from '@cowork/shared';
 import { authenticate, user } from '../plugins/auth.js';
 import { parse } from '../lib/validate.js';
-import { badRequest, notFound } from '../lib/errors.js';
+import { badRequest, notFound, paymentRequired } from '../lib/errors.js';
 import { toConversationDTO } from '../services/dto.js';
-import { sendOwnerReply } from '../services/pipeline.js';
+import { sendOwnerReply, sendOwnerTemplate } from '../services/pipeline.js';
 
 const idParam = z.object({ id: z.string().min(1) });
 
@@ -58,14 +58,17 @@ export async function inboxRoutes(app: FastifyInstance) {
     if (!convo) throw notFound('Conversation not found');
     const messages = await req.db.message.findMany({
       where: { conversationId: id, NOT: { content: { startsWith: '[memory]' } } },
-      orderBy: { createdAt: 'asc' },
+      orderBy: { createdAt: 'desc' }, // the newest 300, shown oldest first
       take: 300,
     });
+    messages.reverse();
     const dto: MessageDTO[] = messages.map((m) => ({
       id: m.id,
       direction: m.direction,
       role: m.role,
       content: m.content,
+      status: m.status,
+      error: m.direction === 'OUT' ? m.error : null,
       createdAt: m.createdAt.toISOString(),
       toolCalls: (m.toolCalls as { name: string; ok: boolean }[] | null) ?? null,
     }));
@@ -87,6 +90,32 @@ export async function inboxRoutes(app: FastifyInstance) {
       if (!convo) throw notFound('Conversation not found');
       try {
         await sendOwnerReply(id, user(req).id, text);
+      } catch (err) {
+        throw badRequest(`Could not send: ${(err as Error).message}`);
+      }
+      return { ok: true };
+    },
+  );
+
+  app.post(
+    '/conversations/:id/template',
+    { config: { rateLimit: { max: 30, timeWindow: '1 minute' } } },
+    async (req) => {
+      const { id } = parse(idParam, req.params);
+      const input = parse(
+        z.object({
+          templateId: z.string().min(1),
+          params: z.array(z.string().trim().min(1).max(300)).max(20).default([]),
+        }),
+        req.body,
+      );
+      const u = user(req);
+      if (!PLANS[u.plan].limits.templates)
+        throw paymentRequired('WhatsApp templates are part of the Growth plan. Upgrade to use them.');
+      const convo = await req.db.conversation.findFirst({ where: { id } });
+      if (!convo) throw notFound('Conversation not found');
+      try {
+        await sendOwnerTemplate(id, u.id, input.templateId, input.params);
       } catch (err) {
         throw badRequest(`Could not send: ${(err as Error).message}`);
       }

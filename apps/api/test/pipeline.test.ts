@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PLANS } from '@cowork/shared';
+import { textOf } from '../src/channels/baileys.js';
 import { encrypt, encryptJson, hmacSha256Hex } from '../src/lib/crypto.js';
 import { call, getApp, prisma, signup, type Session } from './helpers.js';
 
@@ -323,6 +324,48 @@ describe('WhatsApp Cloud API webhook', () => {
     expect(contact).toMatchObject({ name: 'Meera', phone: '919000000001' });
     const send = sent.find((r) => r.url.includes('graph.facebook.com') && r.body.type === 'text');
     expect(send?.body).toMatchObject({ messaging_product: 'whatsapp', to: '919000000001' });
+
+    // the owner can send an approved template from the same conversation
+    const convo = await prisma.conversation.findFirstOrThrow({ where: { channelId: channel.id } });
+    const tpl = await prisma.whatsAppTemplate.create({
+      data: {
+        userId: s.userId,
+        channelId: channel.id,
+        name: 'order_update',
+        language: 'en',
+        category: 'UTILITY',
+        status: 'APPROVED',
+        body: 'Hi {{1}}, order {{2}} shipped',
+        variables: 2,
+      },
+    });
+    const url = `/api/conversations/${convo.id}/template`;
+    const sendTpl = (params: string[]) => call(s, 'POST', url, { templateId: tpl.id, params });
+    await prisma.user.update({ where: { id: s.userId }, data: { plan: 'STARTER' } });
+    expect((await sendTpl(['Meera', '#1'])).statusCode).toBe(402);
+    await prisma.user.update({ where: { id: s.userId }, data: { plan: 'GROWTH' } });
+    expect((await sendTpl(['Meera'])).statusCode).toBe(400);
+    expect((await sendTpl(['Meera', '#1'])).statusCode).toBe(200);
+    expect(sent.find((r) => r.body.type === 'template')?.body.template).toMatchObject({
+      name: 'order_update',
+    });
+    const thread = await call(s, 'GET', `/api/conversations/${convo.id}/messages`);
+    expect(thread.json().messages.at(-1)).toMatchObject({
+      role: 'OWNER',
+      status: 'SENT',
+      content: 'Hi Meera, order #1 shipped',
+    });
+  });
+});
+
+describe('WhatsApp QR messages', () => {
+  it('reads text from normal, disappearing and media messages', () => {
+    expect(textOf({ message: { conversation: 'hi' } })).toBe('hi');
+    expect(
+      textOf({ message: { ephemeralMessage: { message: { extendedTextMessage: { text: 'price?' } } } } }),
+    ).toBe('price?');
+    expect(textOf({ message: { audioMessage: {} } })).toBe('[voice message]');
+    expect(textOf({ message: { protocolMessage: {} } })).toBeNull();
   });
 });
 

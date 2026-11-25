@@ -17,21 +17,34 @@ function csrfToken(): string {
   return m ? decodeURIComponent(m[1]!) : '';
 }
 
-let refreshing: Promise<boolean> | null = null;
+type Refresh = 'ok' | 'expired' | 'unreachable';
+let refreshing: Promise<Refresh> | null = null;
 
-async function refreshSession(): Promise<boolean> {
-  refreshing ??= fetch('/api/auth/refresh', {
-    method: 'POST',
-    credentials: 'same-origin',
-    headers: { 'x-csrf-token': csrfToken() },
-  })
-    .then((r) => r.ok)
-    .catch(() => false)
-    .finally(() => {
-      setTimeout(() => (refreshing = null), 0);
-    });
+/** Refreshes once at a time, also across tabs: refresh tokens are single-use. */
+async function refreshSession(csrfBefore: string): Promise<Refresh> {
+  const run = async (): Promise<Refresh> => {
+    // another tab already refreshed while this one was waiting
+    if (csrfToken() && csrfToken() !== csrfBefore) return 'ok';
+    try {
+      const r = await fetch('/api/auth/refresh', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'x-csrf-token': csrfToken() },
+      });
+      return r.ok ? 'ok' : r.status === 401 || r.status === 403 ? 'expired' : 'unreachable';
+    } catch {
+      return 'unreachable';
+    }
+  };
+  refreshing ??= Promise.resolve(
+    navigator.locks ? navigator.locks.request('pa_refresh', run) : run(),
+  ).finally(() => {
+    setTimeout(() => (refreshing = null), 0);
+  });
   return refreshing;
 }
+
+const NO_REFRESH = ['/auth/login', '/auth/signup', '/auth/logout', '/auth/refresh'];
 
 export async function api<T = unknown>(
   path: string,
@@ -50,13 +63,22 @@ export async function api<T = unknown>(
       body: json !== undefined ? JSON.stringify(json) : rest.body,
     });
 
+  const csrfBefore = csrfToken();
   let res = await doFetch();
-  if (res.status === 401 && !path.startsWith('/auth/')) {
-    if (await refreshSession()) res = await doFetch();
+  if (res.status === 401 && !NO_REFRESH.some((p) => path.startsWith(p))) {
+    const refreshed = await refreshSession(csrfBefore);
+    if (refreshed === 'ok') res = await doFetch();
+    else if (refreshed === 'unreachable') throw new ApiError(503, 'Server is not reachable. Try again.');
   }
   if (res.status === 204) return undefined as T;
   const text = await res.text();
-  const data = text ? JSON.parse(text) : undefined;
+  let data;
+  try {
+    data = text ? JSON.parse(text) : undefined;
+  } catch {
+    // an HTML error page from the proxy (e.g. while a new version is being deployed)
+    throw new ApiError(res.ok ? 502 : res.status, 'Server is restarting. Try again in a moment.');
+  }
   if (!res.ok) {
     throw new ApiError(
       res.status,

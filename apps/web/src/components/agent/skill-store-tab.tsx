@@ -52,7 +52,7 @@ export function SkillStoreTab() {
     <div className="grid gap-6 lg:grid-cols-[1.1fr_1fr]">
       <div className="space-y-6">
         <Card className="overflow-hidden">
-          <div className="hero-gradient p-5 text-white">
+          <div className="hero-gradient p-5 text-foreground">
             <div className="flex items-center gap-2 text-sm font-medium text-white/80">
               <Wand2 className="h-4 w-4" /> AI Skill Creator
             </div>

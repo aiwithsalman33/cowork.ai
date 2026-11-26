@@ -126,6 +126,7 @@ model User {
   schedules           Schedule[]
   eventLogs           EventLog[]
   billingEvents       BillingEvent[]
+  payments            Payment[]
   auditLogsAsActor    AuditLog[]           @relation("AuditActor")
 
   @@index([createdAt])
@@ -548,4 +549,24 @@ model PlanSetting {
   plan      String   @id
   data      Json
   updatedAt DateTime @updatedAt
+}
+
+/** One Cashfree order = one paid plan period. */
+model Payment {
+  id           String    @id @default(cuid())
+  userId       String
+  orderId      String    @unique
+  plan         Plan
+  amountInr    Int
+  durationDays Int
+  /** CREATED | PAID | FAILED */
+  status       String    @default("CREATED")
+  cfPaymentId  String?
+  error        String?
+  paidAt       DateTime?
+  createdAt    DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
 }

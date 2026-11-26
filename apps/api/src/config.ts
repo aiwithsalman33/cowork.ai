@@ -40,8 +40,12 @@ const envSchema = z.object({
   /** without SMTP, print emails to the log instead of failing (local docker only) */
   MAIL_LOG_FALLBACK: bool.default(false),
 
-  // Online payments are on hold until Razorpay is set up.
+  // Online payments (Cashfree). Off until the keys are added and BILLING_ENABLED=true.
   BILLING_ENABLED: bool.default(false),
+  CASHFREE_APP_ID: z.string().optional(),
+  CASHFREE_SECRET_KEY: z.string().optional(),
+  CASHFREE_ENV: z.enum(['sandbox', 'production']).default('sandbox'),
+  CASHFREE_API_VERSION: z.string().default('2025-01-01'),
 
   RAZORPAY_KEY_ID: z.string().optional(),
   RAZORPAY_KEY_SECRET: z.string().optional(),

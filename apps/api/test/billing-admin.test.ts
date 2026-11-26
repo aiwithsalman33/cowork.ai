@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { createHmac } from 'node:crypto';
+import { describe, expect, it, vi } from 'vitest';
 import { PLANS, planToJSON } from '@cowork/shared';
 import { hmacSha256Hex } from '../src/lib/crypto.js';
 import { isPlanActive } from '../src/services/plan.js';
@@ -300,17 +301,119 @@ describe('admin plan editing', () => {
       limits: { ...planToJSON(PLANS.TRIAL).limits, channels: 0 },
     };
     expect((await call(s, 'PUT', '/api/admin/plans/TRIAL', body)).statusCode).toBe(403);
-    expect((await call(admin, 'PUT', '/api/admin/plans/TRIAL', { ...body, priceInr: 99 })).statusCode).toBe(400);
+    expect((await call(admin, 'PUT', '/api/admin/plans/TRIAL', { ...body, priceInr: 99 })).statusCode).toBe(
+      400,
+    );
     expect((await call(admin, 'PUT', '/api/admin/plans/TRIAL', body)).statusCode).toBe(200);
 
     const pub = await app.inject({ method: 'GET', url: '/api/public/plans' });
     expect(pub.json().plans[0]).toMatchObject({ id: 'TRIAL', name: 'Try it free', durationDays: 14 });
     // the new channel limit applies right away
-    const tg = await call(s, 'POST', '/api/channels/telegram', { botToken: '123456789:AAH' + 'x'.repeat(32) });
+    const tg = await call(s, 'POST', '/api/channels/telegram', {
+      botToken: '123456789:AAH' + 'x'.repeat(32),
+    });
     expect(tg.statusCode).toBe(402);
     expect(tg.json().error).toMatch(/Try it free/);
 
     const reset = await call(admin, 'DELETE', '/api/admin/plans/TRIAL');
-    expect(reset.json().plan).toMatchObject({ name: PLANS.TRIAL.name, durationDays: PLANS.TRIAL.durationDays });
+    expect(reset.json().plan).toMatchObject({
+      name: PLANS.TRIAL.name,
+      durationDays: PLANS.TRIAL.durationDays,
+    });
+  });
+});
+
+describe('Cashfree payments', () => {
+  it('creates an order, applies the paid webhook once, and extends the plan', async () => {
+    const app = await getApp();
+    const s = await signup();
+    const calls: { url: string; body: Record<string, unknown> }[] = [];
+    const spy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const url = String(input);
+      calls.push({ url, body: init?.body ? JSON.parse(String(init.body)) : {} });
+      const json = url.endsWith('/pg/orders')
+        ? { order_id: 'x', order_status: 'ACTIVE', order_amount: 499, payment_session_id: 'session_123' }
+        : { order_status: 'ACTIVE', order_amount: 499 };
+      return new Response(JSON.stringify(json), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    });
+    try {
+      expect(
+        (await call(s, 'POST', '/api/billing/checkout', { plan: 'STARTER', phone: '12345' })).statusCode,
+      ).toBe(400);
+      const res = await call(s, 'POST', '/api/billing/checkout', {
+        plan: 'STARTER',
+        phone: '+91 98765 43210',
+      });
+      expect(res.statusCode).toBe(200);
+      const { orderId, paymentSessionId } = res.json();
+      expect(paymentSessionId).toBe('session_123');
+      expect(calls[0]!.body).toMatchObject({
+        order_id: orderId,
+        order_amount: PLANS.STARTER.priceInr,
+        customer_details: { customer_phone: '9876543210' },
+      });
+      // returning before the bank confirms: still unpaid, no access change
+      expect((await call(s, 'GET', `/api/billing/orders/${orderId}`)).json().payment.status).toBe('CREATED');
+
+      const send = (body: object, secret = 'cf-secret-test') => {
+        const raw = JSON.stringify(body);
+        const ts = String(Math.floor(Date.now() / 1000));
+        const sig = createHmac('sha256', secret)
+          .update(ts + raw)
+          .digest('base64');
+        return app.inject({
+          method: 'POST',
+          url: '/webhooks/cashfree',
+          headers: {
+            'content-type': 'application/json',
+            'x-webhook-signature': sig,
+            'x-webhook-timestamp': ts,
+          },
+          payload: raw,
+        });
+      };
+      const paid = (amount: number) => ({
+        type: 'PAYMENT_SUCCESS_WEBHOOK',
+        data: {
+          order: { order_id: orderId, order_amount: amount },
+          payment: { cf_payment_id: 555, payment_status: 'SUCCESS', payment_amount: amount },
+        },
+      });
+      expect((await send(paid(PLANS.STARTER.priceInr), 'wrong')).statusCode).toBe(400);
+      expect((await send(paid(PLANS.STARTER.priceInr))).json().result).toBe('processed');
+      expect((await send(paid(PLANS.STARTER.priceInr))).json().result).toBe('duplicate');
+      const u = await prisma.user.findUniqueOrThrow({ where: { id: s.userId } });
+      expect(u.plan).toBe('STARTER');
+      expect(isPlanActive(u)).toBe(true);
+      const days = (u.currentPeriodEnd!.getTime() - Date.now()) / 86_400_000;
+      expect(days).toBeGreaterThan(29.9);
+      expect(days).toBeLessThanOrEqual(30);
+      const bill = await call(s, 'GET', '/api/billing');
+      expect(bill.json().payments[0]).toMatchObject({ orderId, status: 'PAID' });
+
+      // a second Starter payment adds 30 days on top
+      const again = (
+        await call(s, 'POST', '/api/billing/checkout', { plan: 'STARTER', phone: '9876543210' })
+      ).json();
+      await send({
+        ...paid(PLANS.STARTER.priceInr),
+        data: { ...paid(PLANS.STARTER.priceInr).data, order: { order_id: again.orderId } },
+      });
+      const u2 = await prisma.user.findUniqueOrThrow({ where: { id: s.userId } });
+      expect((u2.currentPeriodEnd!.getTime() - Date.now()) / 86_400_000).toBeGreaterThan(59.9);
+
+      // a wrong amount never activates anything
+      const third = (
+        await call(s, 'POST', '/api/billing/checkout', { plan: 'GROWTH', phone: '9876543210' })
+      ).json();
+      const bad = await send({ ...paid(1), data: { ...paid(1).data, order: { order_id: third.orderId } } });
+      expect(bad.json().result).toBe('amount_mismatch');
+      expect((await prisma.user.findUniqueOrThrow({ where: { id: s.userId } })).plan).toBe('STARTER');
+    } finally {
+      spy.mockRestore();
+    }
   });
 });

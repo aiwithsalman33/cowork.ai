@@ -7,7 +7,7 @@ import { templateRoutes } from './templates.js';
 import { inboxRoutes } from './inbox.js';
 import { integrationRoutes } from './integrations.js';
 import { webhookRoutes } from './webhooks.js';
-import { billingRoutes, razorpayWebhookRoutes } from './billing.js';
+import { billingRoutes, cashfreeWebhookRoutes, razorpayWebhookRoutes } from './billing.js';
 import { adminRoutes } from './admin/index.js';
 import { publicRoutes } from './public.js';
 
@@ -25,4 +25,5 @@ export async function registerRoutes(app: FastifyInstance) {
   await app.register(adminRoutes, { prefix: '/api/admin' });
   await app.register(webhookRoutes, { prefix: '/webhooks' });
   await app.register(razorpayWebhookRoutes, { prefix: '/webhooks' });
+  await app.register(cashfreeWebhookRoutes, { prefix: '/webhooks' });
 }

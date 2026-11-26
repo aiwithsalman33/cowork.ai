@@ -209,7 +209,15 @@ export const contactSchema = z.object({
 export type ContactInput = z.infer<typeof contactSchema>;
 
 // ---------- Billing ----------
-export const checkoutSchema = z.object({ plan: z.enum(['STARTER', 'GROWTH']) });
+export const checkoutSchema = z.object({
+  plan: z.enum(['STARTER', 'GROWTH']),
+  /** 10-digit Indian mobile number; Cashfree requires a customer phone */
+  phone: z
+    .string()
+    .trim()
+    .transform((v) => v.replace(/\D/g, '').replace(/^(91|0)(?=\d{10}$)/, ''))
+    .pipe(z.string().regex(/^[6-9]\d{9}$/, 'Enter a valid 10-digit mobile number')),
+});
 
 // ---------- Admin ----------
 export const adminUserQuerySchema = z.object({

@@ -1,11 +1,26 @@
 'use client';
-import { useQuery } from '@tanstack/react-query';
-import { AlertTriangle, Check, CreditCard, Crown, MessageCircle, ShieldCheck } from 'lucide-react';
+import { Suspense, useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  AlertTriangle,
+  Check,
+  CheckCircle2,
+  CreditCard,
+  Crown,
+  Loader2,
+  MessageCircle,
+  ShieldCheck,
+  XCircle,
+} from 'lucide-react';
 import { BRAND, limitLines, whatsappLink, type PlanId, type PlanJSON } from '@cowork/shared';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { PageHeader, Progress, Skeleton } from '@/components/ui/misc';
+import { Input } from '@/components/ui/input';
+import { Field } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { get, post } from '@/lib/api';
 import { useAction, useMe } from '@/lib/hooks';
 import { cn, formatDateTime } from '@/lib/utils';
@@ -20,9 +35,9 @@ type BillingRes = {
   pendingPlan: PlanId | null;
   usage: { messages: Usage; channels: Usage; skills: Usage };
   plans: PlanJSON[];
-  razorpayConfigured: boolean;
   billingEnabled: boolean;
   history: { id: string; message: string; createdAt: string; level: string }[];
+  payments: Payment[];
 };
 
 function UsageRow({ label, u }: { label: string; u: Usage }) {
@@ -41,23 +56,13 @@ function UsageRow({ label, u }: { label: string; u: Usage }) {
   );
 }
 
-export default function BillingPage() {
+function BillingPage() {
   const { data: me } = useMe();
   const { data, isLoading } = useQuery({ queryKey: ['billing'], queryFn: () => get<BillingRes>('/billing') });
-  const checkout = useAction(
-    (plan: 'STARTER' | 'GROWTH') => post<{ url: string }>('/billing/checkout', { plan }),
-    {
-      onSuccess: (r) => (window.location.href = r.url),
-    },
-  );
-  const cancel = useAction(() => post('/billing/cancel'), {
-    success: 'Cancellation requested. You keep access until the end of the paid period.',
-    invalidate: [['billing']],
-  });
+  const [buying, setBuying] = useState<PlanJSON | null>(null);
 
   if (isLoading || !data) return <Skeleton className="h-96 rounded-xl" />;
   const current = data.plans.find((p) => p.id === data.plan)!;
-  const subscribed = data.subscriptionStatus === 'active' || data.subscriptionStatus === 'authenticated';
 
   return (
     <div>
@@ -97,24 +102,11 @@ export default function BillingPage() {
             )}
             {data.currentPeriodEnd && data.plan !== 'TRIAL' && (
               <p>
-                {data.subscriptionStatus === 'cancelled' ? 'Access until' : 'Renews'}{' '}
-                {formatDateTime(data.currentPeriodEnd)}
+                {data.planActive ? 'Active until' : 'Expired on'} {formatDateTime(data.currentPeriodEnd)}
               </p>
             )}
-            {data.subscriptionStatus && <p>Subscription status: {data.subscriptionStatus}</p>}
-            {data.pendingPlan && (
-              <p>Waiting for payment confirmation for {data.pendingPlan.toLowerCase()}…</p>
-            )}
-            {subscribed && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="-ml-3 text-destructive"
-                onClick={() => cancel.mutate(undefined)}
-                loading={cancel.isPending}
-              >
-                Cancel subscription
-              </Button>
+            {data.plan !== 'TRIAL' && data.planActive && (
+              <p>Pay again any time to add another period on top.</p>
             )}
           </CardContent>
         </Card>
@@ -133,7 +125,7 @@ export default function BillingPage() {
       <div className="grid gap-5 md:grid-cols-3">
         {data.plans.map((p) => {
           const isCurrent = p.id === data.plan && data.planActive;
-          const highlight = p.id === 'STARTER';
+          const highlight = p.popular;
           return (
             <Card
               key={p.id}
@@ -152,7 +144,10 @@ export default function BillingPage() {
               <p className="mt-4 font-display text-4xl font-semibold">
                 {p.priceInr === 0 ? 'Free' : `₹${p.priceInr.toLocaleString('en-IN')}`}
                 {p.priceInr > 0 && (
-                  <span className="text-base font-normal text-muted-foreground">/month</span>
+                  <span className="text-base font-normal text-muted-foreground">
+                    {' '}
+                    / {p.durationDays} days
+                  </span>
                 )}
               </p>
               <ul className="mt-5 flex-1 space-y-2 text-sm">
@@ -186,16 +181,14 @@ export default function BillingPage() {
                 <Button
                   className="mt-6"
                   variant={highlight ? 'default' : 'outline'}
-                  disabled={isCurrent && subscribed}
-                  loading={checkout.isPending && checkout.variables === p.id}
-                  onClick={() => checkout.mutate(p.id as 'STARTER' | 'GROWTH')}
+                  onClick={() => setBuying(p)}
                 >
                   <CreditCard />{' '}
-                  {isCurrent && subscribed
-                    ? 'Current plan'
-                    : data.plan === 'TRIAL' || !data.planActive
-                      ? `Get ${p.name}`
-                      : `Switch to ${p.name}`}
+                  {isCurrent
+                    ? `Add ${p.durationDays} more days`
+                    : data.plan === p.id
+                      ? `Renew ${p.name}`
+                      : `Buy ${p.name}`}
                 </Button>
               )}
             </Card>
@@ -204,8 +197,8 @@ export default function BillingPage() {
       </div>
       {data.billingEnabled ? (
         <p className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
-          <ShieldCheck className="h-3.5 w-3.5" /> Payments are processed securely by Razorpay (UPI, cards,
-          netbanking). GST invoices are emailed by Razorpay.
+          <ShieldCheck className="h-3.5 w-3.5" /> Payments are processed securely by Cashfree (UPI, cards,
+          netbanking, wallets). One-time payment — nothing renews automatically.
         </p>
       ) : (
         <p className="mt-4 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
@@ -227,6 +220,31 @@ export default function BillingPage() {
         </p>
       )}
 
+      {data.payments.length > 0 && (
+        <Card className="mt-8">
+          <CardHeader>
+            <CardTitle>Payments</CardTitle>
+          </CardHeader>
+          <CardContent className="divide-y text-sm">
+            {data.payments.map((p) => (
+              <div key={p.orderId} className="flex flex-wrap items-center justify-between gap-2 py-2.5">
+                <span>
+                  {data.plans.find((x) => x.id === p.plan)?.name ?? p.plan} · ₹
+                  {p.amountInr.toLocaleString('en-IN')} · {p.durationDays} days
+                  <span className="block text-xs text-muted-foreground">Order {p.orderId}</span>
+                </span>
+                <span className="flex items-center gap-3">
+                  <Badge variant={p.status === 'PAID' ? 'success' : 'destructive'}>
+                    {p.status === 'PAID' ? 'Paid' : 'Not completed'}
+                  </Badge>
+                  <span className="text-muted-foreground">{formatDateTime(p.paidAt ?? p.createdAt)}</span>
+                </span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
       {data.history.length > 0 && (
         <Card className="mt-8">
           <CardHeader>
@@ -242,6 +260,185 @@ export default function BillingPage() {
           </CardContent>
         </Card>
       )}
+      {buying && <CheckoutDialog plan={buying} onClose={() => setBuying(null)} />}
     </div>
+  );
+}
+
+type Payment = {
+  orderId: string;
+  plan: PlanId;
+  amountInr: number;
+  durationDays: number;
+  status: 'CREATED' | 'PAID' | 'FAILED';
+  error: string | null;
+  paidAt: string | null;
+  createdAt: string;
+};
+
+type CashfreeSDK = (o: { mode: 'sandbox' | 'production' }) => {
+  checkout: (o: { paymentSessionId: string; redirectTarget?: '_self' }) => Promise<unknown>;
+};
+
+/** Loads Cashfree's checkout script once (https://sdk.cashfree.com/js/v3/cashfree.js). */
+function loadCashfree(): Promise<CashfreeSDK> {
+  const w = window as unknown as { Cashfree?: CashfreeSDK };
+  if (w.Cashfree) return Promise.resolve(w.Cashfree);
+  return new Promise((resolve, reject) => {
+    const el = document.createElement('script');
+    el.src = 'https://sdk.cashfree.com/js/v3/cashfree.js';
+    el.onload = () => (w.Cashfree ? resolve(w.Cashfree) : reject(new Error('Cashfree did not load')));
+    el.onerror = () => reject(new Error('Could not load Cashfree checkout. Check your connection.'));
+    document.head.appendChild(el);
+  });
+}
+
+function CheckoutDialog({ plan, onClose }: { plan: PlanJSON; onClose: () => void }) {
+  const [phone, setPhone] = useState(() => {
+    try {
+      return localStorage.getItem('pa_pay_phone') ?? '';
+    } catch {
+      return '';
+    }
+  });
+  const digits = phone.replace(/\D/g, '').replace(/^(91|0)(?=\d{10}$)/, '');
+  const valid = /^[6-9]\d{9}$/.test(digits);
+  const pay = useAction(async () => {
+    const [order, Cashfree] = await Promise.all([
+      post<{ orderId: string; paymentSessionId: string; mode: 'sandbox' | 'production' }>(
+        '/billing/checkout',
+        {
+          plan: plan.id,
+          phone: digits,
+        },
+      ),
+      loadCashfree(),
+    ]);
+    try {
+      localStorage.setItem('pa_pay_phone', digits);
+    } catch {
+      /* optional convenience */
+    }
+    // leaves this page for Cashfree; the customer comes back to /billing?order_id=…
+    await Cashfree({ mode: order.mode }).checkout({
+      paymentSessionId: order.paymentSessionId,
+      redirectTarget: '_self',
+    });
+  }, {});
+  return (
+    <Dialog open onOpenChange={(o) => !o && !pay.isPending && onClose()}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Buy {plan.name}</DialogTitle>
+          <DialogDescription>
+            One-time payment for {plan.durationDays} days. Nothing renews automatically.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="flex items-baseline justify-between rounded-xl bg-primary-soft p-4">
+          <span className="font-medium">{plan.name}</span>
+          <span className="font-display text-2xl font-semibold">
+            ₹{plan.priceInr.toLocaleString('en-IN')}
+          </span>
+        </div>
+        <Field
+          label="Mobile number"
+          htmlFor="pay-phone"
+          hint="Cashfree needs it for the payment receipt."
+          error={phone && !valid ? 'Enter a valid 10-digit mobile number' : undefined}
+        >
+          <Input
+            id="pay-phone"
+            inputMode="tel"
+            autoComplete="tel-national"
+            placeholder="98765 43210"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+          />
+        </Field>
+        <Button
+          className="w-full"
+          size="lg"
+          disabled={!valid}
+          loading={pay.isPending}
+          onClick={() => pay.mutate(undefined)}
+        >
+          <CreditCard /> Pay ₹{plan.priceInr.toLocaleString('en-IN')} securely
+        </Button>
+        <p className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
+          <ShieldCheck className="h-3.5 w-3.5" /> UPI, cards, netbanking and wallets via Cashfree
+        </p>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** After Cashfree sends the customer back: confirm the order, then show the result. */
+function PaymentReturn() {
+  const params = useSearchParams();
+  const router = useRouter();
+  const qc = useQueryClient();
+  const orderId = params.get('order_id');
+  const { data } = useQuery({
+    queryKey: ['payment', orderId],
+    queryFn: () => get<{ payment: Payment }>(`/billing/orders/${encodeURIComponent(orderId!)}`),
+    enabled: !!orderId,
+    // the bank can take a few seconds to confirm
+    refetchInterval: (q) => (q.state.data?.payment.status === 'CREATED' ? 3000 : false),
+  });
+  const status = data?.payment.status;
+  useEffect(() => {
+    if (status === 'PAID') {
+      qc.invalidateQueries({ queryKey: ['billing'] });
+      qc.invalidateQueries({ queryKey: ['me'] });
+      qc.invalidateQueries({ queryKey: ['dashboard'] });
+    }
+  }, [status, qc]);
+  if (!orderId) return null;
+  const close = () => router.replace('/billing', { scroll: false });
+  return (
+    <Dialog open onOpenChange={(o) => !o && close()}>
+      <DialogContent className="text-center sm:max-w-sm">
+        {status === 'PAID' ? (
+          <>
+            <CheckCircle2 className="mx-auto h-14 w-14 text-success" />
+            <DialogTitle className="text-xl">Payment successful</DialogTitle>
+            <DialogDescription>
+              ₹{data!.payment.amountInr.toLocaleString('en-IN')} received. Your plan is active now.
+            </DialogDescription>
+            <Button onClick={close}>Continue</Button>
+          </>
+        ) : status === 'FAILED' ? (
+          <>
+            <XCircle className="mx-auto h-14 w-14 text-destructive" />
+            <DialogTitle className="text-xl">Payment not completed</DialogTitle>
+            <DialogDescription>
+              {data!.payment.error ?? 'No money was taken.'} You can try again.
+            </DialogDescription>
+            <Button onClick={close}>Back to plans</Button>
+          </>
+        ) : (
+          <>
+            <Loader2 className="mx-auto h-12 w-12 animate-spin text-primary" />
+            <DialogTitle className="text-xl">Confirming your payment…</DialogTitle>
+            <DialogDescription>
+              This usually takes a few seconds. If you closed the payment page, it stays unpaid and you can
+              try again.
+            </DialogDescription>
+            <Button variant="outline" onClick={close}>
+              Close
+            </Button>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+export default function BillingRoute() {
+  return (
+    <Suspense>
+      <BillingPage />
+      <PaymentReturn />
+    </Suspense>
   );
 }

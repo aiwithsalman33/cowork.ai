@@ -624,6 +624,17 @@ export default function Home() {
             {BRAND.url.replace('https://', '')}
           </p>
         </div>
+        <div className="mx-auto flex max-w-6xl flex-wrap gap-x-6 gap-y-2 border-t px-4 py-4 text-xs text-muted-foreground sm:px-6">
+          <Link href="/terms" className="hover:text-foreground">
+            Terms of Service
+          </Link>
+          <Link href="/refund-policy" className="hover:text-foreground">
+            Refund &amp; Cancellation
+          </Link>
+          <Link href="/privacy" className="hover:text-foreground">
+            Privacy Policy
+          </Link>
+        </div>
       </footer>
     </div>
   );

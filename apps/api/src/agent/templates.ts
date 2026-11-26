@@ -3,7 +3,6 @@
  * The tool is added to the agent only when the channel has approved templates marked "Use in AI bot".
  */
 import type { Channel, User } from '@prisma/client';
-import { PLANS } from '@cowork/shared';
 import { prisma } from '../db/client.js';
 import type { ToolDef } from '../llm/types.js';
 import { cloudConfig } from '../channels/index.js';
@@ -16,6 +15,7 @@ import {
 } from '../channels/template-fields.js';
 import * as cloud from '../channels/whatsapp-cloud.js';
 import { logEvent } from '../services/audit.js';
+import { plan } from '../services/plans.js';
 
 export const TEMPLATE_TOOL = 'send_whatsapp_template';
 
@@ -32,7 +32,7 @@ export async function buildTemplateTool(params: {
   to: string;
 }): Promise<TemplateTool | null> {
   const { channel } = params;
-  if (channel.type !== 'WHATSAPP_CLOUD' || !PLANS[params.plan].limits.templates) return null;
+  if (channel.type !== 'WHATSAPP_CLOUD' || !plan(params.plan).limits.templates) return null;
   const rows = await prisma.whatsAppTemplate.findMany({
     where: { channelId: channel.id, status: 'APPROVED', useInAi: true },
     orderBy: { name: 'asc' },

@@ -5,7 +5,6 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { Prisma, WhatsAppTemplate } from '@prisma/client';
 import { z } from 'zod';
-import { PLANS } from '@cowork/shared';
 import { authenticate, user } from '../plugins/auth.js';
 import { parse } from '../lib/validate.js';
 import { badRequest, notFound, paymentRequired } from '../lib/errors.js';
@@ -14,6 +13,7 @@ import { logEvent } from '../services/audit.js';
 import { cloudConfig } from '../channels/index.js';
 import { templateFields, unsupportedReason } from '../channels/template-fields.js';
 import * as cloud from '../channels/whatsapp-cloud.js';
+import { plan } from '../services/plans.js';
 
 const idParam = z.object({ id: z.string().min(1) });
 const tplParam = z.object({ id: z.string().min(1), tplId: z.string().min(1) });
@@ -69,7 +69,7 @@ export async function templateRoutes(app: FastifyInstance) {
 
   async function cloudChannel(req: FastifyRequest, id: string) {
     const u = user(req);
-    if (!PLANS[u.plan].limits.templates) {
+    if (!plan(u.plan).limits.templates) {
       throw paymentRequired('WhatsApp templates are part of the Growth plan. Upgrade to Growth to use them.');
     }
     const channel = await req.db.channel.findFirst({ where: { id, type: 'WHATSAPP_CLOUD' } });

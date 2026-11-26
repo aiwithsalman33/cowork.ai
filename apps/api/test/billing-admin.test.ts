@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PLANS } from '@cowork/shared';
+import { PLANS, planToJSON } from '@cowork/shared';
 import { hmacSha256Hex } from '../src/lib/crypto.js';
 import { isPlanActive } from '../src/services/plan.js';
 import { call, cookiesFrom, getApp, prisma, signup, testOutbox } from './helpers.js';
@@ -284,5 +284,33 @@ describe('admin approval (payments on hold)', () => {
         approvedAt: null,
       }),
     ).toBe(false);
+  });
+});
+
+describe('admin plan editing', () => {
+  it('admins edit a plan; prices, limits and the pricing page follow; reset restores defaults', async () => {
+    const app = await getApp();
+    const admin = await adminSession();
+    const s = await signup();
+    const body = {
+      ...planToJSON(PLANS.TRIAL),
+      name: 'Try it free',
+      durationDays: 14,
+      features: ['Everything'],
+      limits: { ...planToJSON(PLANS.TRIAL).limits, channels: 0 },
+    };
+    expect((await call(s, 'PUT', '/api/admin/plans/TRIAL', body)).statusCode).toBe(403);
+    expect((await call(admin, 'PUT', '/api/admin/plans/TRIAL', { ...body, priceInr: 99 })).statusCode).toBe(400);
+    expect((await call(admin, 'PUT', '/api/admin/plans/TRIAL', body)).statusCode).toBe(200);
+
+    const pub = await app.inject({ method: 'GET', url: '/api/public/plans' });
+    expect(pub.json().plans[0]).toMatchObject({ id: 'TRIAL', name: 'Try it free', durationDays: 14 });
+    // the new channel limit applies right away
+    const tg = await call(s, 'POST', '/api/channels/telegram', { botToken: '123456789:AAH' + 'x'.repeat(32) });
+    expect(tg.statusCode).toBe(402);
+    expect(tg.json().error).toMatch(/Try it free/);
+
+    const reset = await call(admin, 'DELETE', '/api/admin/plans/TRIAL');
+    expect(reset.json().plan).toMatchObject({ name: PLANS.TRIAL.name, durationDays: PLANS.TRIAL.durationDays });
   });
 });

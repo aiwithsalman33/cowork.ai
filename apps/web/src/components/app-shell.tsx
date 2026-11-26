@@ -14,6 +14,7 @@ import {
   ChevronsRight,
   Clock,
   CreditCard,
+  Crown,
   FileText,
   LayoutDashboard,
   LogOut,
@@ -26,6 +27,7 @@ import {
   Shield,
   Sun,
   UserX,
+  Users,
   X,
   type LucideIcon,
 } from 'lucide-react';
@@ -44,6 +46,7 @@ import {
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
 import { post } from '@/lib/api';
+import { usePublicPlans } from '@/lib/plans';
 import { cn } from '@/lib/utils';
 
 export interface NavItem {
@@ -70,12 +73,13 @@ export const TENANT_NAV: NavItem[] = [
 
 export const ADMIN_NAV: NavItem[] = [
   { href: '/admin', label: 'Overview', icon: BarChart3 },
-  { href: '/admin/users', label: 'Users', icon: LayoutDashboard },
-  { href: '/admin/skills', label: 'Skill Library', icon: Bot },
-  { href: '/admin/flags', label: 'Feature Flags', icon: Shield },
-  { href: '/admin/contacts', label: 'Contact Messages', icon: MessagesSquare },
-  { href: '/admin/requests', label: 'Integration Requests', icon: Plug },
-  { href: '/admin/audit', label: 'Audit Log', icon: ScrollText },
+  { href: '/admin/users', label: 'Users', icon: Users, group: 'Customers' },
+  { href: '/admin/plans', label: 'Plans & pricing', icon: Crown },
+  { href: '/admin/contacts', label: 'Contact messages', icon: MessagesSquare },
+  { href: '/admin/requests', label: 'Integration requests', icon: Plug },
+  { href: '/admin/skills', label: 'Skill library', icon: Bot, group: 'Platform' },
+  { href: '/admin/flags', label: 'Feature flags', icon: Shield },
+  { href: '/admin/audit', label: 'Audit log', icon: ScrollText },
 ];
 
 function useCountdown(iso: string | null) {
@@ -108,7 +112,7 @@ function TrialBanner({ me }: { me: MeDTO }) {
       <span>
         {expired
           ? me.plan === 'TRIAL'
-            ? 'Your 7-day free trial has ended — purchase Starter (₹499) or Growth (₹999) to keep your agent replying.'
+            ? 'Your free trial has ended — purchase a plan to keep your agent replying.'
             : 'Your plan has expired — renew it to keep your agent replying.'
           : `Free trial (Telegram only) · ${left} left.`}
       </span>
@@ -215,6 +219,8 @@ export function AppShell({ me, nav, children }: { me: MeDTO; nav: NavItem[]; chi
   const qc = useQueryClient();
   const isAdminArea = nav === ADMIN_NAV;
   const pathname = usePathname();
+  const livePlans = usePublicPlans();
+  const planName = (id: string) => livePlans.find((p) => p.id === id)?.name ?? id;
   const current = nav.findLast((n) => pathname === n.href || pathname.startsWith(`${n.href}/`));
 
   useEffect(() => {
@@ -358,7 +364,7 @@ export function AppShell({ me, nav, children }: { me: MeDTO; nav: NavItem[]; chi
                 href="/billing"
                 className="hidden rounded-full bg-primary-soft px-3 py-1 text-xs font-semibold text-primary sm:block"
               >
-                {me.plan === 'TRIAL' ? 'Free trial' : me.plan === 'STARTER' ? 'Starter plan' : 'Growth plan'}
+                {planName(me.plan)}
               </Link>
             )}
             {!isAdminArea && me.plan === 'TRIAL' && (

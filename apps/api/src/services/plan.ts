@@ -1,5 +1,6 @@
 import type { User, ChannelType } from '@prisma/client';
-import { PLANS, type PlanLimits } from '@cowork/shared';
+import type { PlanLimits } from '@cowork/shared';
+import { plan } from './plans.js';
 import { prisma } from '../db/client.js';
 import { paymentRequired } from '../lib/errors.js';
 
@@ -20,7 +21,7 @@ export function isPlanActive(user: PlanUser, now = new Date()): boolean {
 }
 
 export function limitsFor(user: Pick<User, 'plan'>): PlanLimits {
-  return PLANS[user.plan].limits;
+  return plan(user.plan).limits;
 }
 
 export function monthStart(now = new Date()): Date {
@@ -44,20 +45,20 @@ export async function assertCanAddChannel(user: Pick<User, 'id' | 'plan'>, type:
     throw paymentRequired(
       user.plan === 'TRIAL'
         ? `The free trial includes Telegram only. Purchase a plan to use ${label}.`
-        : `${label} is not included in the ${PLANS[user.plan].name} plan. Upgrade to Growth to use it.`,
+        : `${label} is not included in the ${plan(user.plan).name} plan. Upgrade your plan to use it.`,
     );
   }
   const channels = await prisma.channel.findMany({ where: { userId: user.id }, select: { type: true } });
   if (channels.length >= limits.channels) {
     throw paymentRequired(
-      `Your ${PLANS[user.plan].name} plan allows ${limits.channels} channels. Upgrade to add more.`,
+      `Your ${plan(user.plan).name} plan allows ${limits.channels} channels. Upgrade to add more.`,
     );
   }
   if (type === 'WHATSAPP_QR') {
     const qr = channels.filter((c) => c.type === 'WHATSAPP_QR').length;
     if (qr >= limits.whatsappSessions) {
       throw paymentRequired(
-        `Your ${PLANS[user.plan].name} plan allows ${limits.whatsappSessions} WhatsApp QR session(s). Upgrade to add more.`,
+        `Your ${plan(user.plan).name} plan allows ${limits.whatsappSessions} WhatsApp QR session(s). Upgrade to add more.`,
       );
     }
   }
@@ -69,7 +70,7 @@ export async function assertCanEnableSkill(user: Pick<User, 'id' | 'plan'>) {
   const enabled = await prisma.userSkill.count({ where: { userId: user.id, enabled: true } });
   if (enabled >= limits.skills) {
     throw paymentRequired(
-      `Your ${PLANS[user.plan].name} plan allows ${limits.skills} active skills. Upgrade for more.`,
+      `Your ${plan(user.plan).name} plan allows ${limits.skills} active skills. Upgrade for more.`,
     );
   }
 }

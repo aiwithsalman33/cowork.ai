@@ -18,7 +18,8 @@ import {
   Zap,
   type LucideIcon,
 } from 'lucide-react';
-import { BRAND, PLANS, formatLimit, whatsappLink } from '@cowork/shared';
+import { BRAND, whatsappLink } from '@cowork/shared';
+import { PricingCards } from '@/components/landing/pricing-cards';
 import { Logo } from '@/components/brand';
 import { Button } from '@/components/ui/button';
 import { LandingNav } from '@/components/landing/nav';
@@ -474,66 +475,9 @@ export default function Home() {
             title="Create your 24/7 AI co-worker"
             sub="Costs less than what you spend on chai every month."
           />
-          <div className="mx-auto mt-12 grid max-w-5xl gap-5 md:grid-cols-3">
-            {Object.values(PLANS).map((p) => {
-              const popular = p.id === 'STARTER';
-              return (
-                <div
-                  key={p.id}
-                  className={`relative flex flex-col rounded-2xl border bg-card p-7 ${popular ? 'border-2 border-primary shadow-xl shadow-primary/10' : ''}`}
-                >
-                  {(p.id === 'TRIAL' || popular) && (
-                    <span
-                      className={`absolute -top-px right-6 rounded-b-lg px-3 py-1 text-[11px] font-bold uppercase text-white ${popular ? 'bg-primary' : 'bg-emerald-600'}`}
-                    >
-                      {popular ? 'Most popular' : 'Start free'}
-                    </span>
-                  )}
-                  <h3 className="font-display text-xl font-bold">{p.name}</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">{p.tagline}</p>
-                  <p className="mt-6 flex items-baseline gap-1.5">
-                    <span className="font-display text-5xl font-bold">
-                      {p.priceInr === 0 ? 'Free' : `₹${p.priceInr.toLocaleString('en-IN')}`}
-                    </span>
-                    <span className="text-sm text-muted-foreground">
-                      {p.priceInr === 0 ? 'for 7 days' : '/month'}
-                    </span>
-                  </p>
-                  <ul className="mt-6 flex-1 space-y-2.5 text-sm">
-                    <li className="flex gap-2">
-                      <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />{' '}
-                      {formatLimit(p.limits.messagesPerMonth)} AI replies
-                    </li>
-                    {p.features.map((f) => (
-                      <li key={f} className="flex gap-2">
-                        <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" /> {f}
-                      </li>
-                    ))}
-                  </ul>
-                  <Button
-                    className="mt-7 w-full rounded-xl"
-                    size="lg"
-                    variant={popular ? 'default' : 'outline'}
-                    asChild
-                  >
-                    {p.id === 'TRIAL' ? (
-                      <Link href="/signup">Start free trial</Link>
-                    ) : (
-                      <a
-                        href={whatsappLink(`Hi! I'm interested in the ${BRAND.name} ${p.name} plan.`)}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        Get {p.name}
-                      </a>
-                    )}
-                  </Button>
-                </div>
-              );
-            })}
-          </div>
+          <PricingCards />
           <p className="mt-6 text-center text-sm text-muted-foreground">
-            New accounts are approved by our team — usually within a few hours.
+            Sign up and start right away. No card needed for the free trial.
           </p>
         </div>
       </section>

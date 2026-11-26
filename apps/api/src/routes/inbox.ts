@@ -1,18 +1,13 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { MessageDTO } from '@cowork/shared';
-import {
-  appointmentUpdateSchema,
-  normalizePhone,
-  paginationSchema,
-  PLANS,
-  scheduleSchema,
-} from '@cowork/shared';
+import { appointmentUpdateSchema, normalizePhone, paginationSchema, scheduleSchema } from '@cowork/shared';
 import { authenticate, user } from '../plugins/auth.js';
 import { parse } from '../lib/validate.js';
 import { badRequest, notFound, paymentRequired } from '../lib/errors.js';
 import { toConversationDTO } from '../services/dto.js';
 import { openCloudConversation, sendOwnerReply, sendOwnerTemplate } from '../services/pipeline.js';
+import { plan } from '../services/plans.js';
 
 const idParam = z.object({ id: z.string().min(1) });
 
@@ -116,7 +111,7 @@ export async function inboxRoutes(app: FastifyInstance) {
         req.body,
       );
       const u = user(req);
-      if (!PLANS[u.plan].limits.templates)
+      if (!plan(u.plan).limits.templates)
         throw paymentRequired('WhatsApp templates are part of the Growth plan. Upgrade to use them.');
       const convo = await req.db.conversation.findFirst({ where: { id } });
       if (!convo) throw notFound('Conversation not found');
@@ -144,7 +139,7 @@ export async function inboxRoutes(app: FastifyInstance) {
         req.body,
       );
       const u = user(req);
-      if (!PLANS[u.plan].limits.templates)
+      if (!plan(u.plan).limits.templates)
         throw paymentRequired('WhatsApp templates are part of the Growth plan. Upgrade to use them.');
       const channel = await req.db.channel.findFirst({
         where: { id: input.channelId, type: 'WHATSAPP_CLOUD' },

@@ -5,6 +5,7 @@ import { registerHandlers, startQueue, stopQueue } from './queue/index.js';
 import { ingestInbound, processInbound } from './services/pipeline.js';
 import { summarizeConversation } from './services/memory.js';
 import { markExpiredTrials, runDueSchedules } from './services/schedules.js';
+import { startPlanRefresh } from './services/plans.js';
 import { bootSessions, setInboundHandler, stopAllSessions } from './channels/baileys.js';
 
 let wired = false;
@@ -29,6 +30,7 @@ export function wireHandlers() {
 
 export async function startBackground(log: FastifyBaseLogger) {
   wireHandlers();
+  await startPlanRefresh();
   await startQueue(env.WORKERS_ENABLED);
   if (env.BAILEYS_ENABLED) await bootSessions();
   log.info('background services started');

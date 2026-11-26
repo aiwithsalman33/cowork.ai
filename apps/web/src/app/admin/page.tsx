@@ -6,6 +6,7 @@ import {
   AlertTriangle,
   Bot,
   Coins,
+  Crown,
   IndianRupee,
   MessageCircle,
   UserPlus,
@@ -13,9 +14,11 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { PageHeader, Skeleton } from '@/components/ui/misc';
 import { MessagesChart, SignupsChart, TokensChart } from '@/components/admin/charts';
 import { get } from '@/lib/api';
+import { usePublicPlans } from '@/lib/plans';
 import { formatInr, formatNumber } from '@/lib/utils';
 
 type Overview = {
@@ -47,17 +50,20 @@ function Kpi({
 }) {
   return (
     <Card className="p-4">
-      <div className="flex items-center justify-between text-xs font-medium text-muted-foreground">
+      <div className="flex items-center justify-between gap-2 text-xs font-medium text-muted-foreground">
         {label}
-        <Icon className="h-4 w-4 text-primary" />
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-soft text-primary">
+          <Icon className="h-4 w-4" />
+        </span>
       </div>
-      <div className="mt-2 text-2xl font-semibold tabular-nums">{value}</div>
+      <div className="mt-1 text-2xl font-semibold tabular-nums">{value}</div>
       {hint && <div className="text-xs text-muted-foreground">{hint}</div>}
     </Card>
   );
 }
 
 export default function AdminOverview() {
+  const plans = usePublicPlans();
   const { data, isLoading } = useQuery({
     queryKey: ['admin-overview'],
     queryFn: () => get<Overview>('/admin/overview'),
@@ -80,7 +86,17 @@ export default function AdminOverview() {
   const totalPlans = data.plans.reduce((s, p) => s + p.count, 0) || 1;
   return (
     <div className="space-y-6">
-      <PageHeader title="Platform overview" description="Last 30 days across all tenants." />
+      <PageHeader
+        title="Platform overview"
+        description="Last 30 days across all tenants."
+        actions={
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/admin/plans">
+              <Crown /> Edit plans
+            </Link>
+          </Button>
+        }
+      />
       {k.pendingApprovals > 0 && (
         <Link
           href="/admin/users?status=PENDING"
@@ -153,7 +169,7 @@ export default function AdminOverview() {
             {data.plans.map((p) => (
               <div key={p.plan}>
                 <div className="mb-1 flex justify-between text-sm">
-                  <span>{p.plan.charAt(0) + p.plan.slice(1).toLowerCase()}</span>
+                  <span>{plans.find((x) => x.id === p.plan)?.name ?? p.plan}</span>
                   <span className="font-medium tabular-nums">{p.count}</span>
                 </div>
                 <div className="h-2 overflow-hidden rounded-full bg-muted">

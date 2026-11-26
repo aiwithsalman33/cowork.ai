@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
-import { checkoutSchema, PLANS } from '@cowork/shared';
+import { checkoutSchema } from '@cowork/shared';
+import { allPlansJSON, plan as planDef } from '../services/plans.js';
 import { authenticate, user } from '../plugins/auth.js';
 import { parse } from '../lib/validate.js';
 import { badRequest } from '../lib/errors.js';
@@ -37,14 +38,14 @@ export async function billingRoutes(app: FastifyInstance) {
       currentPeriodEnd: u.currentPeriodEnd,
       pendingPlan: u.pendingPlan,
       usage: {
-        messages: { used: messages, limit: limits.messagesPerMonth },
-        channels: { used: channels, limit: limits.channels },
+        messages: {
+          used: messages,
+          limit: Number.isFinite(limits.messagesPerMonth) ? limits.messagesPerMonth : null,
+        },
+        channels: { used: channels, limit: Number.isFinite(limits.channels) ? limits.channels : null },
         skills: { used: skills, limit: Number.isFinite(limits.skills) ? limits.skills : null },
       },
-      plans: Object.values(PLANS).map((p) => ({
-        ...p,
-        limits: { ...p.limits, skills: Number.isFinite(p.limits.skills) ? p.limits.skills : null },
-      })),
+      plans: allPlansJSON(),
       razorpayConfigured: razorpayConfigured(),
       billingEnabled: env.BILLING_ENABLED && razorpayConfigured(),
       history: events,
@@ -62,7 +63,7 @@ export async function billingRoutes(app: FastifyInstance) {
         throw badRequest('Online payments are coming soon. Please contact us to upgrade your plan.');
       }
       if (u.plan === plan && isPlanActive(u) && u.subscriptionStatus === 'active')
-        throw badRequest(`You are already on ${PLANS[plan].name}`);
+        throw badRequest(`You are already on ${planDef(plan).name}`);
       try {
         const { shortUrl } = await createCheckout(u.id, plan);
         await audit(u.id, 'billing.checkout_started', { type: 'plan', id: plan });

@@ -6,7 +6,6 @@ import {
   resetPasswordSchema,
   signupSchema,
   verifyEmailSchema,
-  TRIAL_HOURS,
 } from '@cowork/shared';
 import { env } from '../config.js';
 import { prisma } from '../db/client.js';
@@ -19,6 +18,7 @@ import {
   sendMail,
   verificationEmail,
 } from '../lib/mailer.js';
+import { trialMs } from '../services/plans.js';
 import { logger } from '../lib/logger.js';
 import { hashPassword, verifyPassword, fakeVerify } from '../auth/password.js';
 import {
@@ -77,7 +77,7 @@ export async function authRoutes(app: FastifyInstance) {
         emailVerifiedAt: now,
         approvedAt: now,
         plan: 'TRIAL',
-        trialEndsAt: new Date(now.getTime() + TRIAL_HOURS * 3600_000),
+        trialEndsAt: new Date(now.getTime() + trialMs()),
         agent: { create: { businessName: input.businessName ?? '', name: 'Assistant' } },
         userSkills: { create: defaultSkills.map((s) => ({ skillId: s.id, enabled: true })) },
       },
@@ -114,9 +114,7 @@ export async function authRoutes(app: FastifyInstance) {
         ...(!current.approvedAt
           ? {
               approvedAt: new Date(),
-              ...(current.plan === 'TRIAL'
-                ? { trialEndsAt: new Date(Date.now() + TRIAL_HOURS * 3600_000) }
-                : {}),
+              ...(current.plan === 'TRIAL' ? { trialEndsAt: new Date(Date.now() + trialMs()) } : {}),
             }
           : {}),
       },

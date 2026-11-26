@@ -250,3 +250,23 @@ export const paginationSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(5).max(100).default(30),
 });
+
+// ---------- Plans (admin) ----------
+const limitNum = z.number().int().min(0).max(10_000_000).nullable();
+export const planUpdateSchema = z.object({
+  name: z.string().trim().min(2).max(40),
+  tagline: z.string().trim().max(120).default(''),
+  priceInr: z.number().int().min(0).max(1_000_000),
+  durationDays: z.number().int().min(1).max(366),
+  popular: z.boolean().default(false),
+  features: z.array(z.string().trim().min(1).max(120)).max(15).default([]),
+  limits: z.object({
+    channels: limitNum,
+    whatsappSessions: z.number().int().min(0).max(50),
+    messagesPerMonth: limitNum,
+    skills: limitNum,
+    channelTypes: z.array(z.enum(['TELEGRAM', 'WHATSAPP_QR', 'WHATSAPP_CLOUD'])).min(1),
+    templates: z.boolean(),
+  }),
+});
+export type PlanUpdateInput = z.infer<typeof planUpdateSchema>;

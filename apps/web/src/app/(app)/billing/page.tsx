@@ -1,7 +1,7 @@
 'use client';
 import { useQuery } from '@tanstack/react-query';
 import { AlertTriangle, Check, CreditCard, Crown, MessageCircle, ShieldCheck } from 'lucide-react';
-import { BRAND, whatsappLink, type PlanDef, type PlanId } from '@cowork/shared';
+import { BRAND, limitLines, whatsappLink, type PlanId, type PlanJSON } from '@cowork/shared';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -19,9 +19,7 @@ type BillingRes = {
   currentPeriodEnd: string | null;
   pendingPlan: PlanId | null;
   usage: { messages: Usage; channels: Usage; skills: Usage };
-  plans: (Omit<PlanDef, 'limits'> & {
-    limits: { channels: number; whatsappSessions: number; messagesPerMonth: number; skills: number | null };
-  })[];
+  plans: PlanJSON[];
   razorpayConfigured: boolean;
   billingEnabled: boolean;
   history: { id: string; message: string; createdAt: string; level: string }[];
@@ -63,10 +61,7 @@ export default function BillingPage() {
 
   return (
     <div>
-      <PageHeader
-        title="Billing"
-        description="Free 7-day trial on Telegram, then Starter ₹499/month or Growth ₹999/month (all features)."
-      />
+      <PageHeader title="Billing" description="Your plan, usage and upgrades." />
 
       {!data.planActive && (
         <div className="mb-6 flex items-start gap-3 rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm">
@@ -74,10 +69,10 @@ export default function BillingPage() {
           <div>
             <p className="font-semibold text-destructive">Your agent has stopped replying.</p>
             <p className="text-muted-foreground">
-              {data.plan === 'TRIAL' ? 'Your 7-day free trial has ended.' : 'Your plan is not active.'}{' '}
+              {data.plan === 'TRIAL' ? 'Your free trial has ended.' : 'Your plan is not active.'}{' '}
               {data.billingEnabled
                 ? 'Choose a plan below to turn it back on instantly.'
-                : 'Purchase Starter (₹499/month) or Growth (₹999/month) below to turn it back on.'}
+                : 'Purchase a plan below to turn it back on.'}
             </p>
           </div>
         </div>
@@ -161,12 +156,7 @@ export default function BillingPage() {
                 )}
               </p>
               <ul className="mt-5 flex-1 space-y-2 text-sm">
-                <li className="flex gap-2">
-                  <Check className="h-4 w-4 text-primary" />{' '}
-                  {p.limits.messagesPerMonth.toLocaleString('en-IN')} AI replies /{' '}
-                  {p.id === 'TRIAL' ? 'trial' : 'month'}
-                </li>
-                {p.features.map((f) => (
+                {[...limitLines(p), ...p.features].map((f) => (
                   <li key={f} className="flex gap-2">
                     <Check className="h-4 w-4 text-primary" /> {f}
                   </li>

@@ -99,7 +99,10 @@ export async function dashboardRoutes(app: FastifyInstance) {
         model: agent?.model ?? null,
         planActive,
       },
-      usage: { messagesThisMonth: monthUsed, messageLimit: limitsFor(u).messagesPerMonth },
+      usage: {
+        messagesThisMonth: monthUsed,
+        messageLimit: Number.isFinite(limitsFor(u).messagesPerMonth) ? limitsFor(u).messagesPerMonth : 0,
+      },
     };
   });
 }

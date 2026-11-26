@@ -542,3 +542,10 @@ model WhatsAppTemplate {
   @@unique([channelId, name, language])
   @@index([userId])
 }
+
+/** Admin-edited plan details (Admin → Plans). Missing rows fall back to the defaults in code. */
+model PlanSetting {
+  plan      String   @id
+  data      Json
+  updatedAt DateTime @updatedAt
+}

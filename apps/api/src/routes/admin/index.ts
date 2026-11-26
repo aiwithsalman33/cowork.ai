@@ -2,12 +2,15 @@ import type { FastifyInstance } from 'fastify';
 import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import {
-  PLANS,
-  TRIAL_HOURS,
   adminUserQuerySchema,
   adminUserUpdateSchema,
   featureFlagSchema,
   paginationSchema,
+  planUpdateSchema,
+  PLAN_IDS,
+  PLANS,
+  planToJSON,
+  type PlanId,
   skillUpsertSchema,
 } from '@cowork/shared';
 import { prisma } from '../../db/client.js';
@@ -17,6 +20,7 @@ import { badRequest, conflict, notFound } from '../../lib/errors.js';
 import { issueSession } from '../../auth/session.js';
 import { audit } from '../../services/audit.js';
 import { isPlanActive, messagesThisMonth } from '../../services/plan.js';
+import { allPlansJSON, plan, refreshPlans, trialMs } from '../../services/plans.js';
 import { invalidateFlags } from '../../services/flags.js';
 import { toMeDTO } from '../../services/me.js';
 import { logoutSession } from '../../channels/baileys.js';
@@ -103,7 +107,7 @@ export async function adminRoutes(app: FastifyInstance) {
           },
         })
       : [];
-    const mrr = paidUsers.filter((u) => isPlanActive(u)).reduce((s, u) => s + PLANS[u.plan].priceInr, 0);
+    const mrr = paidUsers.filter((u) => isPlanActive(u)).reduce((s, u) => s + plan(u.plan).priceInr, 0);
 
     // fill missing days with zeros for charts
     const days: string[] = [];
@@ -293,10 +297,10 @@ export async function adminRoutes(app: FastifyInstance) {
     if (input.role) data.role = input.role;
     if (input.plan) {
       data.plan = input.plan;
-      if (input.plan === 'TRIAL') data.trialEndsAt = new Date(Date.now() + TRIAL_HOURS * 3600_000);
+      if (input.plan === 'TRIAL') data.trialEndsAt = new Date(Date.now() + trialMs());
       // manual plan grant by admin: 30 days of access unless a live subscription manages it
       else if (!target.razorpaySubscriptionId || target.subscriptionStatus !== 'active')
-        data.currentPeriodEnd = new Date(Date.now() + 30 * 86400_000);
+        data.currentPeriodEnd = new Date(Date.now() + plan(input.plan).durationDays * 86400_000);
     }
     if (input.verifyEmail && !target.emailVerifiedAt) data.emailVerifiedAt = new Date();
     const approving = input.approve && !target.approvedAt;
@@ -305,7 +309,7 @@ export async function adminRoutes(app: FastifyInstance) {
       data.emailVerifiedAt = target.emailVerifiedAt ?? new Date();
       // the free trial starts when access is granted
       if (target.plan === 'TRIAL' && !input.extendTrialHours)
-        data.trialEndsAt = new Date(Date.now() + TRIAL_HOURS * 3600_000);
+        data.trialEndsAt = new Date(Date.now() + trialMs());
     }
     if (input.extendTrialHours) {
       const base = target.trialEndsAt && target.trialEndsAt > new Date() ? target.trialEndsAt : new Date();
@@ -423,6 +427,52 @@ export async function adminRoutes(app: FastifyInstance) {
     await prisma.skill.delete({ where: { id } });
     await audit(user(req).id, 'skill.delete', { type: 'skill', id }, { slug: existing.slug }, req.ip);
     return { ok: true };
+  });
+
+  // ---------------- Plans ----------------
+  const planParam = z.object({ id: z.enum(PLAN_IDS) });
+
+  app.get('/plans', async () => {
+    const counts = await prisma.user.groupBy({ by: ['plan'], where: { role: 'USER' }, _count: true });
+    const custom = await prisma.planSetting.findMany({ select: { plan: true, updatedAt: true } });
+    return {
+      plans: allPlansJSON().map((p) => ({
+        ...p,
+        users: counts.find((c) => c.plan === p.id)?._count ?? 0,
+        customizedAt: custom.find((c) => c.plan === p.id)?.updatedAt ?? null,
+      })),
+    };
+  });
+
+  app.put('/plans/:id', async (req) => {
+    const { id } = parse(planParam, req.params);
+    const input = parse(planUpdateSchema, req.body);
+    if (id === 'TRIAL' && input.priceInr !== 0) throw badRequest('The free trial must cost ₹0');
+    if (id !== 'TRIAL' && input.priceInr === 0) throw badRequest('Paid plans need a price above ₹0');
+    const data = { ...input, id } as unknown as Prisma.InputJsonValue;
+    await prisma.planSetting.upsert({ where: { plan: id }, create: { plan: id, data }, update: { data } });
+    if (input.popular)
+      // only one plan is "Most popular"
+      for (const other of PLAN_IDS.filter((p) => p !== id && plan(p).popular)) {
+        const d = { ...planToJSON(plan(other)), popular: false } as unknown as Prisma.InputJsonValue;
+        await prisma.planSetting.upsert({
+          where: { plan: other },
+          create: { plan: other, data: d },
+          update: { data: d },
+        });
+      }
+    await refreshPlans();
+    await audit(user(req).id, 'plan.update', { type: 'plan', id }, input, req.ip);
+    return { plan: planToJSON(plan(id as PlanId)) };
+  });
+
+  /** Back to the built-in defaults. */
+  app.delete('/plans/:id', async (req) => {
+    const { id } = parse(planParam, req.params);
+    await prisma.planSetting.deleteMany({ where: { plan: id } });
+    await refreshPlans();
+    await audit(user(req).id, 'plan.reset', { type: 'plan', id }, undefined, req.ip);
+    return { plan: planToJSON(plan(id)), defaults: planToJSON(PLANS[id]) };
   });
 
   // ---------------- Feature flags ----------------

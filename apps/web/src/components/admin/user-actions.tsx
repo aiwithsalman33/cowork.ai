@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { Ban, Clock, LogIn, MailCheck, MoreHorizontal, ShieldCheck, Trash2, UserCheck } from 'lucide-react';
-import { PLAN_IDS, type PlanId } from '@cowork/shared';
+import type { PlanId } from '@cowork/shared';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/dialog';
 import { del, patch, post } from '@/lib/api';
 import { useAction } from '@/lib/hooks';
+import { usePublicPlans } from '@/lib/plans';
 
 type Row = {
   id: string;
@@ -78,6 +79,7 @@ export function UserActionsMenu({
   onDeleted?: () => void;
 }) {
   const actions = useUserActions(onDeleted);
+  const plans = usePublicPlans();
   const [confirm, setConfirm] = useState(false);
   return (
     <>
@@ -114,9 +116,12 @@ export function UserActionsMenu({
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuLabel>Change plan</DropdownMenuLabel>
-          {PLAN_IDS.map((p) => (
-            <DropdownMenuItem key={p} onClick={() => actions.update.mutate({ id: u.id, plan: p })}>
-              <ShieldCheck /> {p.charAt(0) + p.slice(1).toLowerCase()}
+          {plans.map((p) => (
+            <DropdownMenuItem key={p.id} onClick={() => actions.update.mutate({ id: u.id, plan: p.id })}>
+              <ShieldCheck /> {p.name}
+              <span className="ml-auto text-xs text-muted-foreground">
+                {p.priceInr ? `₹${p.priceInr} · ${p.durationDays}d` : `${p.durationDays}-day trial`}
+              </span>
             </DropdownMenuItem>
           ))}
           <DropdownMenuSeparator />

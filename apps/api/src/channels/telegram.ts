@@ -73,9 +73,12 @@ export function normalizeUpdate(u: TelegramUpdate): NormalizedInbound | null {
   const m = u.message;
   if (!m || m.chat.type !== 'private' || m.from?.is_bot) return null;
   const name = [m.from?.first_name, m.from?.last_name].filter(Boolean).join(' ') || m.from?.username || null;
-  // A contact shared by the user themself gives us their phone (used for Boss Mode).
+  // Only the sender's OWN contact card reveals their phone. A card without user_id, or for someone
+  // else, is just text: anyone can share a card with any number on it (audit C1).
   const ownContact =
-    m.contact && (!m.contact.user_id || m.contact.user_id === m.from?.id) ? m.contact.phone_number : null;
+    m.contact && m.contact.user_id !== undefined && m.contact.user_id === m.from?.id
+      ? m.contact.phone_number
+      : null;
   const text = m.text ?? m.caption ?? (ownContact ? '[shared contact]' : null);
   if (!text) return null;
   return {

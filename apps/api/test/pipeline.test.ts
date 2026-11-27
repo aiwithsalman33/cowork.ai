@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PLANS } from '@cowork/shared';
 import { buildComponents, checkValues, templateFields } from '../src/channels/template-fields.js';
 import { textOf } from '../src/channels/baileys.js';
+import { normalizeUpdate } from '../src/channels/telegram.js';
 import { encrypt, encryptJson, hmacSha256Hex } from '../src/lib/crypto.js';
 import { call, getApp, prisma, signup, type Session } from './helpers.js';
 
@@ -224,22 +225,76 @@ describe('telegram webhook → agent reply', () => {
   });
 });
 
-describe('Boss Mode', () => {
-  it('lets a whitelisted owner number update the knowledge base', async () => {
+describe('Boss Mode (C1)', () => {
+  const contactCard = (userId?: number) =>
+    tgUpdate('', {
+      text: undefined,
+      contact: { phone_number: '+91 98765 43210', ...(userId === undefined ? {} : { user_id: userId }) },
+    });
+
+  it('a shared contact card only counts as the sender’s phone when it is their own', () => {
+    expect(normalizeUpdate(contactCard() as never)).toBeNull();
+    expect(normalizeUpdate(contactCard(999) as never)).toBeNull();
+    expect(normalizeUpdate(contactCard(555001) as never)?.phone).toBe('919876543210');
+  });
+
+  it('a stranger sharing the owner’s number on Telegram gets a normal AI reply, not Boss Mode', async () => {
     const { s, channel } = await setupTenant();
     await prisma.user.update({ where: { id: s.userId }, data: { bossNumbers: ['919876543210'] } });
-    // owner shares their contact so Telegram reveals the phone number
-    await postTelegram(
-      channel.id,
-      tgUpdate('', { text: undefined, contact: { phone_number: '+91 98765 43210', user_id: 555001 } }),
-    );
+    await postTelegram(channel.id, contactCard());
+    await postTelegram(channel.id, contactCard(555001)); // even their own card: phones never grant Boss Mode on Telegram
+    await postTelegram(channel.id, tgUpdate('info: we are closed forever'));
+    const agent = await prisma.agent.findUniqueOrThrow({ where: { userId: s.userId } });
+    expect(agent.businessDetails).not.toContain('closed forever');
+    expect(await prisma.message.count({ where: { userId: s.userId, role: 'SYSTEM' } })).toBe(0);
+    expect(await prisma.message.count({ where: { userId: s.userId, role: 'ASSISTANT' } })).toBeGreaterThan(0);
+  });
+
+  it('links Telegram with a one-time code, then Boss Mode works', async () => {
+    const { s, channel } = await setupTenant();
+    const { code } = (await call(s, 'POST', '/api/agent/boss-link-code')).json();
+    expect(code).toMatch(/^[A-Z2-9]{6}$/);
+    await postTelegram(channel.id, tgUpdate(`/boss ${code.toLowerCase()}`));
+    let u = await prisma.user.findUniqueOrThrow({ where: { id: s.userId } });
+    expect(u.bossTelegramIds).toEqual(['555001']);
+    expect(u.bossLinkCodeHash).toBeNull();
+    expect(await prisma.eventLog.count({ where: { userId: s.userId, type: 'boss.linked' } })).toBe(1);
+
     await postTelegram(channel.id, tgUpdate('info: Closed this Monday for Diwali'));
     const agent = await prisma.agent.findUniqueOrThrow({ where: { userId: s.userId } });
     expect(agent.businessDetails).toContain('Closed this Monday for Diwali');
-    const replies = await prisma.message.findMany({
-      where: { userId: s.userId, direction: 'OUT', role: 'SYSTEM' },
+
+    // the code works once
+    await postTelegram(
+      channel.id,
+      tgUpdate(`/boss ${code}`, { chat: { id: 777, type: 'private' }, from: { id: 777 } }),
+    );
+    u = await prisma.user.findUniqueOrThrow({ where: { id: s.userId } });
+    expect(u.bossTelegramIds).toEqual(['555001']);
+
+    // unlink from the web app
+    expect((await call(s, 'DELETE', '/api/agent/boss-telegram/555001')).json().bossTelegramIds).toEqual([]);
+  });
+
+  it('rejects wrong and expired codes, and stops after 5 wrong tries per hour', async () => {
+    const { s, channel } = await setupTenant();
+    const { code } = (await call(s, 'POST', '/api/agent/boss-link-code')).json();
+    await prisma.user.update({
+      where: { id: s.userId },
+      data: { bossLinkCodeExpiresAt: new Date(Date.now() - 1000) },
     });
-    expect(replies.some((r) => r.content.includes('Added to Business details'))).toBe(true);
+    await postTelegram(channel.id, tgUpdate(`/boss ${code}`));
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: s.userId } })).bossTelegramIds).toEqual([]);
+
+    const fresh = (await call(s, 'POST', '/api/agent/boss-link-code')).json().code;
+    for (let i = 0; i < 5; i++) await postTelegram(channel.id, tgUpdate('/boss WRONG1'));
+    await postTelegram(channel.id, tgUpdate(`/boss ${fresh}`)); // right code, but locked out now
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: s.userId } })).bossTelegramIds).toEqual([]);
+    const last = await prisma.message.findFirst({
+      where: { userId: s.userId, role: 'SYSTEM' },
+      orderBy: { createdAt: 'desc' },
+    });
+    expect(last?.content).toMatch(/Too many attempts/);
   });
 });
 

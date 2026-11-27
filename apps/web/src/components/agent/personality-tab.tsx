@@ -18,7 +18,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { get, put } from '@/lib/api';
+import { del, get, post, put } from '@/lib/api';
 import { useAction } from '@/lib/hooks';
 import { cn } from '@/lib/utils';
 
@@ -40,7 +40,8 @@ const LANGUAGES = [
 export function PersonalityTab() {
   const { data, isLoading } = useQuery({
     queryKey: ['agent'],
-    queryFn: () => get<{ agent: PersonalityInput; bossNumbers: string[] }>('/agent'),
+    queryFn: () =>
+      get<{ agent: PersonalityInput; bossNumbers: string[]; bossTelegramIds: string[] }>('/agent'),
   });
   const [form, setForm] = useState<PersonalityInput | null>(null);
   const [boss, setBoss] = useState<string[]>([]);
@@ -70,6 +71,14 @@ export function PersonalityTab() {
   });
   const saveBoss = useAction((nums: string[]) => put('/agent/boss-numbers', { bossNumbers: nums }), {
     success: 'Boss Mode numbers saved',
+    invalidate: [['agent']],
+  });
+  const [link, setLink] = useState<{ code: string; expiresAt: string } | null>(null);
+  const makeCode = useAction(() => post<{ code: string; expiresAt: string }>('/agent/boss-link-code'), {
+    onSuccess: (r) => setLink(r),
+  });
+  const unlink = useAction((id: string) => del(`/agent/boss-telegram/${id}`), {
+    success: 'Telegram account removed',
     invalidate: [['agent']],
   });
   const preview = useQuery({
@@ -264,9 +273,40 @@ export function PersonalityTab() {
           >
             Save numbers
           </Button>
-          <p className="text-xs text-muted-foreground">
-            For Telegram, Boss Mode uses the phone number you share with the bot (tap “Share contact”).
-          </p>
+          <p className="text-xs text-muted-foreground">These numbers work on WhatsApp.</p>
+          <div className="space-y-2 border-t pt-3">
+            <p className="text-sm font-medium">Telegram</p>
+            {data!.bossTelegramIds.map((id) => (
+              <div
+                key={id}
+                className="flex items-center justify-between rounded-lg border px-3 py-2 font-mono text-sm"
+              >
+                Telegram ID {id}
+                <button
+                  onClick={() => unlink.mutate(id)}
+                  className="cursor-pointer text-muted-foreground hover:text-destructive"
+                  aria-label={`Unlink Telegram ${id}`}
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
+            {link ? (
+              <div className="space-y-1 rounded-lg bg-primary-soft p-3 text-sm">
+                <p>Send this to your Telegram bot from your own Telegram account:</p>
+                <p className="font-mono text-lg font-semibold tracking-wider">/boss {link.code}</p>
+                <p className="text-xs text-muted-foreground">Valid for 10 minutes. Works once.</p>
+              </div>
+            ) : null}
+            <Button
+              className="w-full"
+              variant="outline"
+              onClick={() => makeCode.mutate(undefined)}
+              loading={makeCode.isPending}
+            >
+              {link ? 'New code' : 'Link Telegram'}
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>

@@ -98,6 +98,10 @@ model User {
   plan                   Plan       @default(TRIAL)
   trialEndsAt            DateTime?
   bossNumbers            String[]   @default([])
+  /// Telegram user ids allowed to use Boss Mode (linked with a one-time code)
+  bossTelegramIds        String[]   @default([])
+  bossLinkCodeHash       String?
+  bossLinkCodeExpiresAt  DateTime?
   razorpayCustomerId     String?
   razorpaySubscriptionId String?    @unique
   subscriptionStatus     String?

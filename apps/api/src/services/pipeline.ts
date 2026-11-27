@@ -1,5 +1,4 @@
 import { Prisma, type Channel } from '@prisma/client';
-import { normalizePhone } from '@cowork/shared';
 import { prisma } from '../db/client.js';
 import { logger, scrubSecrets } from '../lib/logger.js';
 import { CHANNEL_LABEL, cloudConfig, sendText, sendTyping } from '../channels/index.js';
@@ -16,6 +15,7 @@ import { enqueueInbound, enqueueSummarize } from '../queue/index.js';
 import { resolveModel } from '../agent/keys.js';
 import { runAgent } from '../agent/runtime.js';
 import { handleBossMessage } from '../agent/boss-mode.js';
+import { isBoss, linkCommand, linkTelegram } from './boss-link.js';
 import { LLMError } from '../llm/index.js';
 import { canReply } from './plan.js';
 import { logEvent } from './audit.js';
@@ -275,9 +275,24 @@ export async function processInbound(messageId: string, attempt = 0): Promise<vo
     return;
   }
 
-  // Boss Mode: the owner messaging from a whitelisted number.
-  const phone = contact.phone ? normalizePhone(contact.phone) : null;
-  if (phone && user.bossNumbers.includes(phone)) {
+  // Telegram: "/boss CODE" links this Telegram account to Boss Mode (code from the web app).
+  const linkCode = linkCommand(channel, msg.content);
+  if (linkCode) {
+    const reply = await linkTelegram(user.id, contact.externalId, linkCode);
+    await recordOutbound({
+      channel,
+      conversationId: conversation.id,
+      to: contact.externalId,
+      text: reply,
+      role: 'SYSTEM',
+      replyToId: msg.id,
+    });
+    await finish('REPLIED');
+    return;
+  }
+
+  // Boss Mode: the owner (verified WhatsApp number, or linked Telegram account).
+  if (isBoss(user, channel, contact)) {
     await prisma.message.update({ where: { id: msg.id }, data: { role: 'OWNER' } });
     const reply = await handleBossMessage(user.id, msg.content);
     await recordOutbound({

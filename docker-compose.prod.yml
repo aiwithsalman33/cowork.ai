@@ -76,6 +76,34 @@ services:
     mem_limit: 900m
     stop_grace_period: 30s
 
+  # Nightly off-site backups (audit C3). Idles with a warning until BACKUP_S3_* are set.
+  backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    entrypoint: ['/bin/sh', '/backup/backup.sh']
+    environment:
+      PGHOST: db
+      POSTGRES_USER: ${POSTGRES_USER:-cowork}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-cowork}
+      BACKUP_S3_ENDPOINT: ${BACKUP_S3_ENDPOINT:-}
+      BACKUP_S3_BUCKET: ${BACKUP_S3_BUCKET:-}
+      BACKUP_S3_ACCESS_KEY_ID: ${BACKUP_S3_ACCESS_KEY_ID:-}
+      BACKUP_S3_SECRET_ACCESS_KEY: ${BACKUP_S3_SECRET_ACCESS_KEY:-}
+      BACKUP_S3_REGION: ${BACKUP_S3_REGION:-auto}
+      BACKUP_S3_PROVIDER: ${BACKUP_S3_PROVIDER:-Other}
+      BACKUP_AGE_RECIPIENT: ${BACKUP_AGE_RECIPIENT:-}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
+      BACKUP_HEARTBEAT_URL: ${BACKUP_HEARTBEAT_URL:-}
+      BACKUP_ON_START: ${BACKUP_ON_START:-false}
+    volumes:
+      - ./docker/backup:/backup:ro
+      - wa_sessions:/data/wa-sessions:ro
+    mem_limit: 64m
+
   caddy:
     image: caddy:2.10-alpine
     restart: unless-stopped

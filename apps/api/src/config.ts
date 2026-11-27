@@ -10,7 +10,7 @@ const envSchema = z.object({
   HOST: z.string().default('0.0.0.0'),
   LOG_LEVEL: z.string().default('info'),
   /** login/signup attempts per IP per minute */
-  AUTH_RATE_LIMIT_PER_MIN: z.coerce.number().int().min(1).default(10),
+  AUTH_RATE_LIMIT_PER_MIN: z.coerce.number().int().min(1).default(5),
   DATABASE_URL: z.string().min(1),
   JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
   ENCRYPTION_KEY: z.string().regex(/^[0-9a-fA-F]{64}$/, 'ENCRYPTION_KEY must be 64 hex chars (32 bytes)'),

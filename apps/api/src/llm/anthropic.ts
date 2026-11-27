@@ -48,7 +48,8 @@ export async function anthropicComplete(req: CompletionRequest): Promise<Complet
     max_tokens: req.maxTokens ?? 1024,
     messages,
   };
-  if (system) body.system = system;
+  // prompt caching: the long, stable system prompt is reused across messages (M8)
+  if (system) body.system = [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }];
   if (req.temperature !== undefined) body.temperature = req.temperature;
   if (req.tools?.length) {
     body.tools = req.tools.map((t) => ({

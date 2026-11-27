@@ -98,6 +98,10 @@ model User {
   plan                   Plan       @default(TRIAL)
   trialEndsAt            DateTime?
   bossNumbers            String[]   @default([])
+  /// Telegram user ids allowed to use Boss Mode (linked with a one-time code)
+  bossTelegramIds        String[]   @default([])
+  bossLinkCodeHash       String?
+  bossLinkCodeExpiresAt  DateTime?
   razorpayCustomerId     String?
   razorpaySubscriptionId String?    @unique
   subscriptionStatus     String?
@@ -121,6 +125,7 @@ model User {
   leads               Lead[]
   googleConnection    GoogleConnection?
   agentSheets         AgentSheet[]
+  agentDocs           AgentDoc[]
   emailTokens         EmailToken[]
   integrationRequests IntegrationRequest[]
   schedules           Schedule[]
@@ -257,6 +262,8 @@ model Contact {
   profile      Json     @default("{}")
   summary      String   @default("")
   messageCount Int      @default(0)
+  /// owner blocked this customer: messages are saved, the agent never replies (audit H2)
+  blockedAt    DateTime?
   firstSeenAt  DateTime @default(now())
   lastSeenAt   DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -440,6 +447,7 @@ model IntegrationRequest {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([createdAt])
+  @@index([userId])
 }
 
 model Schedule {
@@ -460,6 +468,7 @@ model Schedule {
   channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
 
   @@index([enabled, nextRunAt])
+  @@index([userId])
 }
 
 model EventLog {
@@ -569,4 +578,19 @@ model Payment {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
+}
+
+/** Google Docs the owner allowed the agent to read (audit C2). The agent sees nothing else in Drive. */
+model AgentDoc {
+  id        String   @id @default(cuid())
+  userId    String
+  fileId    String
+  name      String
+  mimeType  String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, fileId])
+  @@index([userId])
 }

@@ -43,6 +43,7 @@ export function toConversationDTO(c: Conversation & { contact: Contact; channel:
       name: c.contact.name,
       externalId: c.contact.externalId,
       phone: c.contact.phone,
+      blocked: !!c.contact.blockedAt,
     },
     lastMessage: c.lastMessage,
     lastMessageAt: c.lastMessageAt.toISOString(),

@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { PLANS, planToJSON } from '@cowork/shared';
 import { hmacSha256Hex } from '../src/lib/crypto.js';
 import { isPlanActive } from '../src/services/plan.js';
-import { call, cookiesFrom, getApp, prisma, signup, testOutbox } from './helpers.js';
+import { call, cookiesFrom, getApp, prisma, randomIp, signup, testOutbox } from './helpers.js';
 
 const SECRET = 'rzp_test_webhook_secret';
 
@@ -127,7 +127,7 @@ async function adminSession() {
     method: 'POST',
     url: '/api/auth/login',
     payload: { email: s.email, password: 'password123' },
-    remoteAddress: '10.9.9.9',
+    remoteAddress: randomIp(),
   });
   const cookies = cookiesFrom(res);
   return { ...s, cookies, csrf: cookies.pa_csrf! };
@@ -358,9 +358,8 @@ describe('Cashfree payments', () => {
       // returning before the bank confirms: still unpaid, no access change
       expect((await call(s, 'GET', `/api/billing/orders/${orderId}`)).json().payment.status).toBe('CREATED');
 
-      const send = (body: object, secret = 'cf-secret-test') => {
+      const send = (body: object, secret = 'cf-secret-test', ts = String(Math.floor(Date.now() / 1000))) => {
         const raw = JSON.stringify(body);
-        const ts = String(Math.floor(Date.now() / 1000));
         const sig = createHmac('sha256', secret)
           .update(ts + raw)
           .digest('base64');
@@ -383,6 +382,12 @@ describe('Cashfree payments', () => {
         },
       });
       expect((await send(paid(PLANS.STARTER.priceInr), 'wrong')).statusCode).toBe(400);
+      // a correctly signed but old (replayed) notification is rejected, in seconds or ms (L2)
+      const old = String(Math.floor(Date.now() / 1000) - 600);
+      expect((await send(paid(PLANS.STARTER.priceInr), 'cf-secret-test', old)).statusCode).toBe(400);
+      expect(
+        (await send(paid(PLANS.STARTER.priceInr), 'cf-secret-test', `${Number(old) * 1000}`)).statusCode,
+      ).toBe(400);
       expect((await send(paid(PLANS.STARTER.priceInr))).json().result).toBe('processed');
       expect((await send(paid(PLANS.STARTER.priceInr))).json().result).toBe('duplicate');
       const u = await prisma.user.findUniqueOrThrow({ where: { id: s.userId } });

@@ -188,6 +188,22 @@ function PlanEditor({ plan }: { plan: AdminPlan }) {
                 onChange={(v) => setLimit('skills', v)}
               />
             </Field>
+            <Field label="Replies per customer / hour" htmlFor={p('cph')}>
+              <LimitInput
+                id={p('cph')}
+                unlimited={false}
+                value={form.limits.contactRepliesPerHour}
+                onChange={(v) => setLimit('contactRepliesPerHour', Math.max(1, v ?? 1))}
+              />
+            </Field>
+            <Field label="Replies per customer / day" htmlFor={p('cpd')}>
+              <LimitInput
+                id={p('cpd')}
+                unlimited={false}
+                value={form.limits.contactRepliesPerDay}
+                onChange={(v) => setLimit('contactRepliesPerDay', Math.max(1, v ?? 1))}
+              />
+            </Field>
             <Field label="WhatsApp QR numbers" htmlFor={p('qr')}>
               <LimitInput
                 id={p('qr')}

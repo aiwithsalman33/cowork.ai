@@ -90,7 +90,7 @@ export interface ConversationDTO {
   channelStatus: ChannelStatus;
   channelType: ChannelType;
   channelName: string;
-  contact: { id: string; name: string | null; externalId: string; phone: string | null };
+  contact: { id: string; name: string | null; externalId: string; phone: string | null; blocked: boolean };
   lastMessage: string | null;
   lastMessageAt: string;
   messageCount: number;

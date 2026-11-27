@@ -1,7 +1,13 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { MessageDTO } from '@cowork/shared';
-import { appointmentUpdateSchema, normalizePhone, paginationSchema, scheduleSchema } from '@cowork/shared';
+import {
+  appointmentUpdateSchema,
+  contactUpdateSchema,
+  normalizePhone,
+  paginationSchema,
+  scheduleSchema,
+} from '@cowork/shared';
 import { authenticate, user } from '../plugins/auth.js';
 import { parse } from '../lib/validate.js';
 import { badRequest, notFound, paymentRequired } from '../lib/errors.js';
@@ -158,6 +164,18 @@ export async function inboxRoutes(app: FastifyInstance) {
       return { conversationId: convo.id };
     },
   );
+
+  /** Block or unblock a customer from AI replies (audit H2). */
+  app.patch('/contacts/:id', async (req) => {
+    const { id } = parse(idParam, req.params);
+    const { blocked } = parse(contactUpdateSchema, req.body);
+    const res = await req.db.contact.updateMany({
+      where: { id },
+      data: { blockedAt: blocked ? new Date() : null },
+    });
+    if (!res.count) throw notFound('Contact not found');
+    return { ok: true, blocked };
+  });
 
   // ---------------- Appointments & leads ----------------
   app.get('/appointments', async (req) => {

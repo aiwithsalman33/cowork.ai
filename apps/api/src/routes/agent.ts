@@ -18,6 +18,7 @@ import { prisma } from '../db/client.js';
 import { complete, LLMError } from '../llm/index.js';
 import { buildAgentPrompt } from '../agent/runtime.js';
 import { logEvent } from '../services/audit.js';
+import { createLinkCode } from '../services/boss-link.js';
 
 export async function agentRoutes(app: FastifyInstance) {
   app.addHook('preHandler', authenticate);
@@ -25,7 +26,7 @@ export async function agentRoutes(app: FastifyInstance) {
   app.get('/agent', async (req) => {
     const agent = await req.db.agent.findFirst();
     if (!agent) throw notFound('Agent not found');
-    return { agent, bossNumbers: user(req).bossNumbers };
+    return { agent, bossNumbers: user(req).bossNumbers, bossTelegramIds: user(req).bossTelegramIds };
   });
 
   app.put('/agent/personality', async (req) => {
@@ -48,6 +49,22 @@ export async function agentRoutes(app: FastifyInstance) {
     const normalized = [...new Set(bossNumbers.map((n) => n.replace(/\D/g, '')))];
     await prisma.user.update({ where: { id: user(req).id }, data: { bossNumbers: normalized } });
     return { bossNumbers: normalized };
+  });
+
+  /** One-time code the owner sends to their Telegram bot as "/boss CODE" (audit C1). */
+  app.post(
+    '/agent/boss-link-code',
+    { config: { rateLimit: { max: 5, timeWindow: '1 minute' } } },
+    async (req) => createLinkCode(user(req).id),
+  );
+
+  app.delete('/agent/boss-telegram/:id', async (req) => {
+    const { id } = parse(z.object({ id: z.string().regex(/^-?\d{1,20}$/) }), req.params);
+    const u = user(req);
+    const bossTelegramIds = u.bossTelegramIds.filter((x) => x !== id);
+    await prisma.user.update({ where: { id: u.id }, data: { bossTelegramIds } });
+    await logEvent(u.id, 'INFO', 'boss.unlinked', `Telegram account ${id} removed from Boss Mode`);
+    return { bossTelegramIds };
   });
 
   /** Shows the exact system prompt the agent will use (transparency for the owner). */

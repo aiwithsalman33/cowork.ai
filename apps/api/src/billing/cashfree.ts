@@ -155,6 +155,10 @@ export async function syncOrder(orderId: string) {
 /** Webhook signature: the docs show timestamp+body (code samples) and timestamp.body (pseudocode). */
 export function verifyWebhook(rawBody: Buffer | undefined, signature?: string, timestamp?: string) {
   if (!env.CASHFREE_SECRET_KEY || !rawBody || !signature || !timestamp) return false;
+  // replay protection: reject notifications older/newer than 5 minutes (seconds or ms) (L2)
+  const t = Number(timestamp);
+  const ms = t > 1e12 ? t : t * 1000;
+  if (!Number.isFinite(ms) || Math.abs(Date.now() - ms) > 300_000) return false;
   const body = rawBody.toString('utf8');
   return [`${timestamp}${body}`, `${timestamp}.${body}`].some((payload) =>
     safeEqual(signature, createHmac('sha256', env.CASHFREE_SECRET_KEY!).update(payload).digest('base64')),

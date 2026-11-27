@@ -3,7 +3,7 @@ import { checkoutSchema } from '@cowork/shared';
 import { allPlansJSON } from '../services/plans.js';
 import { authenticate, user } from '../plugins/auth.js';
 import { parse } from '../lib/validate.js';
-import { badRequest, notFound } from '../lib/errors.js';
+import { badRequest, HttpError, notFound } from '../lib/errors.js';
 import type { Payment } from '@prisma/client';
 import { z } from 'zod';
 import {
@@ -76,7 +76,7 @@ export async function billingRoutes(app: FastifyInstance) {
         return { ...order, mode: env.CASHFREE_ENV };
       } catch (err) {
         req.log.error({ err: (err as Error).message }, 'cashfree order failed');
-        throw badRequest(`Could not start the payment: ${(err as Error).message}`);
+        throw new HttpError(502, 'Could not start the payment. Please try again.', 'PAYMENT_PROVIDER');
       }
     },
   );

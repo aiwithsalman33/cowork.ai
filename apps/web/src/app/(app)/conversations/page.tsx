@@ -6,6 +6,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   AlertTriangle,
   ArrowLeft,
+  Ban,
   Bot,
   Brain,
   LayoutTemplate,
@@ -24,7 +25,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, EmptyState, Skeleton } from '@/components/ui/misc';
 import { ChannelIcon, CHANNEL_LABEL } from '@/components/channel-badge';
 import { SendTemplateDialog } from '@/components/send-template-dialog';
-import { get, post } from '@/lib/api';
+import { get, patch, post } from '@/lib/api';
 import { useAction } from '@/lib/hooks';
 import { cn, formatDateTime, timeAgo } from '@/lib/utils';
 
@@ -50,6 +51,16 @@ function ThreadView({ id, onBack }: { id: string; onBack: () => void }) {
     refetchInterval: 5000,
   });
   const [picking, setPicking] = useState(false);
+  const block = useAction(
+    (blocked: boolean) => patch(`/contacts/${data!.conversation.contact.id}`, { blocked }),
+    {
+      success: (r: unknown) =>
+        (r as { blocked: boolean }).blocked
+          ? 'Customer blocked: the agent will not reply to them'
+          : 'Customer unblocked',
+      invalidate: [['thread', id], ['conversations']],
+    },
+  );
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ['thread', id] });
     qc.invalidateQueries({ queryKey: ['conversations'] });
@@ -95,13 +106,25 @@ function ThreadView({ id, onBack }: { id: string; onBack: () => void }) {
             <ArrowLeft />
           </Button>
           <Avatar name={displayName(c)} />
-          <div className="min-w-0">
-            <div className="truncate font-semibold">{displayName(c)}</div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 truncate font-semibold">
+              {displayName(c)}
+              {c.contact.blocked && <Badge variant="destructive">Blocked</Badge>}
+            </div>
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <ChannelIcon type={c.channelType} className="h-3 w-3" /> {CHANNEL_LABEL[c.channelType]} ·{' '}
               {c.channelName}
             </div>
           </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            className={c.contact.blocked ? '' : 'text-destructive'}
+            loading={block.isPending}
+            onClick={() => block.mutate(!c.contact.blocked)}
+          >
+            <Ban /> {c.contact.blocked ? 'Unblock' : 'Block'}
+          </Button>
         </div>
         <div
           ref={scroller}

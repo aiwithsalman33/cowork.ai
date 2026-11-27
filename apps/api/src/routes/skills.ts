@@ -13,7 +13,7 @@ import {
 import type { Skill } from '@prisma/client';
 import { authenticate, user } from '../plugins/auth.js';
 import { parse } from '../lib/validate.js';
-import { badRequest, forbidden, notFound } from '../lib/errors.js';
+import { badRequest, HttpError, notFound } from '../lib/errors.js';
 import { randomToken } from '../lib/crypto.js';
 import { prisma } from '../db/client.js';
 import { assertCanEnableSkill } from '../services/plan.js';
@@ -108,7 +108,12 @@ export async function skillRoutes(app: FastifyInstance) {
         });
         raw = res.content;
       } catch (err) {
-        throw badRequest(err instanceof LLMError ? err.message : 'Skill generation failed');
+        req.log.warn({ err: (err as Error).message }, 'skill generation failed');
+        throw new HttpError(
+          503,
+          err instanceof LLMError ? err.message : 'Skill generation is unavailable right now. Try again.',
+          'AI_UNAVAILABLE',
+        );
       }
       const match = raw?.match(/\{[\s\S]*\}/);
       if (!match) throw badRequest('The AI did not return a valid skill. Try describing it differently.');
@@ -164,7 +169,8 @@ export async function skillRoutes(app: FastifyInstance) {
     const { id } = parse(z.object({ id: z.string().min(1) }), req.params);
     const skill = await prisma.skill.findUnique({ where: { id } });
     if (!skill) throw notFound('Skill not found');
-    if (skill.authorId !== user(req).id) throw forbidden('You can only delete your own custom skills');
+    // someone else's skill looks the same as a missing one (M12)
+    if (skill.authorId !== user(req).id) throw notFound('Skill not found');
     await prisma.skill.delete({ where: { id } });
     return { ok: true };
   });

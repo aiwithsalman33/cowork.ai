@@ -1,7 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { composeSystemPrompt, memoryNote, untrusted, type PromptAgent } from '../src/agent/prompt.js';
 import { safeFacts } from '../src/services/memory.js';
-import { toAnthropic } from '../src/llm/anthropic.js';
+import { anthropicComplete, toAnthropic } from '../src/llm/anthropic.js';
 import { cleanSchema, toGemini } from '../src/llm/google.js';
 import { buildAgentPrompt } from '../src/agent/runtime.js';
 import { prisma, signup } from './helpers.js';
@@ -99,6 +99,36 @@ describe('composeSystemPrompt', () => {
       name: 'Rahul',
       city: 'Pune',
     });
+  });
+
+  it('puts the changing date line last so the prompt prefix can be cached (M8)', () => {
+    const p = composeSystemPrompt({ agent, skills: [] });
+    expect(p.trimEnd().split('\n').at(-1)).toMatch(/^Current date and time:/);
+  });
+
+  it('Anthropic: sends the system prompt as a cacheable block (M8)', async () => {
+    const seen: Record<string, unknown>[] = [];
+    const spy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (_u, init) => {
+      seen.push(JSON.parse(String(init?.body)));
+      return new Response(JSON.stringify({ content: [{ type: 'text', text: 'hi' }], usage: {} }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    });
+    try {
+      await anthropicComplete({
+        provider: 'anthropic',
+        model: 'claude-haiku-5-5',
+        apiKey: 'k',
+        messages: [
+          { role: 'system', content: 'SYS' },
+          { role: 'user', content: 'hello' },
+        ],
+      } as never);
+    } finally {
+      spy.mockRestore();
+    }
+    expect(seen[0]!.system).toEqual([{ type: 'text', text: 'SYS', cache_control: { type: 'ephemeral' } }]);
   });
 
   it('respects a fixed reply language', () => {

@@ -61,6 +61,25 @@ describe('signup', () => {
   });
 });
 
+describe('login rate limit (L4)', () => {
+  it('the 6th login attempt in a minute from one address is refused', async () => {
+    const app = await getApp();
+    const ip = randomIp();
+    const codes: number[] = [];
+    for (let i = 0; i < 6; i++) {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/auth/login',
+        remoteAddress: ip,
+        payload: { email: 'nobody@test.dev', password: 'wrong-password' },
+      });
+      codes.push(res.statusCode);
+    }
+    expect(codes.slice(0, 5).every((c) => c === 401)).toBe(true);
+    expect(codes[5]).toBe(429);
+  });
+});
+
 describe('auth', () => {
   it('a verified user gets a working session', async () => {
     const s = await signup();

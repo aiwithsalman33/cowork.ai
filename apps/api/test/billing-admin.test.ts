@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { PLANS, planToJSON } from '@cowork/shared';
 import { hmacSha256Hex } from '../src/lib/crypto.js';
 import { isPlanActive } from '../src/services/plan.js';
-import { call, cookiesFrom, getApp, prisma, signup, testOutbox } from './helpers.js';
+import { call, cookiesFrom, getApp, prisma, randomIp, signup, testOutbox } from './helpers.js';
 
 const SECRET = 'rzp_test_webhook_secret';
 
@@ -127,7 +127,7 @@ async function adminSession() {
     method: 'POST',
     url: '/api/auth/login',
     payload: { email: s.email, password: 'password123' },
-    remoteAddress: '10.9.9.9',
+    remoteAddress: randomIp(),
   });
   const cookies = cookiesFrom(res);
   return { ...s, cookies, csrf: cookies.pa_csrf! };

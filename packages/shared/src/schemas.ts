@@ -12,20 +12,20 @@ export const signupSchema = z.object({
 export type SignupInput = z.infer<typeof signupSchema>;
 
 export const loginSchema = z.object({
-  email: z.string().trim().toLowerCase().email(),
+  email: z.string().trim().toLowerCase().max(200).email(),
   password: z.string().min(1).max(200),
 });
 export type LoginInput = z.infer<typeof loginSchema>;
 
 export const verifyEmailSchema = z.object({ token: z.string().min(20).max(200) });
-export const emailOnlySchema = z.object({ email: z.string().trim().toLowerCase().email() });
+export const emailOnlySchema = z.object({ email: z.string().trim().toLowerCase().max(200).email() });
 export const resetPasswordSchema = z.object({
   token: z.string().min(20).max(200),
   password: z.string().min(8, 'At least 8 characters').max(200),
 });
 
 export const changePasswordSchema = z.object({
-  currentPassword: z.string().min(1),
+  currentPassword: z.string().min(1).max(200),
   newPassword: z.string().min(8).max(200),
 });
 

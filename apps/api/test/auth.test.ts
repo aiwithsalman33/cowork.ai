@@ -61,6 +61,20 @@ describe('signup', () => {
   });
 });
 
+describe('input caps (L9)', () => {
+  it('rejects oversized emails and passwords before doing any work', async () => {
+    const long = `${'a'.repeat(250)}@test.dev`;
+    expect((await post('/api/auth/login', { email: long, password: 'x' })).statusCode).toBe(400);
+    expect((await post('/api/auth/forgot-password', { email: long })).statusCode).toBe(400);
+    const s = await signup();
+    const res = await call(s, 'POST', '/api/auth/password', {
+      currentPassword: 'p'.repeat(201),
+      newPassword: 'new-password-123',
+    });
+    expect(res.statusCode).toBe(400);
+  });
+});
+
 describe('login rate limit (L4)', () => {
   it('the 6th login attempt in a minute from one address is refused', async () => {
     const app = await getApp();

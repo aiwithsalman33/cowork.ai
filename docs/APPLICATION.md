@@ -166,7 +166,7 @@ Tenant uses **their own** Google Cloud OAuth client (Integrations → Google): G
 ---
 
 ## 4. Security
-- **Auth**: argon2id password hash (`auth/password.ts`), 15-minute access JWT cookie `pa_at` (httpOnly), 30-day, rotating refresh token `pa_rt` (httpOnly, path `/api/auth`, single use, reuse revokes the family), CSRF double-submit cookie `pa_csrf` + `x-csrf-token` header.
+- **Auth**: argon2id password hash (`auth/password.ts`), 15-minute access JWT cookie `pa_at` (httpOnly), rotating 30-day refresh token `pa_rt` (httpOnly, path `/api/auth`, single use, reuse revokes the family), CSRF double-submit cookie `pa_csrf` + `x-csrf-token` header.
 - Web client refreshes once at a time across tabs (Web Locks) and only signs out on a real 401.
 - **Tenant isolation**: request handlers use `req.db` (`db/tenant.ts`), which forces `userId` on every query of tenant models.
 - **Encryption at rest** (AES, `ENCRYPTION_KEY`): AI keys, channel credentials, Google credentials/tokens.

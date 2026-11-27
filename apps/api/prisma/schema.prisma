@@ -125,6 +125,7 @@ model User {
   leads               Lead[]
   googleConnection    GoogleConnection?
   agentSheets         AgentSheet[]
+  agentDocs           AgentDoc[]
   emailTokens         EmailToken[]
   integrationRequests IntegrationRequest[]
   schedules           Schedule[]
@@ -573,4 +574,19 @@ model Payment {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
+}
+
+/** Google Docs the owner allowed the agent to read (audit C2). The agent sees nothing else in Drive. */
+model AgentDoc {
+  id        String   @id @default(cuid())
+  userId    String
+  fileId    String
+  name      String
+  mimeType  String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, fileId])
+  @@index([userId])
 }

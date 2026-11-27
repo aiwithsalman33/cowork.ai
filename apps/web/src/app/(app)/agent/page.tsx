@@ -9,6 +9,7 @@ import { SkillStoreTab } from '@/components/agent/skill-store-tab';
 import { ApiKeysTab } from '@/components/agent/api-keys-tab';
 import { PersonalityTab } from '@/components/agent/personality-tab';
 import { SheetsTab } from '@/components/agent/sheets-tab';
+import { DocsSection } from '@/components/agent/docs-section';
 
 const TABS = ['skills', 'store', 'sheets', 'keys', 'personality'] as const;
 
@@ -27,7 +28,7 @@ function AgentConfig() {
           <Store /> Skill Store
         </TabsTrigger>
         <TabsTrigger value="sheets">
-          <Sheet /> Google Sheets
+          <Sheet /> Sheets & Docs
         </TabsTrigger>
         <TabsTrigger value="keys">
           <KeyRound /> API Keys
@@ -44,6 +45,7 @@ function AgentConfig() {
       </TabsContent>
       <TabsContent value="sheets">
         <SheetsTab />
+        <DocsSection />
       </TabsContent>
       <TabsContent value="keys">
         <ApiKeysTab />

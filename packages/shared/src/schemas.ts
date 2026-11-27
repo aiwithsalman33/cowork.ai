@@ -278,3 +278,9 @@ export const planUpdateSchema = z.object({
   }),
 });
 export type PlanUpdateInput = z.infer<typeof planUpdateSchema>;
+
+// ---------- Agent documents (Google Docs allow-list) ----------
+export const agentDocSchema = z.object({
+  /** Google Docs link or document id */
+  doc: z.string().trim().min(10).max(500),
+});

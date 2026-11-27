@@ -8,7 +8,6 @@ import {
   extractDocText,
   readDoc,
   readSheet,
-  searchDrive,
   sendGmail,
 } from '../integrations/google.js';
 import { logEvent } from '../services/audit.js';
@@ -25,6 +24,11 @@ export interface SheetRef {
 export interface ToolContext {
   userId: string;
   contactId: string | null;
+  /** current conversation (email rules check what the customer typed here) */
+  conversationId: string | null;
+  businessName: string;
+  /** Google Docs the owner allowed (audit C2); the only files search_drive/read_doc can reach */
+  docs: { fileId: string; name: string }[];
   contactName: string | null;
   contactPhone: string | null;
   channelLabel: string;
@@ -97,10 +101,10 @@ export const TOOL_DEFS: Record<ToolName, ToolDef> = {
   },
   search_drive: {
     name: 'search_drive',
-    description: "Search the business's Google Drive for documents relevant to the customer's question.",
+    description: "Find the business's documents (approved by the owner) relevant to the customer's question.",
     parameters: {
       type: 'object',
-      properties: { query: { type: 'string', description: 'Keywords to search for' } },
+      properties: { query: { type: 'string', description: 'Keywords to look for in document names' } },
       required: ['query'],
     },
   },
@@ -136,14 +140,15 @@ const REQUIRES: Record<ToolName, Toolkit | null> = {
   book_appointment: null,
   capture_lead: null,
   send_email: 'gmail',
-  search_drive: 'googledrive',
+  // reads only owner-approved docs (no Drive search), so Docs access is enough
+  search_drive: 'googledocs',
   read_doc: 'googledocs',
   read_sheet: 'googlesheets',
 };
 
 export function availableTools(
   requested: Set<ToolName>,
-  ctx: Pick<ToolContext, 'google' | 'sheets'>,
+  ctx: Pick<ToolContext, 'google' | 'sheets' | 'docs'>,
 ): ToolName[] {
   const tools = new Set(requested);
   // Lookup sheets are always usable once added in Agent Config — no skill needed.
@@ -151,6 +156,8 @@ export function availableTools(
   return [...tools].filter((t) => {
     const need = REQUIRES[t];
     if (t === 'read_sheet' && !ctx.sheets.some((s) => s.purpose === 'LOOKUP')) return false;
+    // no approved documents → the agent gets no document tools at all (audit C2)
+    if ((t === 'search_drive' || t === 'read_doc') && !ctx.docs.length) return false;
     return !need || ctx.google.has(need);
   });
 }
@@ -265,20 +272,74 @@ async function captureLead(args: Record<string, unknown>, ctx: ToolContext) {
   return { ok: true, lead_id: lead.id, google_sheet: sheet };
 }
 
+export const EMAILS_PER_CONTACT_PER_DAY = 3;
+const EMAIL_RE = /[^\s@<>"',;:()]+@[^\s@<>"',;:()]+\.[A-Za-z]{2,}/g;
+
+/** Addresses the customer gave: typed in this chat in the last 7 days, or saved in their profile. */
+async function customerEmails(ctx: ToolContext): Promise<Set<string>> {
+  const found = new Set<string>();
+  if (ctx.conversationId) {
+    const msgs = await prisma.message.findMany({
+      where: {
+        userId: ctx.userId,
+        conversationId: ctx.conversationId,
+        direction: 'IN',
+        createdAt: { gte: new Date(Date.now() - 7 * 86_400_000) },
+      },
+      select: { content: true },
+      take: 200,
+    });
+    for (const m of msgs) for (const e of m.content.match(EMAIL_RE) ?? []) found.add(e.toLowerCase());
+  }
+  if (ctx.contactId) {
+    const c = await prisma.contact.findFirst({
+      where: { id: ctx.contactId, userId: ctx.userId },
+      select: { profile: true },
+    });
+    const saved = (c?.profile as Record<string, unknown> | null)?.email;
+    if (typeof saved === 'string') found.add(saved.trim().toLowerCase());
+  }
+  return found;
+}
+
+/** Audit C2: only to an address the customer gave, at most 3 per customer per day. */
 async function sendEmail(args: Record<string, unknown>, ctx: ToolContext) {
-  const to = str(args.to);
+  const to = str(args.to).toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) return { ok: false, error: 'Invalid email address' };
-  await sendGmail(ctx.userId, to, str(args.subject).slice(0, 200), str(args.body).slice(0, 5000));
+  if (!(await customerEmails(ctx)).has(to))
+    return { ok: false, error: 'You can only email an address the customer gave you in this chat.' };
+  const sentToday = ctx.contactId
+    ? await prisma.eventLog.count({
+        where: {
+          userId: ctx.userId,
+          type: 'tool.send_email',
+          createdAt: { gte: new Date(Date.now() - 86_400_000) },
+          meta: { path: ['contactId'], equals: ctx.contactId },
+        },
+      })
+    : 0;
+  if (sentToday >= EMAILS_PER_CONTACT_PER_DAY)
+    return { ok: false, error: 'Email limit for this customer reached today. Offer to follow up later.' };
+  const footer = `\n\n—\nSent by ${ctx.businessName || 'the business'}'s AI assistant.`;
+  await sendGmail(ctx.userId, to, str(args.subject).slice(0, 150), str(args.body).slice(0, 3000) + footer);
+  await logEvent(ctx.userId, 'INFO', 'tool.send_email', 'Agent emailed a customer', {
+    contactId: ctx.contactId,
+  });
   return { ok: true, sent_to: to };
 }
 
+/** Audit C2: matches only owner-approved documents; Drive is never searched. */
 async function driveSearch(args: Record<string, unknown>, ctx: ToolContext) {
-  const files = await searchDrive(ctx.userId, str(args.query).slice(0, 100));
-  return { ok: true, files: files.map((f) => ({ id: f.id, name: f.name, type: f.mimeType })) };
+  const words = str(args.query).toLowerCase().split(/\s+/).filter(Boolean).slice(0, 10);
+  const matches = ctx.docs.filter((d) => words.some((w) => d.name.toLowerCase().includes(w)));
+  const files = (matches.length ? matches : ctx.docs).slice(0, 10);
+  return { ok: true, files: files.map((f) => ({ id: f.fileId, name: f.name })) };
 }
 
 async function docRead(args: Record<string, unknown>, ctx: ToolContext) {
-  const text = extractDocText(await readDoc(ctx.userId, str(args.document_id)));
+  const id = str(args.document_id);
+  if (!ctx.docs.some((d) => d.fileId === id)) return { ok: false, error: 'Document not available' };
+  const text = extractDocText(await readDoc(ctx.userId, id));
   return { ok: true, text: text || '(document is empty or not a Google Doc)' };
 }
 

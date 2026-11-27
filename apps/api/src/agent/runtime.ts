@@ -26,15 +26,21 @@ interface PromptOptions {
 }
 
 async function loadGoogle(userId: string) {
-  const [state, sheets] = await Promise.all([
+  const [state, sheets, docs] = await Promise.all([
     loadGoogleState(userId),
     prisma.agentSheet.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } }),
+    prisma.agentDoc.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'asc' },
+      select: { fileId: true, name: true },
+    }),
   ]);
   // Sheets only work while Google is connected with Sheets access.
   return {
     google: state.services,
     googleSettings: state.settings,
     sheets: state.services.has('googlesheets') ? sheets : [],
+    docs: state.services.has('googledocs') ? docs : [],
   };
 }
 
@@ -145,6 +151,9 @@ ${templateTool.promptNote}`;
   const ctx: ToolContext = {
     userId: params.userId,
     contactId: conversation.contactId,
+    conversationId: conversation.id,
+    businessName: built.agent.businessName,
+    docs: g.docs,
     contactName: conversation.contact.name,
     contactPhone: conversation.contact.phone,
     channelLabel: params.channelLabel,

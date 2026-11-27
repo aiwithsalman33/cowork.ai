@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import type { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import {
+  agentDocSchema,
   agentSheetSchema,
   googleConnectSchema,
   googleCredentialsSchema,
@@ -25,6 +26,7 @@ import {
   encryptRefreshToken,
   exchangeCode,
   GoogleError,
+  readDoc,
   readSheet,
   redirectUri,
   revokeToken,
@@ -280,6 +282,51 @@ export async function integrationRoutes(app: FastifyInstance) {
       const { id } = parse(idParam, req.params);
       const res = await req.db.agentSheet.deleteMany({ where: { id } });
       if (!res.count) throw notFound('Sheet not found');
+      return { ok: true };
+    });
+
+    // ---- Documents the agent may read (audit C2) ----
+    secured.get('/docs', async (req) => {
+      const docs = await req.db.agentDoc.findMany({ orderBy: { createdAt: 'asc' } });
+      return { docs };
+    });
+
+    secured.post('/docs', async (req, reply) => {
+      const { doc } = parse(agentDocSchema, req.body);
+      const u = user(req);
+      const conn = await req.db.googleConnection.findFirst();
+      if (conn?.status !== 'CONNECTED' || !servicesFromScopes(conn.scopes).includes('googledocs'))
+        throw badRequest('Connect Google with Docs access first (Integrations page).');
+      const fileId =
+        /\/document\/d\/([A-Za-z0-9_-]{20,})/.exec(doc)?.[1] ??
+        (/^[A-Za-z0-9_-]{20,}$/.test(doc) ? doc : null);
+      if (!fileId) throw badRequest('That does not look like a Google Docs link.');
+      if ((await req.db.agentDoc.count()) >= 50) throw badRequest('You can add up to 50 documents.');
+      if (await req.db.agentDoc.findFirst({ where: { fileId } }))
+        throw conflict('This document is already added');
+      let title: string;
+      try {
+        title = ((await readDoc(u.id, fileId)) as { title?: string }).title?.trim() || 'Untitled document';
+      } catch (err) {
+        req.log.warn({ err: (err as Error).message }, 'could not open google doc');
+        throw badRequest(
+          'Could not open this document with your Google account. Check the link and sharing.',
+        );
+      }
+      const created = await req.db.agentDoc.create({
+        data: {
+          fileId,
+          name: title.slice(0, 200),
+          mimeType: 'application/vnd.google-apps.document',
+        } as never,
+      });
+      return reply.code(201).send({ doc: created });
+    });
+
+    secured.delete('/docs/:id', async (req) => {
+      const { id } = parse(idParam, req.params);
+      const res = await req.db.agentDoc.deleteMany({ where: { id } });
+      if (!res.count) throw notFound('Document not found');
       return { ok: true };
     });
 

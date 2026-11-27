@@ -447,6 +447,7 @@ model IntegrationRequest {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([createdAt])
+  @@index([userId])
 }
 
 model Schedule {
@@ -467,6 +468,7 @@ model Schedule {
   channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
 
   @@index([enabled, nextRunAt])
+  @@index([userId])
 }
 
 model EventLog {

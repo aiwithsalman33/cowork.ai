@@ -181,6 +181,11 @@ describe('telegram webhook → agent reply', () => {
     // second LLM call must contain the tool result
     const second = sent.filter((r) => r.url.includes('openai'))[1]!;
     expect(JSON.stringify(second.body.messages)).toContain('"role":"tool"');
+    // tool output is wrapped as untrusted data (H1)
+    const tool = (second.body.messages as { role: string; content: string }[]).find(
+      (m) => m.role === 'tool',
+    )!;
+    expect(tool.content.startsWith('<untrusted source="tool:book_appointment">')).toBe(true);
   });
 
   it('does not reply when the trial has expired', async () => {

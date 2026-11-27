@@ -4,7 +4,7 @@ import { loadGoogleState } from '../integrations/google.js';
 import { prisma } from '../db/client.js';
 import { complete, type ChatMessage, type ToolDef } from '../llm/index.js';
 import type { ResolvedModel } from './keys.js';
-import { composeSystemPrompt } from './prompt.js';
+import { composeSystemPrompt, memoryNote, untrusted } from './prompt.js';
 import { availableTools, runTool, TOOL_DEFS, type ToolContext } from './tools.js';
 import { buildTemplateTool } from './templates.js';
 
@@ -59,14 +59,8 @@ export async function buildAgentPrompt(userId: string, opts: PromptOptions) {
 
   const profile = (opts.contact?.profile ?? {}) as Record<string, unknown>;
   const summary = [opts.contact?.summary, opts.conversationSummary].filter(Boolean).join(' ').trim();
-  const system = composeSystemPrompt({
-    agent,
-    skills: userSkills.map((us) => ({ name: us.skill.name, promptFragment: us.skill.promptFragment })),
-    availableTools: toolNames,
-    sheets: toolNames.includes('read_sheet') ? g.sheets.filter((s) => s.purpose === 'LOOKUP') : [],
-    channel: opts.channel,
-    timeZone: TIME_ZONE,
-    memory: opts.contact
+  const memory = memoryNote(
+    opts.contact
       ? {
           contactName: opts.contact.name,
           profile,
@@ -74,8 +68,16 @@ export async function buildAgentPrompt(userId: string, opts: PromptOptions) {
           isReturning: opts.contact.messageCount > 1,
         }
       : undefined,
+  );
+  const system = composeSystemPrompt({
+    agent,
+    skills: userSkills.map((us) => ({ name: us.skill.name, promptFragment: us.skill.promptFragment })),
+    availableTools: toolNames,
+    sheets: toolNames.includes('read_sheet') ? g.sheets.filter((s) => s.purpose === 'LOOKUP') : [],
+    channel: opts.channel,
+    timeZone: TIME_ZONE,
   });
-  return { system, tools, g, agent };
+  return { system, memory, tools, g, agent };
 }
 
 export interface AgentRunResult {
@@ -141,6 +143,11 @@ ${templateTool.promptNote}`;
   history.reverse();
 
   const messages: ChatMessage[] = [{ role: 'system', content: system }];
+  // customer memory is data, not instructions: first turn, wrapped as untrusted (audit H1)
+  if (built.memory) {
+    messages.push({ role: 'user', content: built.memory });
+    if (history[0]?.role !== 'ASSISTANT') messages.push({ role: 'assistant', content: 'Noted.' });
+  }
   for (const m of history) {
     if (m.role === 'USER') messages.push({ role: 'user', content: m.content });
     else if (m.content) messages.push({ role: 'assistant', content: m.content });
@@ -187,7 +194,12 @@ ${templateTool.promptNote}`;
           ? await templateTool.run(tc.arguments).catch((err: Error) => ({ ok: false, error: err.message }))
           : await runTool(tc.name, tc.arguments, ctx);
       calls.push({ name: tc.name, ok: out.ok === true });
-      messages.push({ role: 'tool', toolCallId: tc.id, name: tc.name, content: JSON.stringify(out) });
+      messages.push({
+        role: 'tool',
+        toolCallId: tc.id,
+        name: tc.name,
+        content: untrusted(`tool:${tc.name}`, JSON.stringify(out)),
+      });
     }
   }
   return { reply: '', usage, toolCalls: calls };

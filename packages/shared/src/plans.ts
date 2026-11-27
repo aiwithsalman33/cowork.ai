@@ -13,6 +13,9 @@ export interface PlanLimits {
   channelTypes: ChannelType[];
   /** WhatsApp Business API message templates (create, sync from Meta, use in the AI bot) */
   templates: boolean;
+  /** AI replies one customer can get per hour / per day (stops floods and cost abuse) */
+  contactRepliesPerHour: number;
+  contactRepliesPerDay: number;
 }
 
 export interface PlanDef {
@@ -49,6 +52,8 @@ export const PLANS: Record<PlanId, PlanDef> = {
       skills: 10,
       channelTypes: ['TELEGRAM'],
       templates: false,
+      contactRepliesPerHour: 20,
+      contactRepliesPerDay: 60,
     },
     features: ['Knowledge base & FAQ bot', 'Lead capture & appointments'],
   },
@@ -67,6 +72,8 @@ export const PLANS: Record<PlanId, PlanDef> = {
       skills: 20,
       channelTypes: ['TELEGRAM', 'WHATSAPP_QR'],
       templates: false,
+      contactRepliesPerHour: 20,
+      contactRepliesPerDay: 60,
     },
     features: ['Google Sheets, Calendar & Gmail', 'Boss Mode (control by WhatsApp)'],
   },
@@ -85,6 +92,8 @@ export const PLANS: Record<PlanId, PlanDef> = {
       skills: Number.POSITIVE_INFINITY,
       channelTypes: ['TELEGRAM', 'WHATSAPP_QR', 'WHATSAPP_CLOUD'],
       templates: true,
+      contactRepliesPerHour: 20,
+      contactRepliesPerDay: 60,
     },
     features: ['All features', 'WhatsApp templates (sync from Meta, use in AI bot)', 'Priority support'],
   },

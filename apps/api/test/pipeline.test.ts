@@ -230,6 +230,81 @@ describe('telegram webhook → agent reply', () => {
   });
 });
 
+describe('per-customer reply limits (H2)', () => {
+  async function fillReplies(userId: string, channelId: string, externalId: string, n: number) {
+    const contact = await prisma.contact.upsert({
+      where: { userId_channelType_externalId: { userId, channelType: 'TELEGRAM', externalId } },
+      create: { userId, channelType: 'TELEGRAM', externalId },
+      update: {},
+    });
+    const convo = await prisma.conversation.upsert({
+      where: { channelId_contactId: { channelId, contactId: contact.id } },
+      create: { userId, channelId, contactId: contact.id },
+      update: {},
+    });
+    await prisma.message.createMany({
+      data: Array.from({ length: n }, () => ({
+        userId,
+        conversationId: convo.id,
+        direction: 'OUT' as const,
+        role: 'ASSISTANT' as const,
+        content: 'x',
+        status: 'SENT' as const,
+      })),
+    });
+    return contact;
+  }
+
+  it('skips the 21st reply in an hour for one customer, others are unaffected', async () => {
+    const { s, channel } = await setupTenant();
+    await fillReplies(s.userId, channel.id, '555001', PLANS.TRIAL.limits.contactRepliesPerHour);
+    await postTelegram(channel.id, tgUpdate('one more please'));
+    const inbound = await prisma.message.findFirst({ where: { userId: s.userId, direction: 'IN' } });
+    expect(inbound).toMatchObject({ status: 'SKIPPED', error: 'contact_limit' });
+    await postTelegram(channel.id, tgUpdate('and again'));
+    expect(await prisma.eventLog.count({ where: { userId: s.userId, type: 'reply.contact_limit' } })).toBe(1);
+
+    await postTelegram(
+      channel.id,
+      tgUpdate('hi from someone else', {
+        chat: { id: 9001, type: 'private' },
+        from: { id: 9001, first_name: 'Asha' },
+      }),
+    );
+    const other = await prisma.message.findFirst({
+      where: { userId: s.userId, direction: 'IN', conversation: { contact: { externalId: '9001' } } },
+    });
+    expect(other?.status).toBe('REPLIED');
+  });
+
+  it('a blocked customer is saved but never answered; unblocking restores replies', async () => {
+    const { s, channel } = await setupTenant();
+    const contact = await fillReplies(s.userId, channel.id, '555001', 0);
+    expect((await call(s, 'PATCH', `/api/contacts/${contact.id}`, { blocked: true })).statusCode).toBe(200);
+    await postTelegram(channel.id, tgUpdate('hello?'));
+    let inbound = await prisma.message.findFirst({
+      where: { userId: s.userId, direction: 'IN' },
+      orderBy: { createdAt: 'desc' },
+    });
+    expect(inbound).toMatchObject({ status: 'SKIPPED', error: 'contact_blocked' });
+    const convos = (await call(s, 'GET', '/api/conversations')).json().conversations;
+    expect(convos[0].contact.blocked).toBe(true);
+
+    await call(s, 'PATCH', `/api/contacts/${contact.id}`, { blocked: false });
+    await postTelegram(channel.id, tgUpdate('hello again'));
+    inbound = await prisma.message.findFirst({
+      where: { userId: s.userId, direction: 'IN' },
+      orderBy: { createdAt: 'desc' },
+    });
+    expect(inbound?.status).toBe('REPLIED');
+    // other tenants cannot touch this contact
+    const stranger = await signup();
+    expect((await call(stranger, 'PATCH', `/api/contacts/${contact.id}`, { blocked: true })).statusCode).toBe(
+      404,
+    );
+  });
+});
+
 describe('Boss Mode (C1)', () => {
   const contactCard = (userId?: number) =>
     tgUpdate('', {

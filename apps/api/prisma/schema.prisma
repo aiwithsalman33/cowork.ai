@@ -262,6 +262,8 @@ model Contact {
   profile      Json     @default("{}")
   summary      String   @default("")
   messageCount Int      @default(0)
+  /// owner blocked this customer: messages are saved, the agent never replies (audit H2)
+  blockedAt    DateTime?
   firstSeenAt  DateTime @default(now())
   lastSeenAt   DateTime @default(now())
   updatedAt    DateTime @updatedAt

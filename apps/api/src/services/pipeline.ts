@@ -16,6 +16,7 @@ import { resolveModel } from '../agent/keys.js';
 import { runAgent } from '../agent/runtime.js';
 import { handleBossMessage } from '../agent/boss-mode.js';
 import { isBoss, linkCommand, linkTelegram } from './boss-link.js';
+import { contactGate } from './contact-limits.js';
 import { LLMError } from '../llm/index.js';
 import { canReply } from './plan.js';
 import { logEvent } from './audit.js';
@@ -336,6 +337,12 @@ export async function processInbound(messageId: string, attempt = 0): Promise<vo
         agent_paused: 'Message not answered: your agent is paused.',
       }[gate.reason],
     );
+    return;
+  }
+
+  const perContact = await contactGate(user.id, user.plan, contact);
+  if (!perContact.ok) {
+    await finish('SKIPPED', perContact.reason);
     return;
   }
 

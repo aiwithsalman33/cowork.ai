@@ -275,6 +275,8 @@ export const planUpdateSchema = z.object({
     skills: limitNum,
     channelTypes: z.array(z.enum(['TELEGRAM', 'WHATSAPP_QR', 'WHATSAPP_CLOUD'])).min(1),
     templates: z.boolean(),
+    contactRepliesPerHour: z.number().int().min(1).max(10_000).default(20),
+    contactRepliesPerDay: z.number().int().min(1).max(100_000).default(60),
   }),
 });
 export type PlanUpdateInput = z.infer<typeof planUpdateSchema>;
@@ -284,3 +286,5 @@ export const agentDocSchema = z.object({
   /** Google Docs link or document id */
   doc: z.string().trim().min(10).max(500),
 });
+
+export const contactUpdateSchema = z.object({ blocked: z.boolean() });

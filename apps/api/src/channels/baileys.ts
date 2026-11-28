@@ -1,7 +1,7 @@
 /**
  * WhatsApp Web sessions via Baileys (UNOFFICIAL — numbers can be banned; the UI warns users).
  *
- * - One socket per WHATSAPP_QR channel; auth state persisted with useMultiFileAuthState under
+ * - One socket per WHATSAPP_QR channel; auth state persisted ENCRYPTED (wa-auth-state.ts, audit M9) under
  *   WA_SESSIONS_DIR/<userId>/<channelId> (a docker volume), so sessions are bundled per tenant.
  * - Auto-reconnect with exponential backoff unless WhatsApp reports loggedOut.
  * - Sessions that were connected are restored on boot (bootSessions).
@@ -22,7 +22,6 @@ import {
   isLidUser,
   makeCacheableSignalKeyStore,
   makeWASocket,
-  useMultiFileAuthState,
   type proto,
   type WAMessage,
   type WASocket,
@@ -31,6 +30,7 @@ import { env } from '../config.js';
 import { prisma } from '../db/client.js';
 import { logger } from '../lib/logger.js';
 import { logEvent } from '../services/audit.js';
+import { checkSessionsDirPermissions, dropBackup, useEncryptedAuthState } from './wa-auth-state.js';
 import type { NormalizedInbound } from './telegram.js';
 
 type InboundHandler = (channelId: string, msg: NormalizedInbound) => Promise<void>;
@@ -146,8 +146,7 @@ async function handleMessages(s: Session, messages: WAMessage[]) {
 async function connect(s: Session) {
   if (s.stopping) return;
   const dir = sessionDir(s.userId, s.channelId);
-  await mkdir(dir, { recursive: true });
-  const { state, saveCreds } = await useMultiFileAuthState(dir);
+  const { state, saveCreds } = await useEncryptedAuthState(dir);
   if (!cachedVersion) {
     try {
       cachedVersion = (await fetchLatestBaileysVersion()).version;
@@ -181,6 +180,8 @@ async function connect(s: Session) {
       await setStatus(s.channelId, { status: 'QR' });
     }
     if (u.connection === 'open') {
+      // the encrypted session works: the one-time plaintext backup is no longer needed
+      void dropBackup(dir).catch(() => undefined);
       s.attempts = 0;
       s.qr = null;
       s.qrDataUrl = null;
@@ -328,6 +329,8 @@ export async function logoutSession(channelId: string, userId: string) {
 /** Restore sessions that were connected before the last shutdown. */
 export async function bootSessions() {
   if (!env.BAILEYS_ENABLED) return;
+  await mkdir(path.resolve(env.WA_SESSIONS_DIR), { recursive: true, mode: 0o700 }).catch(() => undefined);
+  await checkSessionsDirPermissions(path.resolve(env.WA_SESSIONS_DIR));
   const channels = await prisma.channel.findMany({
     where: { type: 'WHATSAPP_QR', status: { in: ['CONNECTED', 'CONNECTING'] } },
   });

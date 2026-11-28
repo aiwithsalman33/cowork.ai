@@ -42,7 +42,7 @@ COPY --from=build /app/apps/web/.next/standalone /app/web
 COPY --from=build /app/apps/web/.next/static /app/web/apps/web/.next/static
 COPY --from=build /app/apps/web/public /app/web/apps/web/public
 COPY docker/start.mjs /app/start.mjs
-RUN mkdir -p /data/wa-sessions && chown -R node:node /data /app/apps/api /app/node_modules/.prisma
+RUN mkdir -p /data/wa-sessions && chown -R node:node /data /app/apps/api /app/node_modules/.prisma \n && chmod 700 /data/wa-sessions
 USER node
 EXPOSE 3000 4000
 HEALTHCHECK --interval=20s --timeout=8s --start-period=180s --retries=6 \

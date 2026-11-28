@@ -72,6 +72,12 @@ export const apiKeySchema = z.object({
 });
 export type ApiKeyInput = z.infer<typeof apiKeySchema>;
 
+/** Optional second model, used when the main one fails (provider null = no fallback). */
+export const fallbackModelSchema = z.object({
+  provider: z.enum(PROVIDER_IDS).nullable(),
+  model: z.string().trim().min(1).max(120).optional(),
+});
+
 // ---------- Skills ----------
 export const SKILL_CATEGORIES = [
   'Customer Support',

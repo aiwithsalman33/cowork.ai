@@ -100,6 +100,8 @@ export async function runAgent(params: {
   userId: string;
   conversationId: string;
   model: ResolvedModel;
+  /** used when the main model fails with a retryable error (audit H5) */
+  fallback?: ResolvedModel | null;
   channelLabel: string;
   upToMessageId?: string;
 }): Promise<AgentRunResult> {
@@ -180,7 +182,12 @@ ${templateTool.promptNote}`;
   const calls: { name: string; ok: boolean }[] = [];
   for (let round = 0; round <= MAX_TOOL_ROUNDS; round++) {
     const res = await generate(
-      { userId: params.userId, feature: 'agent_reply', promptVersion: AGENT_PROMPT_VERSION },
+      {
+        userId: params.userId,
+        feature: 'agent_reply',
+        promptVersion: AGENT_PROMPT_VERSION,
+        fallback: params.fallback ?? null,
+      },
       {
         ...params.model,
         messages,

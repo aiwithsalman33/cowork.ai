@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import {
   apiKeySchema,
   bossNumbersSchema,
+  fallbackModelSchema,
   knowledgeSchema,
   personalitySchema,
   PROVIDERS,
@@ -79,7 +80,11 @@ export async function agentRoutes(app: FastifyInstance) {
     '/keys',
     async (
       req,
-    ): Promise<{ keys: ApiKeyDTO[]; active: { provider: string | null; model: string | null } }> => {
+    ): Promise<{
+      keys: ApiKeyDTO[];
+      active: { provider: string | null; model: string | null };
+      fallback: { provider: string | null; model: string | null };
+    }> => {
       const [keys, agent] = await Promise.all([req.db.apiKey.findMany(), req.db.agent.findFirst()]);
       return {
         keys: keys.map((k) => ({
@@ -90,6 +95,7 @@ export async function agentRoutes(app: FastifyInstance) {
           updatedAt: k.updatedAt.toISOString(),
         })),
         active: { provider: agent?.provider ?? null, model: agent?.model ?? null },
+        fallback: { provider: agent?.fallbackProvider ?? null, model: agent?.fallbackModel ?? null },
       };
     },
   );
@@ -129,6 +135,18 @@ export async function agentRoutes(app: FastifyInstance) {
       });
     }
     await logEvent(u.id, 'INFO', 'api_key.saved', `${p.name} key saved (model ${input.model})`);
+    return { ok: true };
+  });
+
+  /** Second saved key to use when the main model is down (audit H5). provider null = off. */
+  app.put('/keys/fallback', async (req) => {
+    const { provider, model } = parse(fallbackModelSchema, req.body);
+    if (provider && !(await req.db.apiKey.findFirst({ where: { provider } })))
+      throw badRequest('Save a key for this provider first.');
+    await req.db.agent.update({
+      where: { userId: user(req).id },
+      data: { fallbackProvider: provider, fallbackModel: provider ? (model ?? null) : null },
+    });
     return { ok: true };
   });
 

@@ -15,7 +15,8 @@ import { del, get, post, put } from '@/lib/api';
 import { useAction } from '@/lib/hooks';
 import { cn } from '@/lib/utils';
 
-type KeysRes = { keys: ApiKeyDTO[]; active: { provider: string | null; model: string | null } };
+type ModelRef = { provider: string | null; model: string | null };
+type KeysRes = { keys: ApiKeyDTO[]; active: ModelRef; fallback: ModelRef };
 const CUSTOM = '__custom__';
 
 export function ApiKeysTab() {
@@ -55,6 +56,10 @@ export function ApiKeysTab() {
     success: 'Key removed',
     invalidate: [['keys'], ['dashboard']],
   });
+  const setFallback = useAction(
+    (prov: string) => put('/keys/fallback', { provider: prov === 'none' ? null : prov }),
+    { success: 'Fallback model saved', invalidate: [['keys']] },
+  );
   const test = useAction(
     (prov: string) =>
       post<{ ok: boolean; latencyMs?: number; error?: string }>('/keys/test', { provider: prov }),
@@ -214,6 +219,34 @@ export function ApiKeysTab() {
           ))
         )}
       </div>
+      {data && data.keys.length > 1 && (
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle>Fallback model</CardTitle>
+            <CardDescription>
+              If your main AI provider is down, replies use this saved key instead, so customers are not left
+              waiting.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Select value={data.fallback.provider ?? 'none'} onValueChange={(v) => setFallback.mutate(v)}>
+              <SelectTrigger className="sm:w-80" aria-label="Fallback model">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No fallback</SelectItem>
+                {data.keys
+                  .filter((k) => !k.isActive)
+                  .map((k) => (
+                    <SelectItem key={k.provider} value={k.provider}>
+                      {PROVIDERS[k.provider].name} · {k.model}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

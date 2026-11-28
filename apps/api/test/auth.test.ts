@@ -1,3 +1,4 @@
+import { SignJWT } from 'jose';
 import { describe, expect, it } from 'vitest';
 import { call, cookiesFrom, getApp, lastEmailToken, prisma, randomIp, signup } from './helpers.js';
 
@@ -91,6 +92,47 @@ describe('login rate limit (L4)', () => {
     }
     expect(codes.slice(0, 5).every((c) => c === 401)).toBe(true);
     expect(codes[5]).toBe(429);
+  });
+
+  it('a refused attempt tells the client when to retry (M14)', async () => {
+    const app = await getApp();
+    const ip = randomIp();
+    let last;
+    for (let i = 0; i < 6; i++)
+      last = await app.inject({
+        method: 'POST',
+        url: '/api/auth/login',
+        remoteAddress: ip,
+        payload: { email: 'nobody@test.dev', password: 'wrong-password' },
+      });
+    expect(last!.statusCode).toBe(429);
+    expect(Number(last!.headers['retry-after'])).toBeGreaterThan(0);
+  });
+});
+
+describe('expired sessions (M14)', () => {
+  it('an expired access token is rejected with 401', async () => {
+    const s = await signup();
+    const expired = await new SignJWT({ role: 'USER' })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setSubject(s.userId)
+      .setIssuer('cowork-ai')
+      .setIssuedAt(Math.floor(Date.now() / 1000) - 3600)
+      .setExpirationTime(Math.floor(Date.now() / 1000) - 60)
+      .sign(new TextEncoder().encode(process.env.JWT_SECRET!));
+    const app = await getApp();
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/auth/me',
+      headers: { authorization: `Bearer ${expired}` },
+    });
+    expect(res.statusCode).toBe(401);
+    const fresh = await app.inject({
+      method: 'GET',
+      url: '/api/auth/me',
+      cookies: s.cookies,
+    });
+    expect(fresh.statusCode).toBe(200);
   });
 });
 

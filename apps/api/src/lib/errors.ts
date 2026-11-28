@@ -4,6 +4,8 @@ export class HttpError extends Error {
     message: string,
     public code?: string,
     public details?: unknown,
+    /** extra response headers, e.g. Retry-After on 429/503 */
+    public headers?: Record<string, string>,
   ) {
     super(message);
   }

@@ -12,12 +12,13 @@ import {
 import * as cloud from '../channels/whatsapp-cloud.js';
 import type { NormalizedInbound } from '../channels/telegram.js';
 import { enqueueInbound, enqueueSummarize } from '../queue/index.js';
-import { resolveModel } from '../agent/keys.js';
+import { resolveModels } from '../agent/keys.js';
 import { runAgent } from '../agent/runtime.js';
 import { handleBossMessage } from '../agent/boss-mode.js';
 import { isBoss, linkCommand, linkTelegram } from './boss-link.js';
 import { contactGate } from './contact-limits.js';
 import { LLMError } from '../llm/index.js';
+import { QuotaError } from '../llm/gateway.js';
 import { canReply } from './plan.js';
 import { logEvent } from './audit.js';
 import { shouldSummarize } from './memory.js';
@@ -335,6 +336,7 @@ export async function processInbound(messageId: string, attempt = 0): Promise<vo
           'Message not answered: your trial/subscription is inactive. Upgrade to resume replies.',
         message_limit: 'Message not answered: monthly AI reply limit reached. Upgrade for more.',
         agent_paused: 'Message not answered: your agent is paused.',
+        maintenance: 'Message saved but not answered: the platform is under maintenance.',
       }[gate.reason],
     );
     return;
@@ -346,7 +348,8 @@ export async function processInbound(messageId: string, attempt = 0): Promise<vo
     return;
   }
 
-  const model = await resolveModel(user.id);
+  const models = await resolveModels(user.id);
+  const model = models?.primary;
   if (!model) {
     await finish('SKIPPED', 'no_api_key');
     await logEvent(
@@ -366,6 +369,7 @@ export async function processInbound(messageId: string, attempt = 0): Promise<vo
       userId: user.id,
       conversationId: conversation.id,
       model,
+      fallback: models.fallback,
       channelLabel: label,
       upToMessageId: msg.id,
     });
@@ -392,12 +396,34 @@ export async function processInbound(messageId: string, attempt = 0): Promise<vo
     }
     if (await shouldSummarize(conversation.id)) await enqueueSummarize(conversation.id);
   } catch (err) {
+    // the gateway's quota check refused (plan/limit changed while this message waited)
+    if (err instanceof QuotaError) {
+      await finish('SKIPPED', err.reason);
+      return;
+    }
     const retryable = err instanceof LLMError ? err.retryable : true;
     const message = scrubSecrets(err instanceof Error ? err.message : String(err));
     logger.warn({ err: message, messageId, attempt }, 'inbound processing failed');
     if (retryable && attempt < MAX_ATTEMPTS - 1) {
       await prisma.message.update({ where: { id: msg.id }, data: { status: 'RECEIVED', error: message } });
       throw err; // let the queue retry with backoff
+    }
+    // final failure: the customer still gets a polite answer, exactly once (audit H5)
+    const replied = await prisma.message.findFirst({
+      where: { replyToId: msg.id, status: 'SENT' },
+      select: { id: true },
+    });
+    if (!replied) {
+      await recordOutbound({
+        channel,
+        conversationId: conversation.id,
+        to: contact.externalId,
+        text: FALLBACK_REPLY,
+        role: 'ASSISTANT',
+        replyToId: msg.id,
+      }).catch((sendErr: Error) =>
+        logger.warn({ err: scrubSecrets(sendErr.message), messageId }, 'fallback reply failed too'),
+      );
     }
     await finish('FAILED', message);
     await logEvent(

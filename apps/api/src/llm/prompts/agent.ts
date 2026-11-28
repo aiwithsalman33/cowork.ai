@@ -1,3 +1,6 @@
+/** Customer-facing agent prompt. Bump PROMPT_VERSION whenever the wording or structure changes. */
+export const PROMPT_VERSION = 'agent@2';
+
 export interface PromptAgent {
   name: string;
   businessName: string;

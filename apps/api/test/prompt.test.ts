@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { composeSystemPrompt, memoryNote, untrusted, type PromptAgent } from '../src/agent/prompt.js';
+import { composeSystemPrompt, memoryNote, untrusted, type PromptAgent } from '../src/llm/prompts/agent.js';
 import { safeFacts } from '../src/services/memory.js';
 import { anthropicComplete, toAnthropic } from '../src/llm/anthropic.js';
 import { cleanSchema, toGemini } from '../src/llm/google.js';

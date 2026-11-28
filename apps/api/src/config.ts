@@ -27,6 +27,8 @@ const envSchema = z.object({
   QUEUE_ENABLED: bool.default(true),
   WORKERS_ENABLED: bool.default(true),
   BAILEYS_ENABLED: bool.default(true),
+  /** deterministic fake model instead of real providers (tests, local dev, load tests); never in production */
+  LLM_FAKE: bool.default(false),
   WA_SESSIONS_DIR: z.string().default('./data/wa-sessions'),
   WA_GRAPH_VERSION: z.string().default('v21.0'),
 

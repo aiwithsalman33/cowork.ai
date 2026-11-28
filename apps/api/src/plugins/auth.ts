@@ -78,6 +78,8 @@ export async function authenticate(req: FastifyRequest, _reply: FastifyReply) {
   }
   req.auth = auth;
   req.currentUser = user;
+  // every later log line of this request names the tenant (M6)
+  req.log = req.log.child({ userId: user.id });
   req.db = tenantDb(user.id);
 }
 

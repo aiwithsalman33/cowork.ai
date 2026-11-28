@@ -132,6 +132,7 @@ model User {
   eventLogs           EventLog[]
   billingEvents       BillingEvent[]
   payments            Payment[]
+  usageEvents         UsageEvent[]
   auditLogsAsActor    AuditLog[]           @relation("AuditActor")
 
   @@index([createdAt])
@@ -173,6 +174,9 @@ model Agent {
   commonQuestions  String   @default("")
   provider         String?
   model            String?
+  /// second saved key used when the main model is down (audit H5)
+  fallbackProvider String?
+  fallbackModel    String?
   updatedAt        DateTime @updatedAt
   createdAt        DateTime @default(now())
 
@@ -593,4 +597,26 @@ model AgentDoc {
 
   @@unique([userId, fileId])
   @@index([userId])
+}
+
+/** One AI model call (audit M4): cost, latency and failures per tenant and feature. */
+model UsageEvent {
+  id            String   @id @default(cuid())
+  userId        String
+  /** agent_reply | memory | skill_creator | boss | key_test */
+  feature       String
+  provider      String
+  model         String
+  promptVersion String
+  tokensIn      Int      @default(0)
+  tokensOut     Int      @default(0)
+  latencyMs     Int      @default(0)
+  ok            Boolean
+  fallback      Boolean  @default(false)
+  errorCode     String?
+  createdAt     DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
 }

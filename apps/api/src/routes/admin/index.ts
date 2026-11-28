@@ -22,6 +22,7 @@ import { audit } from '../../services/audit.js';
 import { isPlanActive, messagesThisMonth } from '../../services/plan.js';
 import { allPlansJSON, plan, refreshPlans, trialMs } from '../../services/plans.js';
 import { invalidateFlags } from '../../services/flags.js';
+import { clearMaintenanceCache } from '../../services/maintenance.js';
 import { toMeDTO } from '../../services/me.js';
 import { logoutSession } from '../../channels/baileys.js';
 import { servicesFromScopes } from '../../integrations/google.js';
@@ -485,6 +486,7 @@ export async function adminRoutes(app: FastifyInstance) {
     });
     const flag = await prisma.featureFlag.upsert({ where: { key: input.key }, create: input, update: input });
     invalidateFlags();
+    clearMaintenanceCache();
     await audit(
       user(req).id,
       'flag.update',

@@ -2,6 +2,24 @@ import type { NextConfig } from 'next';
 
 const API = process.env.API_INTERNAL_URL ?? 'http://localhost:4000';
 
+/**
+ * Content-Security-Policy (M13). Cashfree checkout needs its SDK, API and payment pages.
+ * Dev mode also needs 'unsafe-eval' for hot reload. Set NEXT_PUBLIC_SENTRY_INGEST to allow error reports.
+ */
+const sentry = process.env.NEXT_PUBLIC_SENTRY_INGEST ? ` ${process.env.NEXT_PUBLIC_SENTRY_INGEST}` : '';
+const CSP = [
+  "default-src 'self'",
+  `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === 'production' ? '' : " 'unsafe-eval'"} https://sdk.cashfree.com`,
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: https:",
+  "font-src 'self' data:",
+  `connect-src 'self' https://*.cashfree.com${sentry}`,
+  'frame-src https://*.cashfree.com',
+  "frame-ancestors 'none'",
+  "base-uri 'self'",
+  "form-action 'self' https://*.cashfree.com",
+].join('; ');
+
 const config: NextConfig = {
   output: 'standalone',
   outputFileTracingRoot: new URL('../../', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'),
@@ -20,6 +38,7 @@ const config: NextConfig = {
       {
         source: '/(.*)',
         headers: [
+          { key: 'Content-Security-Policy', value: CSP },
           { key: 'X-Frame-Options', value: 'DENY' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },

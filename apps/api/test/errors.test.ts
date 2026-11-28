@@ -58,3 +58,18 @@ describe('error responses (M12)', () => {
     expect(await prisma.skill.count({ where: { id: skill.id } })).toBe(1);
   });
 });
+
+describe('HttpError headers', () => {
+  it('the error handler sends headers attached to an HttpError', async () => {
+    const { buildApp } = await import('../src/app.js');
+    const { HttpError } = await import('../src/lib/errors.js');
+    const app = await buildApp();
+    app.get('/__throw', async () => {
+      throw new HttpError(429, 'slow down', 'RATE_LIMITED', undefined, { 'retry-after': '30' });
+    });
+    const res = await app.inject({ method: 'GET', url: '/__throw' });
+    expect(res.statusCode).toBe(429);
+    expect(res.headers['retry-after']).toBe('30');
+    await app.close();
+  });
+});

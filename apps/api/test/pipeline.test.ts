@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PLANS } from '@cowork/shared';
 import { buildComponents, checkValues, templateFields } from '../src/channels/template-fields.js';
 import { textOf } from '../src/channels/baileys.js';
+import { processInbound } from '../src/services/pipeline.js';
 import { normalizeUpdate } from '../src/channels/telegram.js';
 import { encrypt, encryptJson, hmacSha256Hex } from '../src/lib/crypto.js';
 import { call, getApp, prisma, signup, type Session } from './helpers.js';
@@ -227,6 +228,75 @@ describe('telegram webhook → agent reply', () => {
     const inbound = await prisma.message.findFirst({ where: { userId: s.userId, direction: 'IN' } });
     expect(inbound?.error).toBe('no_api_key');
     expect(await prisma.eventLog.count({ where: { userId: s.userId, type: 'reply.no_api_key' } })).toBe(1);
+  });
+});
+
+describe('customers never get silence (H5)', () => {
+  /** Makes OpenAI (primary) and/or Groq (fallback) fail, other routes unchanged. */
+  function failing(opts: { primary: boolean; fallback: boolean }) {
+    const spy = vi.mocked(globalThis.fetch);
+    const original = spy.getMockImplementation()!;
+    spy.mockImplementation(async (input, init) => {
+      const url = String(input instanceof Request ? input.url : input);
+      const down = () =>
+        new Response(JSON.stringify({ error: { message: 'overloaded' } }), {
+          status: 503,
+          headers: { 'content-type': 'application/json' },
+        });
+      if (url.includes('api.openai.com') && opts.primary) return down();
+      if (url.includes('api.groq.com')) {
+        if (opts.fallback) return down();
+        return new Response(
+          JSON.stringify({ choices: [{ message: { content: 'Answer from the fallback' } }], usage: {} }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        );
+      }
+      return original(input, init);
+    });
+  }
+  async function withFallbackKey(userId: string) {
+    await prisma.apiKey.create({
+      data: {
+        userId,
+        provider: 'groq',
+        model: 'llama-3.3-70b-versatile',
+        encryptedKey: encrypt('gsk-test-1'),
+        last4: 'st-1',
+      },
+    });
+    await prisma.agent.update({ where: { userId }, data: { fallbackProvider: 'groq' } });
+  }
+
+  it('primary down + fallback up → the customer gets the fallback model’s answer', async () => {
+    const { s, channel } = await setupTenant();
+    await withFallbackKey(s.userId);
+    failing({ primary: true, fallback: false });
+    await postTelegram(channel.id, tgUpdate('Do you deliver on Sunday?'));
+    const out = await prisma.message.findFirst({ where: { userId: s.userId, direction: 'OUT' } });
+    expect(out?.content).toBe('Answer from the fallback');
+    expect(await prisma.usageEvent.findFirst({ where: { userId: s.userId, ok: true } })).toMatchObject({
+      fallback: true,
+      provider: 'groq',
+    });
+  });
+
+  it('both down on the last attempt → one polite reply, never twice', async () => {
+    const { s, channel } = await setupTenant();
+    await withFallbackKey(s.userId);
+    failing({ primary: true, fallback: true });
+    await postTelegram(channel.id, tgUpdate('Hello?'));
+    const inbound = await prisma.message.findFirstOrThrow({ where: { userId: s.userId, direction: 'IN' } });
+    expect(inbound.status).toBe('FAILED');
+    const sends = () => sent.filter((r) => r.url.includes('/sendMessage')).length;
+    expect(sends()).toBe(1);
+    const out = await prisma.message.findFirstOrThrow({ where: { userId: s.userId, direction: 'OUT' } });
+    expect(out).toMatchObject({ role: 'ASSISTANT', replyToId: inbound.id, status: 'SENT' });
+    expect(out.content).toMatch(/get back to you/);
+    // a late retry of the same message must not send it again
+    await prisma.message.update({ where: { id: inbound.id }, data: { status: 'RECEIVED' } });
+    await processInbound(inbound.id, 0);
+    expect(sends()).toBe(1);
+    expect(await prisma.eventLog.count({ where: { userId: s.userId, type: 'reply.failed' } })).toBe(1);
   });
 });
 

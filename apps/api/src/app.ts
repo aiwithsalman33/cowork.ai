@@ -10,6 +10,7 @@ import { prisma } from './db/client.js';
 import { authRoutes } from './routes/auth.js';
 import { registerRoutes } from './routes/index.js';
 import { wireHandlers } from './background.js';
+import { maintenanceOn, READ_ONLY, writeAllowedDuringMaintenance } from './services/maintenance.js';
 
 export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({
@@ -19,7 +20,34 @@ export async function buildApp(): Promise<FastifyInstance> {
         ? (_addr: string, hop: number) => hop < (env.TRUST_PROXY as number)
         : env.TRUST_PROXY,
     bodyLimit: 2 * 1024 * 1024,
-    genReqId: () => crypto.randomUUID(),
+    // accept a caller's x-request-id (e.g. from Caddy) when it looks sane, else make one (M6)
+    requestIdHeader: false,
+    genReqId: (req) => {
+      const given = req.headers['x-request-id'];
+      return typeof given === 'string' && /^[A-Za-z0-9._:-]{1,64}$/.test(given) ? given : crypto.randomUUID();
+    },
+  });
+  app.addHook('onSend', async (req, reply) => {
+    reply.header('x-request-id', req.id);
+    // tenant data must never sit in shared or browser caches (L7); public plan prices may
+    const path = req.url.split('?')[0]!;
+    if (path.startsWith('/api/'))
+      reply.header(
+        'cache-control',
+        req.method === 'GET' && path === '/api/public/plans' ? 'public, max-age=60' : 'private, no-store',
+      );
+  });
+  // read-only maintenance (M5): tenant writes pause; reads, sign-in, admin, webhooks keep working
+  app.addHook('onRequest', async (req) => {
+    if (['GET', 'HEAD', 'OPTIONS'].includes(req.method) || writeAllowedDuringMaintenance(req.url)) return;
+    if (await maintenanceOn(READ_ONLY))
+      throw new HttpError(
+        503,
+        'We are doing maintenance. Please try again in a few minutes.',
+        'MAINTENANCE',
+        undefined,
+        { 'retry-after': '300' },
+      );
   });
 
   // Keep the raw body for webhook signature verification (Meta, Razorpay).
@@ -54,6 +82,7 @@ export async function buildApp(): Promise<FastifyInstance> {
 
   app.setErrorHandler((err: FastifyError | HttpError, req, reply) => {
     if (err instanceof HttpError) {
+      if (err.headers) reply.headers(err.headers);
       return reply.code(err.statusCode).send({ error: err.message, code: err.code, details: err.details });
     }
     const status = (err as FastifyError).statusCode ?? 500;

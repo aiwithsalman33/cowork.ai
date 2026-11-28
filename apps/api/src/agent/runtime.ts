@@ -2,9 +2,15 @@ import type { Prisma } from '@prisma/client';
 import { TOOL_NAMES, type ToolName } from '@cowork/shared';
 import { loadGoogleState } from '../integrations/google.js';
 import { prisma } from '../db/client.js';
-import { complete, type ChatMessage, type ToolDef } from '../llm/index.js';
+import { type ChatMessage, type ToolDef } from '../llm/index.js';
+import { generate } from '../llm/gateway.js';
 import type { ResolvedModel } from './keys.js';
-import { composeSystemPrompt, memoryNote, untrusted } from './prompt.js';
+import {
+  composeSystemPrompt,
+  memoryNote,
+  PROMPT_VERSION as AGENT_PROMPT_VERSION,
+  untrusted,
+} from '../llm/prompts/agent.js';
 import { availableTools, runTool, TOOL_DEFS, type ToolContext } from './tools.js';
 import { buildTemplateTool } from './templates.js';
 
@@ -94,6 +100,8 @@ export async function runAgent(params: {
   userId: string;
   conversationId: string;
   model: ResolvedModel;
+  /** used when the main model fails with a retryable error (audit H5) */
+  fallback?: ResolvedModel | null;
   channelLabel: string;
   upToMessageId?: string;
 }): Promise<AgentRunResult> {
@@ -173,13 +181,21 @@ ${templateTool.promptNote}`;
   const usage = { input: 0, output: 0 };
   const calls: { name: string; ok: boolean }[] = [];
   for (let round = 0; round <= MAX_TOOL_ROUNDS; round++) {
-    const res = await complete({
-      ...params.model,
-      messages,
-      tools: round < MAX_TOOL_ROUNDS && tools.length ? tools : undefined,
-      temperature: 0.5,
-      maxTokens: 700,
-    });
+    const res = await generate(
+      {
+        userId: params.userId,
+        feature: 'agent_reply',
+        promptVersion: AGENT_PROMPT_VERSION,
+        fallback: params.fallback ?? null,
+      },
+      {
+        ...params.model,
+        messages,
+        tools: round < MAX_TOOL_ROUNDS && tools.length ? tools : undefined,
+        temperature: 0.5,
+        maxTokens: 700,
+      },
+    );
     usage.input += res.usage.input;
     usage.output += res.usage.output;
     if (!res.toolCalls.length) {

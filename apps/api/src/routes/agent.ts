@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import {
   apiKeySchema,
   bossNumbersSchema,
+  fallbackModelSchema,
   knowledgeSchema,
   personalitySchema,
   PROVIDERS,
@@ -15,7 +16,8 @@ import { parse } from '../lib/validate.js';
 import { badRequest, notFound } from '../lib/errors.js';
 import { decrypt, encrypt, last4 } from '../lib/crypto.js';
 import { prisma } from '../db/client.js';
-import { complete, LLMError } from '../llm/index.js';
+import { LLMError } from '../llm/index.js';
+import { generate } from '../llm/gateway.js';
 import { buildAgentPrompt } from '../agent/runtime.js';
 import { logEvent } from '../services/audit.js';
 import { createLinkCode } from '../services/boss-link.js';
@@ -78,7 +80,11 @@ export async function agentRoutes(app: FastifyInstance) {
     '/keys',
     async (
       req,
-    ): Promise<{ keys: ApiKeyDTO[]; active: { provider: string | null; model: string | null } }> => {
+    ): Promise<{
+      keys: ApiKeyDTO[];
+      active: { provider: string | null; model: string | null };
+      fallback: { provider: string | null; model: string | null };
+    }> => {
       const [keys, agent] = await Promise.all([req.db.apiKey.findMany(), req.db.agent.findFirst()]);
       return {
         keys: keys.map((k) => ({
@@ -89,6 +95,7 @@ export async function agentRoutes(app: FastifyInstance) {
           updatedAt: k.updatedAt.toISOString(),
         })),
         active: { provider: agent?.provider ?? null, model: agent?.model ?? null },
+        fallback: { provider: agent?.fallbackProvider ?? null, model: agent?.fallbackModel ?? null },
       };
     },
   );
@@ -131,6 +138,18 @@ export async function agentRoutes(app: FastifyInstance) {
     return { ok: true };
   });
 
+  /** Second saved key to use when the main model is down (audit H5). provider null = off. */
+  app.put('/keys/fallback', async (req) => {
+    const { provider, model } = parse(fallbackModelSchema, req.body);
+    if (provider && !(await req.db.apiKey.findFirst({ where: { provider } })))
+      throw badRequest('Save a key for this provider first.');
+    await req.db.agent.update({
+      where: { userId: user(req).id },
+      data: { fallbackProvider: provider, fallbackModel: provider ? (model ?? null) : null },
+    });
+    return { ok: true };
+  });
+
   app.delete('/keys/:provider', async (req) => {
     const { provider } = parse(z.object({ provider: z.enum(PROVIDER_IDS) }), req.params);
     const u = user(req);
@@ -149,16 +168,19 @@ export async function agentRoutes(app: FastifyInstance) {
     if (!key) throw notFound('No key saved for this provider');
     const started = Date.now();
     try {
-      const res = await complete({
-        provider,
-        model: key.model,
-        apiKey: decrypt(key.encryptedKey),
-        messages: [
-          { role: 'system', content: 'Reply with exactly: OK' },
-          { role: 'user', content: 'ping' },
-        ],
-        maxTokens: 20,
-      });
+      const res = await generate(
+        { userId: user(req).id, feature: 'key_test', promptVersion: 'key_test@1' },
+        {
+          provider,
+          model: key.model,
+          apiKey: decrypt(key.encryptedKey),
+          messages: [
+            { role: 'system', content: 'Reply with exactly: OK' },
+            { role: 'user', content: 'ping' },
+          ],
+          maxTokens: 20,
+        },
+      );
       return { ok: true, latencyMs: Date.now() - started, reply: (res.content ?? '').slice(0, 60) };
     } catch (err) {
       return { ok: false, error: err instanceof LLMError ? err.message : 'Could not reach the provider' };

@@ -23,8 +23,14 @@ export const REDACT_PATHS = [
   '*.secret',
 ];
 
+/** Logged request: method + path only. Query strings can carry tokens or personal data (L3). */
+export function reqSerializer(req: { method?: string; url?: string; id?: string }) {
+  return { method: req.method, url: (req.url ?? '').split('?')[0], id: req.id };
+}
+
 export const loggerOptions: LoggerOptions = {
   level: isTest ? 'silent' : env.LOG_LEVEL,
+  serializers: { req: reqSerializer },
   redact: { paths: REDACT_PATHS, censor: '[redacted]' },
   base: { service: 'cowork-api' },
   ...(isProd || isTest

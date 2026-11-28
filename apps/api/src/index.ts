@@ -2,6 +2,7 @@ import { env } from './config.js';
 import { buildApp } from './app.js';
 import { prisma } from './db/client.js';
 import { logger } from './lib/logger.js';
+import { captureError } from './lib/sentry.js';
 import { seed } from './db/seed.js';
 import { startBackground, stopBackground } from './background.js';
 
@@ -30,7 +31,10 @@ async function main() {
   };
   process.on('SIGTERM', () => void shutdown('SIGTERM'));
   process.on('SIGINT', () => void shutdown('SIGINT'));
-  process.on('unhandledRejection', (err) => logger.error({ err }, 'unhandledRejection'));
+  process.on('unhandledRejection', (err) => {
+    logger.error({ err }, 'unhandledRejection');
+    captureError(err, { feature: 'process' });
+  });
 }
 
 main().catch((err) => {

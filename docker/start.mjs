@@ -23,7 +23,8 @@ function run(name, args, opts) {
   children.push(child);
 }
 
-run('api', [`--max-old-space-size=${API_MEM}`, 'dist/index.js'], {
+// instrument.js loads Sentry first (no-op without SENTRY_DSN)
+run('api', [`--max-old-space-size=${API_MEM}`, '--import', './dist/instrument.js', 'dist/index.js'], {
   cwd: '/app/apps/api',
   env: { ...process.env, PORT: '4000', HOST: '0.0.0.0' },
 });

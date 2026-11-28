@@ -53,6 +53,8 @@ services:
       WA_GRAPH_VERSION: ${WA_GRAPH_VERSION:-v21.0}
       BAILEYS_ENABLED: ${BAILEYS_ENABLED:-true}
       LLM_FAKE: ${LLM_FAKE:-false}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-production}
       SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
       SMTP_PORT: ${SMTP_PORT:-465}
       SMTP_SECURE: ${SMTP_SECURE:-true}

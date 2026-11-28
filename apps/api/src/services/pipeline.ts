@@ -1,6 +1,7 @@
 import { Prisma, type Channel } from '@prisma/client';
 import { prisma } from '../db/client.js';
 import { logger, scrubSecrets } from '../lib/logger.js';
+import { captureError } from '../lib/sentry.js';
 import { CHANNEL_LABEL, cloudConfig, sendText, sendTyping } from '../channels/index.js';
 import {
   buildComponents,
@@ -426,6 +427,7 @@ export async function processInbound(messageId: string, attempt = 0): Promise<vo
       );
     }
     await finish('FAILED', message);
+    captureError(err, { userId: user.id, feature: 'agent_reply' });
     await logEvent(
       user.id,
       'ERROR',

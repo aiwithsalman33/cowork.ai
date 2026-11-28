@@ -1,5 +1,5 @@
 # CoWork AI — single production image (API + web in one container).
-# Normally built by GitHub Actions (.github/workflows/docker.yml) and pulled by the VPS.
+# Normally built by GitHub Actions (.github/workflows/ci.yml, job "image") and pulled by the VPS.
 # Strictly sequential (one npm install, no parallel stages) so it can also build on 1 vCPU.
 FROM node:24-alpine AS build
 RUN apk add --no-cache openssl libc6-compat
@@ -14,6 +14,9 @@ RUN npm ci --include-workspace-root --no-audit --no-fund
 COPY packages/shared packages/shared
 COPY apps/api apps/api
 COPY apps/web apps/web
+# browser error tracking is baked in at build time (CI build-arg; empty = off)
+ARG NEXT_PUBLIC_SENTRY_DSN=
+ENV NEXT_PUBLIC_SENTRY_DSN=${NEXT_PUBLIC_SENTRY_DSN}
 ENV NODE_OPTIONS=--max-old-space-size=1024 LOW_MEMORY_BUILD=1 API_INTERNAL_URL=http://127.0.0.1:4000
 RUN npm run build -w @cowork/shared \
  && cd apps/api && npx prisma generate && npm run build \

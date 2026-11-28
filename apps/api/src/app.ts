@@ -6,6 +6,7 @@ import rateLimit from '@fastify/rate-limit';
 import { env } from './config.js';
 import { loggerOptions } from './lib/logger.js';
 import { HttpError } from './lib/errors.js';
+import { captureError } from './lib/sentry.js';
 import { prisma } from './db/client.js';
 import { authRoutes } from './routes/auth.js';
 import { registerRoutes } from './routes/index.js';
@@ -88,7 +89,10 @@ export async function buildApp(): Promise<FastifyInstance> {
     const status = (err as FastifyError).statusCode ?? 500;
     if (status === 429)
       return reply.code(429).send({ error: 'Too many requests, slow down.', code: 'RATE_LIMITED' });
-    if (status >= 500) req.log.error({ err }, 'unhandled error');
+    if (status >= 500) {
+      req.log.error({ err }, 'unhandled error');
+      captureError(err, { requestId: req.id, userId: req.currentUser?.id });
+    }
     return reply.code(status).send({
       error: status >= 500 ? 'Something went wrong' : err.message,
       code: (err as FastifyError).code ?? 'ERROR',

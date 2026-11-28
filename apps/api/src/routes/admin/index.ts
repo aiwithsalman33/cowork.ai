@@ -476,6 +476,11 @@ export async function adminRoutes(app: FastifyInstance) {
     return { plan: planToJSON(plan(id)), defaults: planToJSON(PLANS[id]) };
   });
 
+  /** Throws on purpose so the owner can check Sentry receives errors (with the request id). */
+  app.post('/debug/error', async () => {
+    throw new Error('Sentry test error from /api/admin/debug/error');
+  });
+
   // ---------------- Feature flags ----------------
   app.get('/flags', async () => ({ flags: await prisma.featureFlag.findMany({ orderBy: { key: 'asc' } }) }));
 

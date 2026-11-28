@@ -4,9 +4,17 @@ const API = process.env.API_INTERNAL_URL ?? 'http://localhost:4000';
 
 /**
  * Content-Security-Policy (M13). Cashfree checkout needs its SDK, API and payment pages.
- * Dev mode also needs 'unsafe-eval' for hot reload. Set NEXT_PUBLIC_SENTRY_INGEST to allow error reports.
+ * Dev mode also needs 'unsafe-eval' for hot reload. Error reports may go to the Sentry host in
+ * NEXT_PUBLIC_SENTRY_DSN (build-time).
  */
-const sentry = process.env.NEXT_PUBLIC_SENTRY_INGEST ? ` ${process.env.NEXT_PUBLIC_SENTRY_INGEST}` : '';
+const sentryHost = (() => {
+  try {
+    return process.env.NEXT_PUBLIC_SENTRY_DSN ? new URL(process.env.NEXT_PUBLIC_SENTRY_DSN).host : '';
+  } catch {
+    return '';
+  }
+})();
+const sentry = sentryHost ? ` https://${sentryHost}` : '';
 const CSP = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === 'production' ? '' : " 'unsafe-eval'"} https://sdk.cashfree.com`,

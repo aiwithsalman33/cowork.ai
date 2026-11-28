@@ -120,6 +120,7 @@ jobs:
           push: true
           build-args: |
             SENTRY_RELEASE=${{ github.sha }}
+            NEXT_PUBLIC_SENTRY_DSN=${{ secrets.NEXT_PUBLIC_SENTRY_DSN }}
           tags: |
             ghcr.io/aiwithsalman33/cowork-ai:latest
             ghcr.io/aiwithsalman33/cowork-ai:${{ github.sha }}

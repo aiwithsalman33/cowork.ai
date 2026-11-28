@@ -31,6 +31,8 @@ const envSchema = z.object({
   LLM_FAKE: bool.default(false),
   /** git sha baked into the image (Dockerfile ARG SENTRY_RELEASE) */
   APP_RELEASE: z.string().default('dev'),
+  /** Sentry error tracking for the API; off when empty (read by src/instrument.ts) */
+  SENTRY_DSN: z.string().optional(),
   WA_SESSIONS_DIR: z.string().default('./data/wa-sessions'),
   WA_GRAPH_VERSION: z.string().default('v21.0'),
 

@@ -1,6 +1,7 @@
 import { PgBoss } from 'pg-boss';
 import { env } from '../config.js';
 import { logger } from '../lib/logger.js';
+import { captureError } from '../lib/sentry.js';
 
 export const QUEUES = {
   inbound: 'inbound-message',
@@ -35,7 +36,10 @@ export async function startQueue(withWorkers: boolean) {
     schema: 'pgboss',
     application_name: 'cowork-api',
   });
-  boss.on('error', (err) => logger.error({ err }, 'pg-boss error'));
+  boss.on('error', (err) => {
+    logger.error({ err }, 'pg-boss error');
+    captureError(err, { feature: 'queue' });
+  });
   await boss.start();
   await boss.createQueue(QUEUES.inbound, {
     retryLimit: 4,

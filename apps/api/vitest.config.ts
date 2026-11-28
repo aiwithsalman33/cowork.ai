@@ -16,9 +16,9 @@ export default defineConfig({
       // entry points and the CLI prompt exporter are exercised by e2e/manual runs, not unit tests
       exclude: ['src/index.ts', 'src/llm/prompts/export.ts', 'src/db/seed.ts'],
       reporter: ['text-summary', 'json-summary'],
-      // floor just under the measured coverage (2026-11-28: lines 66.4, functions 64.6, branches 53.8);
+      // floor just under the measured coverage (2026-11-28: lines 67.3, functions 65.1, branches 54.1);
       // raise it as tests are added — the audit target is 70 / 70 / 60
-      thresholds: { lines: 66, functions: 64, branches: 53 },
+      thresholds: { lines: 67, functions: 65, branches: 54 },
     },
     env: {
       NODE_ENV: 'test',

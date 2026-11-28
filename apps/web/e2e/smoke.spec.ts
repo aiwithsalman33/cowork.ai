@@ -25,12 +25,13 @@ test('sign up, sign in and see the usage meter on the dashboard @smoke', async (
   await page.getByLabel('Password').fill(password);
   await page.getByRole('button', { name: 'Create account' }).click();
 
-  await expect(page).toHaveURL(/\/login/);
+  // generous waits for slow CI machines
+  await expect(page).toHaveURL(/\/login/, { timeout: 30_000 });
   await expect(page.getByLabel('Email')).toHaveValue(email);
   await page.getByLabel('Password').fill(password);
   await page.getByRole('button', { name: 'Sign in' }).click();
 
-  await expect(page).toHaveURL(/\/dashboard/);
+  await expect(page).toHaveURL(/\/dashboard/, { timeout: 30_000 });
   await expect(page.getByText('AI replies this month')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
     page.viewportSize()!.width,

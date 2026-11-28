@@ -7,7 +7,7 @@
  */
 import type { Prisma } from '@prisma/client';
 import { prisma } from '../db/client.js';
-import { complete } from '../llm/index.js';
+import { generate } from '../llm/gateway.js';
 import { resolveModel } from '../agent/keys.js';
 import { logger } from '../lib/logger.js';
 import { untrusted } from '../agent/prompt.js';
@@ -86,22 +86,25 @@ export async function summarizeConversation(conversationId: string): Promise<voi
     .map((m) => `${m.role === 'USER' ? 'Customer' : 'Assistant'}: ${m.content.slice(0, 600)}`)
     .join('\n');
 
-  const res = await complete({
-    ...model,
-    json: true,
-    temperature: 0.2,
-    maxTokens: 600,
-    messages: [
-      { role: 'system', content: SYSTEM },
-      {
-        role: 'user',
-        content: untrusted(
-          'chat_transcript',
-          `Previous conversation summary: ${convo.summary || '(none)'}\nPrevious customer description: ${convo.contact.summary || '(none)'}\nKnown facts: ${JSON.stringify(convo.contact.profile ?? {})}\n\nNew messages:\n${transcript}`,
-        ),
-      },
-    ],
-  });
+  const res = await generate(
+    { userId: convo.userId, feature: 'memory', promptVersion: 'memory@1' },
+    {
+      ...model,
+      json: true,
+      temperature: 0.2,
+      maxTokens: 600,
+      messages: [
+        { role: 'system', content: SYSTEM },
+        {
+          role: 'user',
+          content: untrusted(
+            'chat_transcript',
+            `Previous conversation summary: ${convo.summary || '(none)'}\nPrevious customer description: ${convo.contact.summary || '(none)'}\nKnown facts: ${JSON.stringify(convo.contact.profile ?? {})}\n\nNew messages:\n${transcript}`,
+          ),
+        },
+      ],
+    },
+  );
 
   let parsed: { summary?: string; customer?: string; facts?: Record<string, unknown> } = {};
   try {

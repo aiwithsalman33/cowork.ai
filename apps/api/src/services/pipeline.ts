@@ -18,6 +18,7 @@ import { handleBossMessage } from '../agent/boss-mode.js';
 import { isBoss, linkCommand, linkTelegram } from './boss-link.js';
 import { contactGate } from './contact-limits.js';
 import { LLMError } from '../llm/index.js';
+import { QuotaError } from '../llm/gateway.js';
 import { canReply } from './plan.js';
 import { logEvent } from './audit.js';
 import { shouldSummarize } from './memory.js';
@@ -392,6 +393,11 @@ export async function processInbound(messageId: string, attempt = 0): Promise<vo
     }
     if (await shouldSummarize(conversation.id)) await enqueueSummarize(conversation.id);
   } catch (err) {
+    // the gateway's quota check refused (plan/limit changed while this message waited)
+    if (err instanceof QuotaError) {
+      await finish('SKIPPED', err.reason);
+      return;
+    }
     const retryable = err instanceof LLMError ? err.retryable : true;
     const message = scrubSecrets(err instanceof Error ? err.message : String(err));
     logger.warn({ err: message, messageId, attempt }, 'inbound processing failed');

@@ -18,7 +18,8 @@ import { randomToken } from '../lib/crypto.js';
 import { prisma } from '../db/client.js';
 import { assertCanEnableSkill } from '../services/plan.js';
 import { resolveModel } from '../agent/keys.js';
-import { complete, LLMError } from '../llm/index.js';
+import { LLMError } from '../llm/index.js';
+import { generate } from '../llm/gateway.js';
 
 export function toSkillDTO(s: Skill, enabled: boolean, includePrompt = false): SkillDTO {
   return {
@@ -96,16 +97,19 @@ export async function skillRoutes(app: FastifyInstance) {
       if (!model) throw badRequest('Add an AI key in Agent Config → API Keys to use the Skill Creator.');
       let raw: string | null;
       try {
-        const res = await complete({
-          ...model,
-          messages: [
-            { role: 'system', content: SKILL_GENERATOR_PROMPT },
-            { role: 'user', content: description },
-          ],
-          temperature: 0.4,
-          maxTokens: 800,
-          json: true,
-        });
+        const res = await generate(
+          { userId: user(req).id, feature: 'skill_creator', promptVersion: 'skill_creator@1' },
+          {
+            ...model,
+            messages: [
+              { role: 'system', content: SKILL_GENERATOR_PROMPT },
+              { role: 'user', content: description },
+            ],
+            temperature: 0.4,
+            maxTokens: 800,
+            json: true,
+          },
+        );
         raw = res.content;
       } catch (err) {
         req.log.warn({ err: (err as Error).message }, 'skill generation failed');

@@ -2,12 +2,14 @@ import type { Prisma } from '@prisma/client';
 import { TOOL_NAMES, type ToolName } from '@cowork/shared';
 import { loadGoogleState } from '../integrations/google.js';
 import { prisma } from '../db/client.js';
-import { complete, type ChatMessage, type ToolDef } from '../llm/index.js';
+import { type ChatMessage, type ToolDef } from '../llm/index.js';
+import { generate } from '../llm/gateway.js';
 import type { ResolvedModel } from './keys.js';
 import { composeSystemPrompt, memoryNote, untrusted } from './prompt.js';
 import { availableTools, runTool, TOOL_DEFS, type ToolContext } from './tools.js';
 import { buildTemplateTool } from './templates.js';
 
+export const AGENT_PROMPT_VERSION = 'agent@1';
 export const HISTORY_LIMIT = 16;
 export const MAX_TOOL_ROUNDS = 5;
 const TIME_ZONE = 'Asia/Kolkata';
@@ -173,13 +175,16 @@ ${templateTool.promptNote}`;
   const usage = { input: 0, output: 0 };
   const calls: { name: string; ok: boolean }[] = [];
   for (let round = 0; round <= MAX_TOOL_ROUNDS; round++) {
-    const res = await complete({
-      ...params.model,
-      messages,
-      tools: round < MAX_TOOL_ROUNDS && tools.length ? tools : undefined,
-      temperature: 0.5,
-      maxTokens: 700,
-    });
+    const res = await generate(
+      { userId: params.userId, feature: 'agent_reply', promptVersion: AGENT_PROMPT_VERSION },
+      {
+        ...params.model,
+        messages,
+        tools: round < MAX_TOOL_ROUNDS && tools.length ? tools : undefined,
+        temperature: 0.5,
+        maxTokens: 700,
+      },
+    );
     usage.input += res.usage.input;
     usage.output += res.usage.output;
     if (!res.toolCalls.length) {

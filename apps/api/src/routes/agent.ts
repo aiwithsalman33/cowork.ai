@@ -15,7 +15,8 @@ import { parse } from '../lib/validate.js';
 import { badRequest, notFound } from '../lib/errors.js';
 import { decrypt, encrypt, last4 } from '../lib/crypto.js';
 import { prisma } from '../db/client.js';
-import { complete, LLMError } from '../llm/index.js';
+import { LLMError } from '../llm/index.js';
+import { generate } from '../llm/gateway.js';
 import { buildAgentPrompt } from '../agent/runtime.js';
 import { logEvent } from '../services/audit.js';
 import { createLinkCode } from '../services/boss-link.js';
@@ -149,16 +150,19 @@ export async function agentRoutes(app: FastifyInstance) {
     if (!key) throw notFound('No key saved for this provider');
     const started = Date.now();
     try {
-      const res = await complete({
-        provider,
-        model: key.model,
-        apiKey: decrypt(key.encryptedKey),
-        messages: [
-          { role: 'system', content: 'Reply with exactly: OK' },
-          { role: 'user', content: 'ping' },
-        ],
-        maxTokens: 20,
-      });
+      const res = await generate(
+        { userId: user(req).id, feature: 'key_test', promptVersion: 'key_test@1' },
+        {
+          provider,
+          model: key.model,
+          apiKey: decrypt(key.encryptedKey),
+          messages: [
+            { role: 'system', content: 'Reply with exactly: OK' },
+            { role: 'user', content: 'ping' },
+          ],
+          maxTokens: 20,
+        },
+      );
       return { ok: true, latencyMs: Date.now() - started, reply: (res.content ?? '').slice(0, 60) };
     } catch (err) {
       return { ok: false, error: err instanceof LLMError ? err.message : 'Could not reach the provider' };

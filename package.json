@@ -16,11 +16,14 @@
     "dev:web": "npm run dev -w @cowork/web",
     "db:migrate": "npm run prisma:migrate -w @cowork/api",
     "db:deploy": "npm run prisma:deploy -w @cowork/api",
-    "db:seed": "npm run seed -w @cowork/api"
+    "db:seed": "npm run seed -w @cowork/api",
+    "prepare": "husky || true"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.0",
     "eslint": "^9.39.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
     "prettier": "^3.6.2",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.46.0"
@@ -36,5 +39,12 @@
     "protobufjs": true,
     "@prisma/client": true,
     "baileys": true
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,mjs}": [
+      "prettier --write",
+      "eslint --fix --no-warn-ignored"
+    ],
+    "*.{json,md,yml,yaml,css}": "prettier --write"
   }
 }

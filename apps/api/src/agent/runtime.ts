@@ -5,11 +5,15 @@ import { prisma } from '../db/client.js';
 import { type ChatMessage, type ToolDef } from '../llm/index.js';
 import { generate } from '../llm/gateway.js';
 import type { ResolvedModel } from './keys.js';
-import { composeSystemPrompt, memoryNote, untrusted } from './prompt.js';
+import {
+  composeSystemPrompt,
+  memoryNote,
+  PROMPT_VERSION as AGENT_PROMPT_VERSION,
+  untrusted,
+} from '../llm/prompts/agent.js';
 import { availableTools, runTool, TOOL_DEFS, type ToolContext } from './tools.js';
 import { buildTemplateTool } from './templates.js';
 
-export const AGENT_PROMPT_VERSION = 'agent@1';
 export const HISTORY_LIMIT = 16;
 export const MAX_TOOL_ROUNDS = 5;
 const TIME_ZONE = 'Asia/Kolkata';

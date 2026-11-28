@@ -20,6 +20,10 @@ import { assertCanEnableSkill } from '../services/plan.js';
 import { resolveModel } from '../agent/keys.js';
 import { LLMError } from '../llm/index.js';
 import { generate } from '../llm/gateway.js';
+import {
+  PROMPT_VERSION as SKILL_PROMPT_VERSION,
+  SKILL_GENERATOR_PROMPT,
+} from '../llm/prompts/skill-creator.js';
 
 export function toSkillDTO(s: Skill, enabled: boolean, includePrompt = false): SkillDTO {
   return {
@@ -46,15 +50,6 @@ function slugify(name: string) {
       .slice(0, 40) || 'skill'
   );
 }
-
-const SKILL_GENERATOR_PROMPT = `You design "skills" for a customer-facing WhatsApp/Telegram AI assistant used by small businesses.
-Given the owner's description, return ONLY a JSON object with these keys:
-- "name": short title (2-4 words)
-- "description": one sentence describing what the skill does, for the owner
-- "category": one of ${JSON.stringify(SKILL_CATEGORIES.filter((c) => c !== 'Custom'))}
-- "icon": a lucide icon name in kebab-case (e.g. "calendar-check", "gift", "truck", "heart-handshake")
-- "promptFragment": 2-5 sentences of precise instructions to the assistant, written in the second person ("When a customer…, you…"). Be specific about what to ask, what to say, and what not to do. Never invent prices or policies — tell the assistant to use the knowledge base.
-- "tools": array (possibly empty) chosen ONLY from ${JSON.stringify(TOOL_NAMES)} — include a tool only if the skill clearly needs it (book_appointment for bookings, capture_lead to record customer details/requests, send_email for emailing customers, search_drive/read_doc for looking up documents).`;
 
 export async function skillRoutes(app: FastifyInstance) {
   app.addHook('preHandler', authenticate);
@@ -98,7 +93,7 @@ export async function skillRoutes(app: FastifyInstance) {
       let raw: string | null;
       try {
         const res = await generate(
-          { userId: user(req).id, feature: 'skill_creator', promptVersion: 'skill_creator@1' },
+          { userId: user(req).id, feature: 'skill_creator', promptVersion: SKILL_PROMPT_VERSION },
           {
             ...model,
             messages: [

@@ -19,7 +19,15 @@ export async function buildApp(): Promise<FastifyInstance> {
         ? (_addr: string, hop: number) => hop < (env.TRUST_PROXY as number)
         : env.TRUST_PROXY,
     bodyLimit: 2 * 1024 * 1024,
-    genReqId: () => crypto.randomUUID(),
+    // accept a caller's x-request-id (e.g. from Caddy) when it looks sane, else make one (M6)
+    requestIdHeader: false,
+    genReqId: (req) => {
+      const given = req.headers['x-request-id'];
+      return typeof given === 'string' && /^[A-Za-z0-9._:-]{1,64}$/.test(given) ? given : crypto.randomUUID();
+    },
+  });
+  app.addHook('onSend', async (req, reply) => {
+    reply.header('x-request-id', req.id);
   });
 
   // Keep the raw body for webhook signature verification (Meta, Razorpay).

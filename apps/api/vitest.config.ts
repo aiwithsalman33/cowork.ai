@@ -10,6 +10,16 @@ export default defineConfig({
     fileParallelism: false,
     testTimeout: 30_000,
     hookTimeout: 60_000,
+    coverage: {
+      provider: 'v8',
+      include: ['src/**/*.ts'],
+      // entry points and the CLI prompt exporter are exercised by e2e/manual runs, not unit tests
+      exclude: ['src/index.ts', 'src/llm/prompts/export.ts', 'src/db/seed.ts'],
+      reporter: ['text-summary', 'json-summary'],
+      // floor just under the measured coverage (2026-11-28: lines 66.4, functions 64.6, branches 53.8);
+      // raise it as tests are added — the audit target is 70 / 70 / 60
+      thresholds: { lines: 66, functions: 64, branches: 53 },
+    },
     env: {
       NODE_ENV: 'test',
       DATABASE_URL: TEST_DB,

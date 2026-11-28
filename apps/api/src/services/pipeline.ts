@@ -336,6 +336,7 @@ export async function processInbound(messageId: string, attempt = 0): Promise<vo
           'Message not answered: your trial/subscription is inactive. Upgrade to resume replies.',
         message_limit: 'Message not answered: monthly AI reply limit reached. Upgrade for more.',
         agent_paused: 'Message not answered: your agent is paused.',
+        maintenance: 'Message saved but not answered: the platform is under maintenance.',
       }[gate.reason],
     );
     return;

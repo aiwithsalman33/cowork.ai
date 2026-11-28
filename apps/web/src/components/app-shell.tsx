@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTheme } from 'next-themes';
 import {
   BarChart3,
@@ -45,7 +45,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
-import { post } from '@/lib/api';
+import { get, post } from '@/lib/api';
 import { usePublicPlans } from '@/lib/plans';
 import { cn } from '@/lib/utils';
 
@@ -122,6 +122,20 @@ function TrialBanner({ me }: { me: MeDTO }) {
       >
         {expired ? 'Purchase plan' : 'See plans'}
       </Link>
+    </div>
+  );
+}
+
+function MaintenanceBanner() {
+  const { data } = useQuery({
+    queryKey: ['platform-status'],
+    queryFn: () => get<{ readOnly: boolean }>('/public/status'),
+    refetchInterval: 60_000,
+  });
+  if (!data?.readOnly) return null;
+  return (
+    <div role="status" className="bg-warning px-4 py-2 text-center text-sm font-medium text-black">
+      Maintenance in progress: you can look around, but saving is paused for a few minutes.
     </div>
   );
 }
@@ -278,6 +292,7 @@ export function AppShell({ me, nav, children }: { me: MeDTO; nav: NavItem[]; chi
 
   return (
     <div className="flex min-h-dvh flex-col">
+      <MaintenanceBanner />
       <ImpersonationBanner me={me} />
       {!isAdminArea && <TrialBanner me={me} />}
       <div className="flex flex-1">

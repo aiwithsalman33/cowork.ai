@@ -2,6 +2,7 @@ import type { User, ChannelType } from '@prisma/client';
 import type { PlanLimits } from '@cowork/shared';
 import { plan } from './plans.js';
 import { prisma } from '../db/client.js';
+import { AGENT_PAUSED, maintenanceOn } from './maintenance.js';
 import { paymentRequired } from '../lib/errors.js';
 
 type PlanUser = Pick<User, 'plan' | 'status' | 'trialEndsAt' | 'subscriptionStatus' | 'currentPeriodEnd'> & {
@@ -76,13 +77,14 @@ export async function assertCanEnableSkill(user: Pick<User, 'id' | 'plan'>) {
 }
 
 export type ReplyGate =
-  { ok: true } | { ok: false; reason: 'plan_inactive' | 'message_limit' | 'agent_paused' };
+  { ok: true } | { ok: false; reason: 'plan_inactive' | 'message_limit' | 'agent_paused' | 'maintenance' };
 
 /** Checked by the message worker before every AI reply. */
 export async function canReply(
   user: PlanUser & { id: string; plan: User['plan'] },
   agentActive: boolean,
 ): Promise<ReplyGate> {
+  if (await maintenanceOn(AGENT_PAUSED)) return { ok: false, reason: 'maintenance' };
   if (!isPlanActive(user)) return { ok: false, reason: 'plan_inactive' };
   if (!agentActive) return { ok: false, reason: 'agent_paused' };
   const used = await messagesThisMonth(user.id);

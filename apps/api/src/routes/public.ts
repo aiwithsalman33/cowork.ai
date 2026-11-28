@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { contactSchema } from '@cowork/shared';
 import { allPlansJSON } from '../services/plans.js';
+import { maintenanceOn, READ_ONLY } from '../services/maintenance.js';
 import { prisma } from '../db/client.js';
 import { parse } from '../lib/validate.js';
 
@@ -8,6 +9,9 @@ import { parse } from '../lib/validate.js';
 export async function publicRoutes(app: FastifyInstance) {
   /** Live plan details for the pricing section. */
   app.get('/plans', async () => ({ plans: allPlansJSON() }));
+
+  /** Shown as a banner in the app while maintenance is on. */
+  app.get('/status', async () => ({ readOnly: await maintenanceOn(READ_ONLY) }));
 
   /** Landing-page contact form. Saved for the admin panel; the browser also opens WhatsApp. */
   app.post(

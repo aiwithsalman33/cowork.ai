@@ -15,6 +15,17 @@ const DEFAULT_FLAGS = [
     enabled: true,
   },
   {
+    key: 'maintenance_read_only',
+    description:
+      'MAINTENANCE: tenants can only read; saving and changes are paused (admins, sign-in and webhooks still work)',
+    enabled: false,
+  },
+  {
+    key: 'maintenance_agent_paused',
+    description: 'MAINTENANCE: incoming messages are saved but the agent does not reply',
+    enabled: false,
+  },
+  {
     key: 'google_integrations',
     description:
       'Google integrations (Gmail, Calendar, Sheets, Drive, Docs) with the tenant’s own Google Cloud OAuth client',

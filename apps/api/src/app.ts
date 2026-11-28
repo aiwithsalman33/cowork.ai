@@ -10,6 +10,7 @@ import { prisma } from './db/client.js';
 import { authRoutes } from './routes/auth.js';
 import { registerRoutes } from './routes/index.js';
 import { wireHandlers } from './background.js';
+import { maintenanceOn, READ_ONLY, writeAllowedDuringMaintenance } from './services/maintenance.js';
 
 export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({
@@ -28,6 +29,18 @@ export async function buildApp(): Promise<FastifyInstance> {
   });
   app.addHook('onSend', async (req, reply) => {
     reply.header('x-request-id', req.id);
+  });
+  // read-only maintenance (M5): tenant writes pause; reads, sign-in, admin, webhooks keep working
+  app.addHook('onRequest', async (req) => {
+    if (['GET', 'HEAD', 'OPTIONS'].includes(req.method) || writeAllowedDuringMaintenance(req.url)) return;
+    if (await maintenanceOn(READ_ONLY))
+      throw new HttpError(
+        503,
+        'We are doing maintenance. Please try again in a few minutes.',
+        'MAINTENANCE',
+        undefined,
+        { 'retry-after': '300' },
+      );
   });
 
   // Keep the raw body for webhook signature verification (Meta, Razorpay).

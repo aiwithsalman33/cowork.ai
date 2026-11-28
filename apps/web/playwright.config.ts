@@ -17,7 +17,18 @@ export default defineConfig({
     screenshot: 'only-on-failure',
   },
   projects: [
-    { name: 'desktop', use: { ...devices['Desktop Chrome'] } },
+    { name: 'desktop', use: { ...devices['Desktop Chrome'] }, grepInvert: /@smoke/ },
     { name: 'mobile', use: { ...devices['Pixel 7'] }, grep: /@mobile/ },
+    // CI smoke test (npm run test:smoke -w @cowork/web) at phone and laptop sizes
+    {
+      name: 'smoke-phone',
+      use: { ...devices['Desktop Chrome'], viewport: { width: 375, height: 812 } },
+      grep: /@smoke/,
+    },
+    {
+      name: 'smoke-laptop',
+      use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 800 } },
+      grep: /@smoke/,
+    },
   ],
 });

@@ -98,7 +98,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   app.setNotFoundHandler((_req, reply) => reply.code(404).send({ error: 'Not found', code: 'NOT_FOUND' }));
 
   const quiet = { logLevel: 'silent' as const, config: { rateLimit: false as const } };
-  app.get('/health', quiet, async () => ({ ok: true }));
+  app.get('/health', quiet, async () => ({ ok: true, release: env.APP_RELEASE }));
   app.get('/health/ready', quiet, async (_req, reply) => {
     try {
       await prisma.$queryRaw`SELECT 1`;

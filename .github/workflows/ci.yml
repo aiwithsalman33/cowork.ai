@@ -1,9 +1,23 @@
+# CoWork AI — one pipeline (audit H3):
+#   test ─┐
+#         ├─► image (push to main only) ─► deploy (Dokploy webhook + health check)
+#   web-build ┘
+# Production only changes after tests and the web build pass. Roll back by redeploying an older :sha
+# (see docs/DEPLOY.md).
 name: CI
 
 on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   test:
@@ -29,4 +43,116 @@ jobs:
       - run: cd apps/api && npx prisma generate
       - run: npm run lint
       - run: npm run typecheck
-      - run: npm test
+      - name: Tests with coverage
+        run: npm run test:coverage -w @cowork/api
+      - name: Coverage summary
+        if: always()
+        run: |
+          if [ -f apps/api/coverage/coverage-summary.json ]; then
+            node -e "const t=require('./apps/api/coverage/coverage-summary.json').total;console.log('| metric | % |\n|---|---|\n'+['lines','functions','branches','statements'].map(k=>'| '+k+' | '+t[k].pct+' |').join('\n'))" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  web-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build:shared
+      - run: npm run build -w @cowork/web
+
+  secrets-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # whole history (audit M16)
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  smoke:
+    # Playwright smoke test at phone and laptop sizes against the real stack (M14 / L10).
+    # Non-blocking for now: the image job does not wait for it.
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+        working-directory: apps/web
+      - name: Start the stack
+        run: docker compose up -d --build --wait
+        env:
+          ADMIN_EMAIL: admin@ci.local
+          ADMIN_PASSWORD: ci-admin-password-123
+      - run: npm run test:smoke -w @cowork/web
+      - name: App logs on failure
+        if: failure()
+        run: docker compose logs app --tail 200
+
+  image:
+    needs: [test, web-build, secrets-scan]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          build-args: |
+            SENTRY_RELEASE=${{ github.sha }}
+          tags: |
+            ghcr.io/aiwithsalman33/cowork-ai:latest
+            ghcr.io/aiwithsalman33/cowork-ai:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    needs: image
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Trigger Dokploy deploy
+        env:
+          HOOK: ${{ secrets.DOKPLOY_DEPLOY_WEBHOOK }}
+        run: |
+          if [ -z "$HOOK" ]; then
+            echo "::warning::DOKPLOY_DEPLOY_WEBHOOK is not set — deploy manually in Dokploy (docs/DEPLOY.md)"
+            exit 0
+          fi
+          curl -fsS -X POST "$HOOK" > /dev/null
+          echo "deploy triggered for ${GITHUB_SHA}"
+      - name: Wait for /health/ready
+        env:
+          HOOK: ${{ secrets.DOKPLOY_DEPLOY_WEBHOOK }}
+        run: |
+          [ -z "$HOOK" ] && exit 0
+          base=https://coworkai.zenautomations.in
+          for i in $(seq 1 30); do
+            # the old container keeps answering until the new one is up: wait for THIS commit's release
+            release=$(curl -s "$base/health" | sed -n 's/.*"release":"\([^"]*\)".*/\1/p')
+            code=$(curl -s -o /dev/null -w '%{http_code}' "$base/health/ready" || true)
+            if [ "$release" = "$GITHUB_SHA" ] && [ "$code" = "200" ]; then echo "release $release is live and ready"; exit 0; fi
+            echo "attempt $i: release=${release:-?} ready=$code"; sleep 10
+          done
+          echo "::error::release $GITHUB_SHA was not live and ready within 5 minutes — check Dokploy and roll back (docs/DEPLOY.md)"
+          exit 1

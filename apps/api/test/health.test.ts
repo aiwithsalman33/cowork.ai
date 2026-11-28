@@ -8,7 +8,7 @@ describe('health checks (M14)', () => {
     const app = await getApp();
     const res = await app.inject({ method: 'GET', url: '/health' });
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toEqual({ ok: true });
+    expect(res.json()).toEqual({ ok: true, release: 'dev' });
   });
 
   it('/health/ready is 200 when the database answers and 503 when it does not', async () => {

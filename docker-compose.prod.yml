@@ -29,7 +29,8 @@ services:
 
   app:
     # Pre-built by GitHub Actions (.github/workflows/docker.yml) — public on GHCR; the VPS only pulls it.
-    image: ghcr.io/aiwithsalman33/cowork-ai:latest
+    # APP_IMAGE_TAG=<git sha> pins a version (rollback, docs/DEPLOY.md); default: newest build
+    image: ghcr.io/aiwithsalman33/cowork-ai:${APP_IMAGE_TAG:-latest}
     pull_policy: always
     restart: unless-stopped
     depends_on:

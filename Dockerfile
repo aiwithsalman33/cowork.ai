@@ -25,7 +25,9 @@ RUN npm run build -w @cowork/shared \
 FROM node:24-alpine AS runtime
 RUN apk add --no-cache openssl libc6-compat
 WORKDIR /app
-ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1
+# git sha of this build (CI build-arg): shown on /health and used as the Sentry release
+ARG SENTRY_RELEASE=dev
+ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 APP_RELEASE=${SENTRY_RELEASE}
 COPY --from=build /app/package.json ./
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/packages/shared/package.json packages/shared/

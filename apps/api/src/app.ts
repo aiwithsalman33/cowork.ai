@@ -29,6 +29,13 @@ export async function buildApp(): Promise<FastifyInstance> {
   });
   app.addHook('onSend', async (req, reply) => {
     reply.header('x-request-id', req.id);
+    // tenant data must never sit in shared or browser caches (L7); public plan prices may
+    const path = req.url.split('?')[0]!;
+    if (path.startsWith('/api/'))
+      reply.header(
+        'cache-control',
+        req.method === 'GET' && path === '/api/public/plans' ? 'public, max-age=60' : 'private, no-store',
+      );
   });
   // read-only maintenance (M5): tenant writes pause; reads, sign-in, admin, webhooks keep working
   app.addHook('onRequest', async (req) => {

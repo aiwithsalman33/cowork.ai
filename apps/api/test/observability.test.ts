@@ -23,6 +23,15 @@ describe('request ids and log hygiene (M6, L3)', () => {
     expect((await call(s, 'GET', '/api/auth/me')).headers['x-request-id']).toBeTruthy();
   });
 
+  it('API responses are never cached, except the public plan list (L7)', async () => {
+    const app = await getApp();
+    const s = await signup();
+    expect((await call(s, 'GET', '/api/auth/me')).headers['cache-control']).toBe('private, no-store');
+    expect((await app.inject({ method: 'GET', url: '/api/public/plans' })).headers['cache-control']).toBe(
+      'public, max-age=60',
+    );
+  });
+
   it('logged URLs drop the query string', () => {
     expect(
       reqSerializer({ method: 'GET', url: '/api/integrations/google/callback?code=SECRET&state=x', id: '1' }),

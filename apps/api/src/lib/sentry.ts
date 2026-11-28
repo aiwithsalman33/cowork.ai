@@ -31,3 +31,12 @@ export function captureError(
     Sentry.captureException(err);
   });
 }
+
+/** Tags every error report from this request, whoever captures it (our handler or the SDK). */
+export function tagRequest(requestId: string) {
+  if (Sentry.isInitialized()) Sentry.getIsolationScope().setTag('request_id', requestId);
+}
+
+export function tagUser(userId: string) {
+  if (Sentry.isInitialized()) Sentry.getIsolationScope().setUser({ id: userId });
+}

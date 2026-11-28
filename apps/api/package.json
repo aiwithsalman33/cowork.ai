@@ -26,7 +26,7 @@
     "@fastify/rate-limit": "^11.3.0",
     "@node-rs/argon2": "^2.0.2",
     "@prisma/client": "6.19.3",
-    "@sentry/node": "^10.78.0",
+    "@sentry/node": "^11.20.0",
     "baileys": "7.0.0-rc14",
     "fastify": "^5.12.8",
     "jose": "^6.1.0",

@@ -6,7 +6,7 @@ import rateLimit from '@fastify/rate-limit';
 import { env } from './config.js';
 import { loggerOptions } from './lib/logger.js';
 import { HttpError } from './lib/errors.js';
-import { captureError } from './lib/sentry.js';
+import { captureError, tagRequest } from './lib/sentry.js';
 import { prisma } from './db/client.js';
 import { authRoutes } from './routes/auth.js';
 import { registerRoutes } from './routes/index.js';
@@ -28,6 +28,7 @@ export async function buildApp(): Promise<FastifyInstance> {
       return typeof given === 'string' && /^[A-Za-z0-9._:-]{1,64}$/.test(given) ? given : crypto.randomUUID();
     },
   });
+  app.addHook('onRequest', async (req) => tagRequest(req.id));
   app.addHook('onSend', async (req, reply) => {
     reply.header('x-request-id', req.id);
     // tenant data must never sit in shared or browser caches (L7); public plan prices may

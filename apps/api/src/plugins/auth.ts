@@ -5,6 +5,7 @@ import { tenantDb, type TenantDb } from '../db/tenant.js';
 import { verifyAccessToken } from '../auth/tokens.js';
 import { COOKIE_ACCESS, COOKIE_CSRF } from '../auth/session.js';
 import { forbidden, HttpError, unauthorized } from '../lib/errors.js';
+import { tagUser } from '../lib/sentry.js';
 import { safeEqual } from '../lib/crypto.js';
 
 export interface AuthContext {
@@ -80,6 +81,7 @@ export async function authenticate(req: FastifyRequest, _reply: FastifyReply) {
   req.currentUser = user;
   // every later log line of this request names the tenant (M6)
   req.log = req.log.child({ userId: user.id });
+  tagUser(user.id);
   req.db = tenantDb(user.id);
 }
 

@@ -12,7 +12,14 @@ if (dsn) {
     dsn,
     environment: process.env.SENTRY_ENVIRONMENT ?? process.env.NODE_ENV ?? 'production',
     release: process.env.APP_RELEASE,
-    sendDefaultPii: false,
+    // collect no personal data at all (SDK v11 collects these by default)
+    dataCollection: {
+      userInfo: false,
+      cookies: false,
+      httpHeaders: false,
+      httpBodies: [],
+      urlQueryParams: false,
+    },
     tracesSampleRate: 0,
     beforeSend: scrubEvent,
   });
